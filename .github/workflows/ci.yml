@@ -32,5 +32,37 @@ jobs:
       - name: Typecheck
         run: npm run typecheck
 
-      - name: Test
+      - name: Test (unit)
         run: npm test
+
+  # Tenant-isolation + RLS gate. Runs against a Supabase TEST project.
+  # Enable by setting repo variable SUPABASE_CONFIGURED=true and the secrets below.
+  integration:
+    name: rls-gate · tenant-isolation
+    runs-on: ubuntu-latest
+    if: ${{ vars.SUPABASE_CONFIGURED == 'true' }}
+    env:
+      DATABASE_URL: ${{ secrets.DATABASE_URL }}
+      DIRECT_URL: ${{ secrets.DIRECT_URL }}
+      APP_DATABASE_URL: ${{ secrets.APP_DATABASE_URL }}
+      SUPABASE_JWT_SECRET: ${{ secrets.SUPABASE_JWT_SECRET }}
+    defaults:
+      run:
+        working-directory: apps/api
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version-file: .nvmrc
+          cache: npm
+      - name: Install
+        run: npm ci
+        working-directory: .
+      - name: Apply schema + RLS (idempotent)
+        run: |
+          npx prisma db execute --file prisma/sql/0001_init.sql --schema prisma/schema.prisma
+          npx prisma db execute --file prisma/sql/0002_rls.sql --schema prisma/schema.prisma
+      - name: RLS gate
+        run: npm run check:rls
+      - name: Tenant-isolation + integration tests
+        run: npm run test:int
