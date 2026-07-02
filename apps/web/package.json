@@ -1,0 +1,13 @@
+{
+  "name": "@onestack/web",
+  "version": "0.0.0",
+  "private": true,
+  "description": "OneStack web frontend (Next.js lands in the walking-skeleton card). Hosts on Vercel (syd1).",
+  "scripts": {
+    "typecheck": "tsc -p tsconfig.json --noEmit"
+  },
+  "devDependencies": {
+    "@types/node": "^20.14.0",
+    "typescript": "^5.5.4"
+  }
+}

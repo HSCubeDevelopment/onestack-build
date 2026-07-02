@@ -1,0 +1,45 @@
+name: Deploy — staging
+
+# Staging deploys automatically from main, but ONLY after CI is green.
+# Web  → Vercel (syd1) · API + workers → Fly.io (Sydney) · Data → Supabase (Sydney).
+#
+# HUMAN SETUP REQUIRED before this runs for real (Foundation card #1 hand-off):
+#   1. Create the GitHub remote and push this repo.
+#   2. Add repo secrets: VERCEL_TOKEN, VERCEL_ORG_ID, VERCEL_PROJECT_ID, FLY_API_TOKEN.
+#   3. Create the Vercel project (region syd1) and the Fly app (primary_region = syd).
+# Until secrets exist the deploy steps are skipped so the workflow stays green.
+
+on:
+  workflow_run:
+    workflows: [CI]
+    types: [completed]
+    branches: [main]
+
+jobs:
+  deploy:
+    name: deploy to staging
+    runs-on: ubuntu-latest
+    # Only deploy when the CI run that triggered us actually passed.
+    if: ${{ github.event.workflow_run.conclusion == 'success' }}
+    environment: staging
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Deploy API + workers → Fly.io (Sydney)
+        if: ${{ env.FLY_API_TOKEN != '' }}
+        env:
+          FLY_API_TOKEN: ${{ secrets.FLY_API_TOKEN }}
+        run: |
+          echo "TODO(card #1 hand-off): flyctl deploy --config apps/api/fly.toml --remote-only"
+          echo "Skipped until FLY_API_TOKEN is set."
+
+      - name: Deploy Web → Vercel (syd1)
+        if: ${{ env.VERCEL_TOKEN != '' }}
+        env:
+          VERCEL_TOKEN: ${{ secrets.VERCEL_TOKEN }}
+        run: |
+          echo "TODO(card #1 hand-off): vercel deploy --prebuilt --prod --token=$VERCEL_TOKEN"
+          echo "Skipped until VERCEL_TOKEN is set."
+
+      - name: Note
+        run: echo "Staging deploy pipeline wired. Fill secrets to activate real deploys."

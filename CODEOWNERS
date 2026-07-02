@@ -1,0 +1,13 @@
+# CODEOWNERS — who must review changes to sensitive paths.
+# Branch protection ("Require review from Code Owners") enforces this on GitHub.
+# NOTE: minimal set for Foundation card #1. The full security gate is card 5.3
+# (CI security gates + CODEOWNERS on sensitive paths). Replace @sidh / @harjaap with real handles.
+
+# Default: any change gets a human review.
+*                       @sidh @harjaap
+
+# OFF-LIMITS / Tier-1 paths — require senior review (see CLAUDE.md §7).
+/docs/architecture.md   @sidh
+/CLAUDE.md              @sidh
+/.github/               @sidh
+# (added as they land): tenant-context wrapper, auth, payments, migrations, workflow engine, pack contract

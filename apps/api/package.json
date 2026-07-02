@@ -1,0 +1,16 @@
+{
+  "name": "@onestack/api",
+  "version": "0.0.0",
+  "private": true,
+  "description": "OneStack API + background workers (NestJS lands in the walking-skeleton card). Hosts on Fly.io (Sydney).",
+  "type": "module",
+  "scripts": {
+    "build": "tsc -p tsconfig.json",
+    "typecheck": "tsc -p tsconfig.json --noEmit",
+    "test": "vitest run"
+  },
+  "devDependencies": {
+    "typescript": "^5.5.4",
+    "vitest": "^2.0.5"
+  }
+}
