@@ -20,8 +20,8 @@ export default defineConfig({
     // Integration tests: test/**/*.int.spec.ts (need a Supabase DB; skipIf(!hasDb)).
     include: ['src/**/*.test.ts', 'test/**/*.spec.ts'],
     setupFiles: ['./test/setup.ts'],
-    testTimeout: 30_000,
-    hookTimeout: 30_000,
+    testTimeout: 45_000,
+    hookTimeout: 60_000, // cold Supabase direct-connection setup in beforeAll can be slow
     fileParallelism: false, // integration specs share tenant tables; run files serially
   },
 });

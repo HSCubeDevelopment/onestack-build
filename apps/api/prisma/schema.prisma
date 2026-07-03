@@ -23,8 +23,12 @@ model Tenant {
   name        String
   createdAt   DateTime     @default(now())
   updatedAt   DateTime     @updatedAt
-  memberships Membership[]
-  contacts    Contact[]
+  memberships      Membership[]
+  contacts         Contact[]
+  workItems        WorkItem[]
+  workItemCounter  WorkItemCounter?
+  subjects         Subject[]
+  workItemSubjects WorkItemSubject[]
 
   @@map("onestack_tenant")
 }
@@ -54,7 +58,73 @@ model Contact {
   updatedAt   DateTime  @updatedAt
   deletedAt   DateTime?
   tenant      Tenant    @relation(fields: [tenantId], references: [id])
+  subjects    Subject[]
 
   @@index([tenantId])
   @@map("onestack_contact")
+}
+
+/// The generic central unit of work (card #6.3). NO vertical nouns — type/state/fields are pack config.
+model WorkItem {
+  id              String            @id @default(uuid()) @db.Uuid
+  tenantId        String            @db.Uuid
+  type            String
+  stateName       String
+  workflowVersion Int
+  reference       String
+  assignees       Json              @default("[]")
+  fields          Json              @default("{}")
+  bookingIds      Json              @default("[]")
+  version         Int               @default(1) // optimistic lock
+  createdAt       DateTime          @default(now())
+  updatedAt       DateTime          @updatedAt
+  deletedAt       DateTime?
+  tenant          Tenant            @relation(fields: [tenantId], references: [id])
+  subjects        WorkItemSubject[]
+
+  @@unique([tenantId, reference])
+  @@index([tenantId])
+  @@map("onestack_work_item")
+}
+
+/// Per-tenant reference sequence for Work Items (card #6.3).
+model WorkItemCounter {
+  tenantId String @id @db.Uuid
+  value    Int    @default(0)
+  tenant   Tenant @relation(fields: [tenantId], references: [id])
+
+  @@map("onestack_work_item_counter")
+}
+
+/// Optional, pack-typed "thing the work is about" (card #6.4) — vehicle, property, case file.
+model Subject {
+  id        String            @id @default(uuid()) @db.Uuid
+  tenantId  String            @db.Uuid
+  type      String
+  label     String
+  fields    Json              @default("{}")
+  contactId String?           @db.Uuid
+  createdAt DateTime          @default(now())
+  updatedAt DateTime          @updatedAt
+  deletedAt DateTime?
+  tenant    Tenant            @relation(fields: [tenantId], references: [id])
+  contact   Contact?          @relation(fields: [contactId], references: [id])
+  workItems WorkItemSubject[]
+
+  @@index([tenantId])
+  @@map("onestack_subject")
+}
+
+/// Work Item <-> Subject link (0-many both ways).
+model WorkItemSubject {
+  tenantId   String   @db.Uuid
+  workItemId String   @db.Uuid
+  subjectId  String   @db.Uuid
+  tenant     Tenant   @relation(fields: [tenantId], references: [id])
+  workItem   WorkItem @relation(fields: [workItemId], references: [id])
+  subject    Subject  @relation(fields: [subjectId], references: [id])
+
+  @@id([workItemId, subjectId])
+  @@index([tenantId])
+  @@map("onestack_work_item_subject")
 }
