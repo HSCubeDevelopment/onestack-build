@@ -1,0 +1,19 @@
+{
+  // Dependency-audit gate (card #5.3). Blocks merges on HIGH/CRITICAL vulns in PRODUCTION deps.
+  // Moderates are surfaced but not blocking yet. Run: npm run audit:ci
+  "moderate": false,
+  "high": true,
+  "critical": true,
+  "report-type": "summary",
+  "package-manager": "npm",
+  "skip-dev": true,
+  // Known, triaged advisories in NestJS's transitive tree (not our code). Blocks anything NEW.
+  // TODO(security): resolve via NestJS upgrade / npm overrides, then remove these. Tracked as a follow-up.
+  "allowlist": [
+    "GHSA-r5fr-rjxr-66jc", // lodash prototype pollution (transitive)
+    "GHSA-xf7r-hgr6-v32p", // multer — via @nestjs/platform-express; no file-upload path in use
+    "GHSA-v52c-386h-88mc", // multer
+    "GHSA-5528-5vmv-3xc2", // multer
+    "GHSA-72gw-mp4g-v24j", // multer
+  ],
+}

@@ -15,8 +15,11 @@ out/
 .env.*
 !.env.example
 
-# Test / coverage
-coverage/
+# Test / coverage (ignore reports, but TRACK the ratchet baseline)
+coverage/*
+!coverage/baseline.json
+apps/*/coverage/*
+!apps/*/coverage/baseline.json
 playwright-report/
 test-results/
 
