@@ -1,0 +1,60 @@
+// OneStack core data model — industry-neutral (no vertical nouns).
+// Vehicle/Job etc. live in the automotive PACK, never here. See docs/architecture.md.
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider  = "postgresql"
+  url       = env("DATABASE_URL") // owner/direct (Supabase `postgres`) — migrations + provisioning
+  directUrl = env("DIRECT_URL")
+}
+
+enum Role {
+  OWNER
+  STAFF
+
+  @@map("onestack_role")
+}
+
+/// A customer of OneStack (one shop / clinic / firm). Owns everything. Not tenant-scoped (it IS the scope).
+model Tenant {
+  id          String       @id @default(uuid()) @db.Uuid
+  name        String
+  createdAt   DateTime     @default(now())
+  updatedAt   DateTime     @updatedAt
+  memberships Membership[]
+  contacts    Contact[]
+
+  @@map("onestack_tenant")
+}
+
+/// Links a Supabase auth user to a Tenant with a role. Tenant-scoped (carries tenantId → RLS).
+model Membership {
+  id        String   @id @default(uuid()) @db.Uuid
+  tenantId  String   @db.Uuid
+  userId    String   @db.Uuid // Supabase auth user id (auth.users.id)
+  role      Role     @default(STAFF)
+  createdAt DateTime @default(now())
+  tenant    Tenant   @relation(fields: [tenantId], references: [id])
+
+  @@unique([tenantId, userId])
+  @@index([tenantId])
+  @@map("onestack_membership")
+}
+
+/// The party served (customer / patient / client). Core primitive; walking-skeleton target. Tenant-scoped.
+model Contact {
+  id          String    @id @default(uuid()) @db.Uuid
+  tenantId    String    @db.Uuid
+  displayName String
+  email       String?
+  phone       String?
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+  deletedAt   DateTime?
+  tenant      Tenant    @relation(fields: [tenantId], references: [id])
+
+  @@index([tenantId])
+  @@map("onestack_contact")
+}
