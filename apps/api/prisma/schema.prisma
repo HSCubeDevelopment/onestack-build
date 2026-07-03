@@ -13,6 +13,8 @@ datasource db {
 enum Role {
   OWNER
   STAFF
+
+  @@map("onestack_role")
 }
 
 /// A customer of OneStack (one shop / clinic / firm). Owns everything. Not tenant-scoped (it IS the scope).
@@ -24,7 +26,7 @@ model Tenant {
   memberships Membership[]
   contacts    Contact[]
 
-  @@map("Tenant")
+  @@map("onestack_tenant")
 }
 
 /// Links a Supabase auth user to a Tenant with a role. Tenant-scoped (carries tenantId → RLS).
@@ -38,7 +40,7 @@ model Membership {
 
   @@unique([tenantId, userId])
   @@index([tenantId])
-  @@map("Membership")
+  @@map("onestack_membership")
 }
 
 /// The party served (customer / patient / client). Core primitive; walking-skeleton target. Tenant-scoped.
@@ -54,5 +56,5 @@ model Contact {
   tenant      Tenant    @relation(fields: [tenantId], references: [id])
 
   @@index([tenantId])
-  @@map("Contact")
+  @@map("onestack_contact")
 }

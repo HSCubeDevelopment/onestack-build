@@ -30,7 +30,7 @@ END $$;
 -- DECLARE m record;
 -- BEGIN
 --   SELECT "tenantId", "role" INTO m
---   FROM "Membership"
+--   FROM "onestack_membership"
 --   WHERE "userId" = (event->>'user_id')::uuid
 --   ORDER BY "createdAt" ASC
 --   LIMIT 1;
