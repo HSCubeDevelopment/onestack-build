@@ -19,8 +19,8 @@ ALTER TABLE "onestack_contact" FORCE ROW LEVEL SECURITY;
 DROP POLICY IF EXISTS "tenant_isolation" ON "onestack_contact";
 CREATE POLICY "tenant_isolation" ON "onestack_contact"
   FOR ALL
-  USING ("tenantId" = current_setting('app.current_tenant_id', true)::uuid)
-  WITH CHECK ("tenantId" = current_setting('app.current_tenant_id', true)::uuid);
+  USING ("tenantId" = NULLIF(current_setting('app.current_tenant_id', true), '')::uuid)
+  WITH CHECK ("tenantId" = NULLIF(current_setting('app.current_tenant_id', true), '')::uuid);
 
 -- ---- onestack_membership (tenant table) ----
 ALTER TABLE "onestack_membership" ENABLE ROW LEVEL SECURITY;
@@ -28,8 +28,8 @@ ALTER TABLE "onestack_membership" FORCE ROW LEVEL SECURITY;
 DROP POLICY IF EXISTS "tenant_isolation" ON "onestack_membership";
 CREATE POLICY "tenant_isolation" ON "onestack_membership"
   FOR ALL
-  USING ("tenantId" = current_setting('app.current_tenant_id', true)::uuid)
-  WITH CHECK ("tenantId" = current_setting('app.current_tenant_id', true)::uuid);
+  USING ("tenantId" = NULLIF(current_setting('app.current_tenant_id', true), '')::uuid)
+  WITH CHECK ("tenantId" = NULLIF(current_setting('app.current_tenant_id', true), '')::uuid);
 
 -- ---- onestack_tenant (the scope itself; no tenantId column) ----
 -- Not covered by the CI RLS gate (which targets tables WITH a tenantId column), but protected anyway:
@@ -40,4 +40,4 @@ ALTER TABLE "onestack_tenant" FORCE ROW LEVEL SECURITY;
 DROP POLICY IF EXISTS "tenant_self_read" ON "onestack_tenant";
 CREATE POLICY "tenant_self_read" ON "onestack_tenant"
   FOR SELECT
-  USING ("id" = current_setting('app.current_tenant_id', true)::uuid);
+  USING ("id" = NULLIF(current_setting('app.current_tenant_id', true), '')::uuid);

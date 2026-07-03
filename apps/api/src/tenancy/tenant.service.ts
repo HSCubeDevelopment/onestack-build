@@ -40,11 +40,15 @@ export class TenantService implements OnModuleInit, OnModuleDestroy {
 
   /** Run `fn` with tenant RLS context set. All queries MUST use the passed `tx` client. */
   async runInTenant<T>(tenantId: string, fn: (tx: TenantClient) => Promise<T>): Promise<T> {
-    return this.app.$transaction(async (tx) => {
-      // Parameterised — set_config's value arg is text; tenantId is a uuid string.
-      await tx.$executeRaw`SELECT set_config('app.current_tenant_id', ${tenantId}, true)`;
-      return fn(tx);
-    });
+    return this.app.$transaction(
+      async (tx) => {
+        // Parameterised — set_config's value arg is text; tenantId is a uuid string.
+        await tx.$executeRaw`SELECT set_config('app.current_tenant_id', ${tenantId}, true)`;
+        return fn(tx);
+      },
+      // Allow the request to queue for a pooled connection rather than failing fast under load.
+      { maxWait: 15_000, timeout: 20_000 },
+    );
   }
 
   /**

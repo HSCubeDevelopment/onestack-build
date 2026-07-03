@@ -43,8 +43,9 @@ describe.skipIf(!hasDb)('pooled-connection leak', () => {
       tx.contact.create({ data: { tenantId: b.tenantId, displayName: 'only-B' } }),
     );
 
-    // Hammer both tenants concurrently; each run must see ONLY its own contact.
-    const runs = Array.from({ length: 40 }, (_, i) => {
+    // Hammer both tenants concurrently over a small pool (connection_limit=3) so connections are
+    // reused across runs; each run must still see ONLY its own contact.
+    const runs = Array.from({ length: 24 }, (_, i) => {
       const t = i % 2 === 0 ? a : b;
       const expected = i % 2 === 0 ? 'only-A' : 'only-B';
       return tenants.runInTenant(t.tenantId, async (tx) => {

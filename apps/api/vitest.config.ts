@@ -1,6 +1,18 @@
+import swc from 'unplugin-swc';
 import { defineConfig } from 'vitest/config';
 
 export default defineConfig({
+  // SWC transform emits `emitDecoratorMetadata`, which esbuild (vitest's default) does not.
+  // Without it, NestJS DI can't resolve constructor param types in the in-process app boot.
+  plugins: [
+    swc.vite({
+      jsc: {
+        target: 'es2022',
+        parser: { syntax: 'typescript', decorators: true },
+        transform: { legacyDecorator: true, decoratorMetadata: true },
+      },
+    }),
+  ],
   test: {
     globals: true,
     environment: 'node',
