@@ -73,6 +73,28 @@ export class SetSplitDto {
   portions!: PortionDto[];
 }
 
+/** Card #42 — one-call insured split: bill the insurer for the authorised amount, customer for the excess. */
+export class ApplyExcessSplitDto {
+  @IsUUID()
+  primaryPayerContactId!: string;
+
+  @IsInt()
+  @Min(0)
+  primaryAmountCents!: number;
+
+  @IsInt()
+  @Min(1)
+  excessAmountCents!: number;
+
+  @IsOptional()
+  @IsUUID()
+  excessPayerContactId?: string;
+
+  @IsOptional()
+  @IsString()
+  excessPayerName?: string;
+}
+
 /** Card #40.5 — record money received against an invoice (optionally a specific portion). */
 export class RecordPaymentDto {
   @IsInt()

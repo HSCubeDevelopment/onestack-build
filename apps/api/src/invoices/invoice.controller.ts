@@ -5,6 +5,7 @@ import { JwtAuthGuard } from '../auth/jwt-auth.guard';
 import { RolesGuard } from '../auth/roles.guard';
 import {
   AddInvoiceLineDto,
+  ApplyExcessSplitDto,
   CreateInvoiceDto,
   RecordPaymentDto,
   SetPayerDto,
@@ -109,5 +110,15 @@ export class InvoiceController {
     @Body() dto: RecordPaymentDto,
   ): Promise<InvoiceView> {
     return this.invoices.recordPayment(user.tenantId, id, dto, user.userId);
+  }
+
+  /** Card #42 — one-call insured split (insurer authorised + customer excess). */
+  @Post('invoices/:id/excess-split')
+  applyExcessSplit(
+    @CurrentUser() user: AuthContext,
+    @Param('id') id: string,
+    @Body() dto: ApplyExcessSplitDto,
+  ): Promise<InvoiceView> {
+    return this.invoices.applyExcessSplit(user.tenantId, id, dto);
   }
 }

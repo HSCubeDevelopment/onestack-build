@@ -80,6 +80,14 @@ export interface RecordPaymentInput {
   receivedAt?: string;
 }
 
+export interface ExcessSplitInput {
+  primaryPayerContactId: string; // e.g. the insurer (billed for the authorised amount)
+  primaryAmountCents: number; // e.g. the assessor-authorised amount
+  excessAmountCents: number; // the customer's out-of-pocket excess
+  excessPayerContactId?: string; // the customer (Contact), if in the system
+  excessPayerName?: string; // …or an external name
+}
+
 /**
  * Invoice (card #40): from a job or an accepted quote (line items copied across, then editable). Shares
  * the ONE money engine (#6.9 / #29) with quotes, so totals never drift. Paid manually — records who +
@@ -356,6 +364,45 @@ export class InvoiceService {
           : inv;
       return this.viewFrom(tx, updated);
     });
+  }
+
+  /**
+   * Excess handling (card #42): the one-call insured-job split. Bills the primary payer (insurer) for
+   * the authorised amount and the customer for the excess, so the shop collects the excess and bills the
+   * insurer separately — reconciling to the cent. Generic 2-payer helper (also fits Medicare gap, NDIS
+   * co-pay, etc.); the caller supplies the figures (e.g. from the automotive claim block). Card #15 records
+   * those figures on the job; this turns them into the money split via the core #40.5 machinery.
+   */
+  async applyExcessSplit(
+    tenantId: string,
+    id: string,
+    input: ExcessSplitInput,
+  ): Promise<InvoiceView> {
+    if (!Number.isInteger(input.primaryAmountCents) || input.primaryAmountCents < 0)
+      throw new BadRequestException('primaryAmountCents must be a non-negative integer');
+    if (!Number.isInteger(input.excessAmountCents) || input.excessAmountCents < 1)
+      throw new BadRequestException('excessAmountCents must be a positive integer');
+    if (!input.excessPayerContactId && !input.excessPayerName?.trim())
+      throw new BadRequestException('An excess payer (contact id or name) is required');
+
+    const portions: PortionInput[] = [
+      {
+        payerContactId: input.excessPayerContactId,
+        payerName: input.excessPayerName,
+        description: 'Customer excess',
+        amountCents: input.excessAmountCents,
+      },
+    ];
+    // Only include the insurer portion if they actually pay something (a $0 authorised = fully self-paid).
+    if (input.primaryAmountCents > 0)
+      portions.unshift({
+        payerContactId: input.primaryPayerContactId,
+        description: 'Insurer authorised',
+        amountCents: input.primaryAmountCents,
+      });
+
+    await this.setPayer(tenantId, id, input.primaryPayerContactId);
+    return this.setSplit(tenantId, id, portions);
   }
 
   private async insert(
