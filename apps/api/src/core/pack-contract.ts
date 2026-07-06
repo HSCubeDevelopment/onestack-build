@@ -53,6 +53,10 @@ export interface WorkItemTypeDef {
   fields: z.ZodTypeAny; // validates the Work Item's JSONB `fields`
   workflow: WorkflowDefinition;
   guards?: Record<string, GuardFn>;
+  /** Human-readable reference prefix (e.g. "J" → J-000001). Defaults to "WI". */
+  referencePrefix?: string;
+  /** If true, creating an item of this type requires ≥1 linked Subject (e.g. a repair needs a car). */
+  requiresSubject?: boolean;
 }
 
 export interface SubjectTypeDef {

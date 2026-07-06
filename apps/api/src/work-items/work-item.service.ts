@@ -49,13 +49,18 @@ export class WorkItemService {
     const initial = this.workflow.initialState(def.workflow);
     const workflowVersion = def.workflow.version;
 
+    if (def.requiresSubject && (input.subjectIds ?? []).length === 0) {
+      throw new BadRequestException(`A "${input.type}" requires at least one linked subject`);
+    }
+
     return this.tenants.runInTenant(tenantId, async (tx) => {
       const counter = await tx.workItemCounter.upsert({
         where: { tenantId },
         create: { tenantId, value: 1 },
         update: { value: { increment: 1 } },
       });
-      const reference = `WI-${String(counter.value).padStart(6, '0')}`;
+      const prefix = def.referencePrefix ?? 'WI';
+      const reference = `${prefix}-${String(counter.value).padStart(6, '0')}`;
 
       const wi = await tx.workItem.create({
         data: {
@@ -82,6 +87,17 @@ export class WorkItemService {
     );
     if (!wi) throw new NotFoundException('Work item not found');
     return toView(wi);
+  }
+
+  /** List work items, optionally filtered by type (e.g. all "job" work items). This tenant only. */
+  async list(tenantId: string, type?: string): Promise<WorkItemView[]> {
+    const rows = await this.tenants.runInTenant(tenantId, (tx) =>
+      tx.workItem.findMany({
+        where: { deletedAt: null, ...(type ? { type } : {}) },
+        orderBy: { createdAt: 'desc' },
+      }),
+    );
+    return rows.map(toView);
   }
 
   /** Update mutable fields/assignees. CANNOT change state — that is `transition` only (card #6.3). */
