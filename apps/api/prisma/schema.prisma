@@ -38,8 +38,32 @@ model Tenant {
   documents         Document[]
   quotes            Quote[]
   referenceCounters ReferenceCounter[]
+  invoices          Invoice[]
 
   @@map("onestack_tenant")
+}
+
+/// An invoice on a job (card #40), optionally from an accepted quote. Line items are the shared
+/// onestack_line_item; totals derived. Paid manually (records who + when). Tenant-scoped.
+model Invoice {
+  id         String    @id @default(uuid()) @db.Uuid
+  tenantId   String    @db.Uuid
+  workItemId String    @db.Uuid // the job
+  quoteId    String?   @db.Uuid // source quote (optional)
+  reference  String
+  status     String    @default("Unpaid") // Unpaid | Paid | Void
+  issueDate  DateTime  @default(now())
+  dueDate    DateTime?
+  paidAt     DateTime?
+  paidBy     String?   @db.Uuid
+  createdAt  DateTime  @default(now())
+  updatedAt  DateTime  @updatedAt
+  tenant     Tenant    @relation(fields: [tenantId], references: [id])
+
+  @@unique([tenantId, reference])
+  @@index([tenantId])
+  @@index([tenantId, workItemId])
+  @@map("onestack_invoice")
 }
 
 /// Generic per-tenant reference sequence (scope = 'quote' | 'invoice' | …). Card #30.

@@ -12,6 +12,7 @@ import { JobsModule } from './jobs/jobs.module';
 import { LineItemsModule } from './line-items/line-items.module';
 import { ModulesModule } from './modules/modules.module';
 import { NotificationsModule } from './notifications/notifications.module';
+import { InvoicesModule } from './invoices/invoices.module';
 import { PacksModule } from './packs/packs.module';
 import { QuotesModule } from './quotes/quotes.module';
 import { SchedulingModule } from './scheduling/scheduling.module';
@@ -41,6 +42,7 @@ import { WorkItemModule } from './work-items/work-item.module';
     SubjectModule,
     LineItemsModule, // shared Quote/Invoice line items (#6.9)
     QuotesModule, // quotes on a job (#30)
+    InvoicesModule, // invoices from a job/quote (#40)
   ],
   controllers: [HealthController],
 })
