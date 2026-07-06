@@ -34,10 +34,40 @@ model Tenant {
   inboxConsumed    InboxConsumed[]
   auditLogs        AuditLog[]
   notifications    Notification[]
-  lineItems        LineItem[]
-  documents        Document[]
+  lineItems         LineItem[]
+  documents         Document[]
+  quotes            Quote[]
+  referenceCounters ReferenceCounter[]
 
   @@map("onestack_tenant")
+}
+
+/// Generic per-tenant reference sequence (scope = 'quote' | 'invoice' | …). Card #30.
+model ReferenceCounter {
+  tenantId String @db.Uuid
+  scope    String
+  value    Int    @default(0)
+  tenant   Tenant @relation(fields: [tenantId], references: [id])
+
+  @@id([tenantId, scope])
+  @@map("onestack_reference_counter")
+}
+
+/// A quote on a job (card #30). Line items are the shared onestack_line_item; totals are derived.
+model Quote {
+  id         String   @id @default(uuid()) @db.Uuid
+  tenantId   String   @db.Uuid
+  workItemId String   @db.Uuid // the job
+  reference  String
+  status     String   @default("Draft") // Draft | Sent | Accepted | Declined
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+  tenant     Tenant   @relation(fields: [tenantId], references: [id])
+
+  @@unique([tenantId, reference])
+  @@index([tenantId])
+  @@index([tenantId, workItemId])
+  @@map("onestack_quote")
 }
 
 /// Metadata for a generated document (card #6.7). File bytes live in Supabase Storage; this row links
