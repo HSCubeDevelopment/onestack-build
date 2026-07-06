@@ -799,6 +799,22 @@ textarea.input {
   padding: 12px 13px;
   cursor: grab;
   box-shadow: var(--shadow-sm);
+  position: relative;
+}
+.card-saving {
+  position: absolute;
+  top: 10px;
+  right: 10px;
+  color: var(--brand);
+  display: inline-flex;
+}
+@keyframes spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+.spin {
+  animation: spin 0.7s linear infinite;
 }
 .job-card:hover {
   border-color: var(--border-strong);

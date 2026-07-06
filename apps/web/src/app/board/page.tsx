@@ -1,7 +1,7 @@
 'use client';
 import Link from 'next/link';
 import { useState } from 'react';
-import { RefreshCw } from 'lucide-react';
+import { RefreshCw, Loader2 } from 'lucide-react';
 import { api, Board, BoardCard } from '@/lib/api';
 import { ErrorBanner, Loading, PageHead, StatusBadge, useAsync } from '@/components/ui';
 
@@ -29,19 +29,31 @@ export default function BoardPage() {
   );
   const [moveError, setMoveError] = useState<string | null>(null);
   const [dragging, setDragging] = useState<{ id: string; from: string } | null>(null);
+  const [saving, setSaving] = useState<Set<string>>(new Set());
 
-  // Optimistic move: the card jumps to the new column immediately; the API runs in the background and
-  // we roll back to the previous board only if the server rejects the move (e.g. an illegal skip).
+  const markSaving = (id: string, on: boolean) =>
+    setSaving((prev) => {
+      const next = new Set(prev);
+      if (on) next.add(id);
+      else next.delete(id);
+      return next;
+    });
+
+  // Optimistic move: the card jumps to the new column immediately (with a "saving" spinner); the API runs
+  // in the background and we roll back to the previous board only if the server rejects the move.
   async function moveCard(id: string, targetState: string) {
     if (!data) return;
     setMoveError(null);
     const previous = data;
     setData(withCardMoved(data, id, targetState));
+    markSaving(id, true);
     try {
       await api.post(`/board/cards/${id}/move`, { targetState });
     } catch (e) {
       setData(previous); // revert
       setMoveError(e instanceof Error ? e.message : String(e));
+    } finally {
+      markSaving(id, false);
     }
   }
 
@@ -63,6 +75,7 @@ export default function BoardPage() {
               state={col.state}
               cards={col.cards}
               dragging={dragging}
+              saving={saving}
               onDragStart={(card) => setDragging({ id: card.id, from: card.stateName })}
               onDragEnd={() => setDragging(null)}
               onDropCard={(id) => {
@@ -80,6 +93,7 @@ function Column({
   state,
   cards,
   dragging,
+  saving,
   onDragStart,
   onDragEnd,
   onDropCard,
@@ -87,6 +101,7 @@ function Column({
   state: string;
   cards: BoardCard[];
   dragging: { id: string; from: string } | null;
+  saving: Set<string>;
   onDragStart: (card: BoardCard) => void;
   onDragEnd: () => void;
   onDropCard: (id: string) => void;
@@ -121,6 +136,7 @@ function Column({
             key={card.id}
             card={card}
             isDragging={dragging?.id === card.id}
+            isSaving={saving.has(card.id)}
             onDragStart={(e) => {
               e.dataTransfer.setData('text/plain', card.id);
               e.dataTransfer.effectAllowed = 'move';
@@ -137,23 +153,31 @@ function Column({
 function Card({
   card,
   isDragging,
+  isSaving,
   onDragStart,
   onDragEnd,
 }: {
   card: BoardCard;
   isDragging: boolean;
+  isSaving: boolean;
   onDragStart: (e: React.DragEvent) => void;
   onDragEnd: () => void;
 }) {
+  // Only the drag gesture dims the card; the background save shows a spinner, never a fade.
   return (
     <Link
       href={`/jobs/${card.id}`}
-      className={`job-card ${isDragging ? 'dragging' : ''}`}
+      className={`job-card ${isDragging && !isSaving ? 'dragging' : ''}`}
       style={{ display: 'block' }}
       draggable
       onDragStart={onDragStart}
       onDragEnd={onDragEnd}
     >
+      {isSaving && (
+        <span className="card-saving" title="Saving…">
+          <Loader2 size={14} className="spin" />
+        </span>
+      )}
       <div className="ref">{card.reference}</div>
       <div style={{ fontSize: 12 }}>{card.customerName ?? '—'}</div>
       {card.vehicleLabel && (
