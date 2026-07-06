@@ -15,7 +15,9 @@ const METRICS: Metric[] = ['lines', 'statements', 'functions', 'branches'];
 const EPSILON = 0.01; // ignore floating-point noise
 
 const summaryPath = join(__dirname, '..', 'coverage', 'coverage-summary.json');
-const baselinePath = join(__dirname, '..', 'coverage', 'baseline.json');
+// Baseline lives OUTSIDE coverage/ — vitest wipes coverage/ (clean:true) on every run, which would
+// otherwise delete the committed baseline and make the ratchet a silent no-op.
+const baselinePath = join(__dirname, '..', 'coverage-baseline.json');
 
 function main(): void {
   if (!existsSync(summaryPath)) {

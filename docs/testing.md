@@ -66,7 +66,7 @@ Every PR must pass these before merge:
 
 | Gate                        | Command                                         | What it blocks                                                                                         |
 | --------------------------- | ----------------------------------------------- | ------------------------------------------------------------------------------------------------------ |
-| Coverage ratchet            | `npm run test:cov` + `npm run coverage:ratchet` | coverage dropping below `coverage/baseline.json`                                                       |
+| Coverage ratchet            | `npm run test:cov` + `npm run coverage:ratchet` | coverage dropping below `coverage-baseline.json`                                                       |
 | Contract tests              | part of `npm test`                              | a module/event boundary drifting from its Zod schema (`src/contracts/`)                                |
 | GST money                   | part of `npm test`                              | wrong rounding / net+gst≠total (property + golden)                                                     |
 | Destructive-migration guard | `npm run check:migrations`                      | `DROP`/`RENAME`/`TRUNCATE` in forward migrations without the `approved-destructive-migration` PR label |

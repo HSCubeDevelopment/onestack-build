@@ -24,8 +24,8 @@ export default defineConfig({
     exclude: ['**/node_modules/**', '**/dist/**', '**/*.quarantine.*'],
     retry: 0,
     setupFiles: ['./test/setup.ts'],
-    testTimeout: 30_000,
-    hookTimeout: 30_000,
+    testTimeout: 45_000,
+    hookTimeout: 60_000, // cold Supabase direct-connection setup in beforeAll can be slow
     fileParallelism: false, // integration specs share tenant tables; run files serially
     coverage: {
       provider: 'v8',
