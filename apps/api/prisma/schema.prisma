@@ -25,12 +25,28 @@ model Tenant {
   updatedAt   DateTime     @updatedAt
   memberships      Membership[]
   contacts         Contact[]
+  featureFlags     FeatureFlag[]
   workItems        WorkItem[]
   workItemCounter  WorkItemCounter?
   subjects         Subject[]
   workItemSubjects WorkItemSubject[]
 
   @@map("onestack_tenant")
+}
+
+/// Per-tenant module on/off flag (composition engine, cards #6 / #6.2). Tenant-scoped.
+model FeatureFlag {
+  id        String   @id @default(uuid()) @db.Uuid
+  tenantId  String   @db.Uuid
+  key       String // a ModuleKey (see src/composition/module-registry.ts)
+  enabled   Boolean
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  tenant    Tenant   @relation(fields: [tenantId], references: [id])
+
+  @@unique([tenantId, key])
+  @@index([tenantId])
+  @@map("onestack_feature_flag")
 }
 
 /// Links a Supabase auth user to a Tenant with a role. Tenant-scoped (carries tenantId → RLS).

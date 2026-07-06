@@ -1,0 +1,22 @@
+# Code owners for SENSITIVE paths (card #5.3). A non-author human review is required on these once
+# branch protection has "Require review from Code Owners" enabled (needs GitHub Team on a private repo).
+#
+# TODO: add Sidh's GitHub handle and a @HSCubeDevelopment/reviewers team so review can't fall to the
+#       PR author alone. Until then @harjaapdhillon16 is the sole listed owner.
+
+# Multi-tenant isolation, RLS, tenant-context wrapper — Tier-1 (CLAUDE.md §7)
+/apps/api/src/tenancy/                 @harjaapdhillon16
+/apps/api/prisma/schema.prisma         @harjaapdhillon16
+/apps/api/prisma/sql/                  @harjaapdhillon16
+
+# Authentication, permissions, RBAC — Tier-1
+/apps/api/src/auth/                    @harjaapdhillon16
+
+# Money / payments — Tier-1 (when expanded)
+/apps/api/src/money/                   @harjaapdhillon16
+
+# Background workers (carry tenant context) — add paths as workers land
+# /apps/api/src/**/*worker*            @harjaapdhillon16
+
+# CI, security gates, and the ruleset config themselves
+/.github/                              @harjaapdhillon16
