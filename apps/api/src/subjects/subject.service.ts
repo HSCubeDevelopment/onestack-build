@@ -67,6 +67,16 @@ export class SubjectService {
     return rows.map(toView);
   }
 
+  /** The subjects linked to a Work Item (e.g. a job's vehicle(s)). */
+  async listForWorkItem(tenantId: string, workItemId: string): Promise<SubjectView[]> {
+    const rows = await this.tenants.runInTenant(tenantId, (tx) =>
+      tx.subject.findMany({
+        where: { deletedAt: null, workItems: { some: { workItemId } } },
+      }),
+    );
+    return rows.map(toView);
+  }
+
   /** Search subjects of a type by a JSONB field value (e.g. vehicles by rego). This tenant only. */
   async searchByField(
     tenantId: string,

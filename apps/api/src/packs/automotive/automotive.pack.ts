@@ -39,7 +39,15 @@ export const automotivePack: Pack = {
     {
       type: 'job',
       label: 'Job',
-      fields: z.object({ description: z.string().optional() }),
+      referencePrefix: 'J', // J-000001
+      requiresSubject: true, // a repair needs a car
+      fields: z.object({
+        customerId: z.string().uuid(),
+        description: z.string().optional(),
+        bookedInDate: z.string().optional(),
+        promisedDate: z.string().optional(),
+        completedDate: z.string().optional(),
+      }),
       workflow: {
         workItemType: 'job',
         version: 1,
