@@ -1,10 +1,11 @@
 import './globals.css';
 import type { Metadata } from 'next';
 import { Sidebar } from '@/components/Sidebar';
+import { Topbar } from '@/components/Topbar';
 
 export const metadata: Metadata = {
   title: 'OneStack — Panel & Paint',
-  description: 'OneStack walking-skeleton frontend',
+  description: 'OneStack enterprise dashboard',
 };
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
@@ -13,7 +14,10 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
       <body>
         <div className="app">
           <Sidebar />
-          <main className="main">{children}</main>
+          <div className="content">
+            <Topbar />
+            <main className="main">{children}</main>
+          </div>
         </div>
       </body>
     </html>

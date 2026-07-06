@@ -53,9 +53,10 @@ async function main() {
   await call('POST', '/custom-fields', { appliesTo: 'vehicle', key: 'colour', label: 'Colour', type: 'text' });
 
   // Resources
-  await call('POST', '/resources', { type: 'bay', name: 'Bay 1' });
-  await call('POST', '/resources', { type: 'bay', name: 'Bay 2' });
-  await call('POST', '/resources', { type: 'technician', name: 'Dave' });
+  const bay1 = await call('POST', '/resources', { type: 'bay', name: 'Bay 1' });
+  const bay2 = await call('POST', '/resources', { type: 'bay', name: 'Bay 2' });
+  const tech = await call('POST', '/resources', { type: 'technician', name: 'Dave' });
+  const resources = [bay1, bay2, tech];
 
   // Insurer
   const insurer = await call('POST', '/contacts', { displayName: 'AAMI Insurance', phone: '0132244' });
@@ -67,6 +68,7 @@ async function main() {
     { name: 'Metro Fleet Pty Ltd', phone: '0398765432', email: 'ops@metrofleet.com', rego: 'FLT001', make: 'Ford', model: 'Ranger', year: 2023, target: 'AwaitingParts', insured: true },
   ];
 
+  const createdJobs: any[] = [];
   for (const c of customers) {
     const contact = await call('POST', '/contacts', { displayName: c.name, phone: c.phone, email: c.email });
     const vehicle = await call('POST', `/contacts/${contact.id}/vehicles`, { rego: c.rego, make: c.make, model: c.model, year: c.year });
@@ -78,6 +80,7 @@ async function main() {
       subjectIds: [vehicle.id],
       fields: { customerId: contact.id, description: `${c.make} ${c.model} — repair`, ...(claim ? { claim } : {}) },
     });
+    createdJobs.push({ job, label: `${c.make} ${c.model} — ${c.name.split(' ')[0]}` });
 
     // Quote with lines
     const quote = await call('POST', `/work-items/${job.id}/quotes`);
@@ -112,6 +115,31 @@ async function main() {
     if (c.name === 'Tom Nguyen') {
       await call('POST', `/invoices/${inv.id}/mark-paid`);
     }
+  }
+
+  // Calendar bookings over the next few days (so "Upcoming events" is populated).
+  const day = 864e5;
+  const now = Date.now();
+  const at = (offsetDays: number, hour: number) => {
+    const d = new Date(now + offsetDays * day);
+    d.setHours(hour, 0, 0, 0);
+    return d.toISOString();
+  };
+  const bookings = [
+    { title: 'Lease renewal — strip down', res: 0, offset: 0, hour: 9, job: 0 },
+    { title: 'Property tour — assessor visit', res: 1, offset: 1, hour: 11, job: 3 },
+    { title: 'Panel fit — Corolla', res: 2, offset: 1, hour: 14, job: 1 },
+    { title: 'Collection — Hyundai i30', res: 0, offset: 3, hour: 10, job: 2 },
+    { title: 'Paint booth — Ranger', res: 1, offset: 4, hour: 13, job: 3 },
+  ];
+  for (const b of bookings) {
+    await call('POST', '/bookings', {
+      resourceId: resources[b.res].id,
+      title: b.title,
+      startsAt: at(b.offset, b.hour),
+      endsAt: at(b.offset, b.hour + 2),
+      workItemId: createdJobs[b.job]?.job.id,
+    });
   }
 
   // Leads: a public form + a couple of submissions
