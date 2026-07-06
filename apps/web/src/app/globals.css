@@ -45,6 +45,7 @@ body {
   font-size: 14px;
   line-height: 1.5;
   -webkit-font-smoothing: antialiased;
+  overflow-x: hidden;
 }
 a {
   color: var(--brand);
@@ -159,9 +160,12 @@ p {
 }
 .nav a .ico {
   width: 18px;
-  text-align: center;
-  font-size: 15px;
+  height: 18px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
   opacity: 0.9;
+  flex-shrink: 0;
 }
 .nav a.active .ico {
   opacity: 1;
@@ -179,12 +183,28 @@ p {
   flex-direction: column;
   gap: 2px;
 }
+.foot-item {
+  display: flex;
+  align-items: center;
+  gap: 11px;
+  padding: 9px 12px;
+  border-radius: 10px;
+  color: var(--text-dim);
+  font-weight: 550;
+  font-size: 13.5px;
+  cursor: pointer;
+}
+.foot-item:hover {
+  background: var(--panel-2);
+  color: var(--text);
+}
 
 /* content column */
 .content {
   display: flex;
   flex-direction: column;
   min-width: 0;
+  width: 100%;
 }
 .topbar {
   height: var(--topbar-h);
@@ -275,9 +295,11 @@ p {
   color: var(--text-faint);
 }
 .main {
-  padding: 24px 26px 60px;
-  max-width: 1320px;
+  padding: 26px 34px 64px;
+  max-width: 1760px;
   width: 100%;
+  margin: 0 auto;
+  min-width: 0;
 }
 .page-head {
   display: flex;

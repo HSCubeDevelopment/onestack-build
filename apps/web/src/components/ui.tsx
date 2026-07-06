@@ -1,5 +1,6 @@
 'use client';
 import { useCallback, useEffect, useState } from 'react';
+import { AlertTriangle, X } from 'lucide-react';
 
 /** Tiny data-loading hook: runs an async fn, exposes { data, loading, error, reload }. */
 export function useAsync<T>(fn: () => Promise<T>, deps: unknown[] = []) {
@@ -30,7 +31,11 @@ export function Loading() {
 
 export function ErrorBanner({ message }: { message: string | null }) {
   if (!message) return null;
-  return <div className="err">⚠ {message}</div>;
+  return (
+    <div className="err" style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+      <AlertTriangle size={15} /> {message}
+    </div>
+  );
 }
 
 export function EmptyState({ children }: { children: React.ReactNode }) {
@@ -60,7 +65,7 @@ export function Modal({
           <h2 style={{ margin: 0 }}>{title}</h2>
           <div className="spacer" />
           <button className="btn ghost sm" onClick={onClose}>
-            ✕
+            <X size={15} />
           </button>
         </div>
         {children}

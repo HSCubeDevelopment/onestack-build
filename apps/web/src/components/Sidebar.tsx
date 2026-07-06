@@ -1,19 +1,36 @@
 'use client';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
+import {
+  LayoutDashboard,
+  KanbanSquare,
+  Wrench,
+  CalendarDays,
+  Users,
+  Mail,
+  Tags,
+  SlidersHorizontal,
+  Moon,
+  LifeBuoy,
+  Layers3,
+  type LucideIcon,
+} from 'lucide-react';
 
-const NAV = [
+type NavItem = { href: string; label: string; Icon: LucideIcon; alert?: boolean };
+type NavRow = { section: string } | NavItem;
+
+const NAV: NavRow[] = [
   { section: 'Menu' },
-  { href: '/', label: 'Dashboard', ico: '▦' },
-  { href: '/board', label: 'Job board', ico: '🗂' },
-  { href: '/jobs', label: 'Jobs', ico: '🔧' },
-  { href: '/calendar', label: 'Calendar', ico: '📅' },
+  { href: '/', label: 'Dashboard', Icon: LayoutDashboard },
+  { href: '/board', label: 'Job board', Icon: KanbanSquare },
+  { href: '/jobs', label: 'Jobs', Icon: Wrench },
+  { href: '/calendar', label: 'Calendar', Icon: CalendarDays },
   { section: 'Customers & sales' },
-  { href: '/customers', label: 'Customers', ico: '👥' },
-  { href: '/leads', label: 'Leads', ico: '✉', chev: true },
-  { href: '/price-book', label: 'Price book', ico: '🏷' },
+  { href: '/customers', label: 'Customers', Icon: Users },
+  { href: '/leads', label: 'Leads', Icon: Mail, alert: true },
+  { href: '/price-book', label: 'Price book', Icon: Tags },
   { section: 'Settings' },
-  { href: '/settings/custom-fields', label: 'Custom fields', ico: '⚙' },
+  { href: '/settings/custom-fields', label: 'Custom fields', Icon: SlidersHorizontal },
 ];
 
 export function Sidebar() {
@@ -22,7 +39,9 @@ export function Sidebar() {
   return (
     <aside className="sidebar">
       <div className="brand">
-        <span className="dot">◈</span>
+        <span className="dot">
+          <Layers3 size={18} />
+        </span>
         <div>
           <div className="brand-name">OneStack</div>
           <div className="brand-sub">Panel &amp; Paint</div>
@@ -35,22 +54,28 @@ export function Sidebar() {
               {item.section}
             </div>
           ) : (
-            <Link key={item.href} href={item.href!} className={isActive(item.href!) ? 'active' : ''}>
-              <span className="ico">{item.ico}</span>
+            <Link key={item.href} href={item.href} className={isActive(item.href) ? 'active' : ''}>
+              <span className="ico">
+                <item.Icon size={18} />
+              </span>
               {item.label}
-              {item.chev && <span className="chev">●</span>}
+              {item.alert && <span className="chev">●</span>}
             </Link>
           ),
         )}
       </nav>
       <div className="sidebar-foot">
-        <Link href="/" className="nav-foot">
-          <span style={{ display: 'flex', alignItems: 'center', gap: 11, padding: '9px 12px', color: 'var(--text-dim)', fontSize: 13.5, fontWeight: 550 }}>
-            <span className="ico">🌙</span> Dark mode
+        <span className="foot-item">
+          <span className="ico">
+            <Moon size={18} />
           </span>
-        </Link>
-        <span style={{ display: 'flex', alignItems: 'center', gap: 11, padding: '9px 12px', color: 'var(--text-dim)', fontSize: 13.5, fontWeight: 550 }}>
-          <span className="ico">❔</span> Help center
+          Dark mode
+        </span>
+        <span className="foot-item">
+          <span className="ico">
+            <LifeBuoy size={18} />
+          </span>
+          Help center
         </span>
       </div>
     </aside>

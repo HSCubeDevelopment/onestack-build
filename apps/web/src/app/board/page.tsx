@@ -1,6 +1,7 @@
 'use client';
 import Link from 'next/link';
 import { useState } from 'react';
+import { RefreshCw } from 'lucide-react';
 import { api, Board, BoardCard } from '@/lib/api';
 import { ErrorBanner, Loading, PageHead, StatusBadge, useAsync } from '@/components/ui';
 
@@ -25,7 +26,7 @@ export default function BoardPage() {
     <>
       <PageHead title="Job board" sub="Drag a job to move it through the workshop">
         <button className="btn sm" onClick={() => reload()}>
-          ↻ Refresh
+          <RefreshCw size={14} /> Refresh
         </button>
       </PageHead>
       <ErrorBanner message={error} />

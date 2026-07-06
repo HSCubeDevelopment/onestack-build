@@ -1,5 +1,6 @@
 'use client';
 import { useState } from 'react';
+import { X, AlertTriangle } from 'lucide-react';
 import { api, ApiError, Booking, Resource, WorkItem } from '@/lib/api';
 import {
   EmptyState,
@@ -107,7 +108,7 @@ export default function CalendarPage() {
                   title="Delete"
                   onClick={() => deleteResource(r)}
                 >
-                  ✕
+                  <X size={13} />
                 </button>
               </span>
             ))}
@@ -402,7 +403,9 @@ function BookingModal({
         <ErrorBanner message={err} />
         {clash && (
           <div className="err">
-            ⚠ {clash}
+            <span style={{ display: 'inline-flex', alignItems: 'center', gap: 8 }}>
+              <AlertTriangle size={15} /> {clash}
+            </span>
             <div className="row" style={{ marginTop: 8 }}>
               <button className="btn sm" disabled={saving} onClick={() => submit(true)}>
                 Book anyway

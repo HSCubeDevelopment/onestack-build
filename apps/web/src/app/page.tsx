@@ -1,22 +1,20 @@
 'use client';
 import Link from 'next/link';
+import {
+  Briefcase,
+  Wrench,
+  DollarSign,
+  Receipt,
+  Download,
+  Mail,
+  ArrowUpRight,
+  ArrowDownRight,
+  Dot,
+  type LucideIcon,
+} from 'lucide-react';
 import { api, Board, Booking, DashboardSummary, Lead, WorkItem, money } from '@/lib/api';
 import { ErrorBanner, humanize, Loading, StatusBadge, useAsync } from '@/components/ui';
-
-const STATE_COLOR: Record<string, string> = {
-  Booked: '#2563eb',
-  InProgress: '#d97706',
-  AwaitingParts: '#7c3aed',
-  Ready: '#16a34a',
-  Collected: '#94a3b8',
-};
-const STATE_ICON: Record<string, string> = {
-  Booked: '📋',
-  InProgress: '🔧',
-  AwaitingParts: '📦',
-  Ready: '✅',
-  Collected: '🏁',
-};
+import { StateIcon, stateColor } from '@/components/Icon';
 
 export default function DashboardPage() {
   const today = new Date();
@@ -39,7 +37,7 @@ export default function DashboardPage() {
     <>
       <div className="page-head">
         <div>
-          <h1>Good morning, Chirag 👋</h1>
+          <h1>Good morning, Chirag</h1>
           <div className="sub">
             {today.toLocaleDateString('en-AU', {
               weekday: 'long',
@@ -49,18 +47,14 @@ export default function DashboardPage() {
             })}
           </div>
         </div>
-        <button className="btn">⤓ Export report</button>
+        <button className="btn">
+          <Download size={15} /> Export report
+        </button>
       </div>
       <ErrorBanner message={error} />
       {loading && <Loading />}
       {data && (
-        <Overview
-          summary={data[0]}
-          board={data[1]}
-          jobs={data[2]}
-          leads={data[3]}
-          bookings={data[4]}
-        />
+        <Overview summary={data[0]} board={data[1]} jobs={data[2]} leads={data[3]} bookings={data[4]} />
       )}
     </>
   );
@@ -68,7 +62,6 @@ export default function DashboardPage() {
 
 function Overview({
   summary,
-  board,
   jobs,
   leads,
   bookings,
@@ -82,14 +75,13 @@ function Overview({
   const totalJobs = jobs.length;
   const inProgress = summary.jobsByState['InProgress'] ?? 0;
   const ready = summary.jobsByState['Ready'] ?? 0;
-  const newLeads = leads.filter((l) => l.status === 'New').length;
 
   return (
     <div className="stack">
       {/* KPI row */}
       <div className="grid cols-4">
         <Kpi
-          ico="🏢"
+          Icon={Briefcase}
           tint="brand"
           title="Total jobs"
           desc="All jobs in the workshop"
@@ -98,7 +90,7 @@ function Overview({
           foot="Across every status"
         />
         <Kpi
-          ico="🔧"
+          Icon={Wrench}
           tint="amber"
           title="In progress"
           desc="Being worked on now"
@@ -107,7 +99,7 @@ function Overview({
           foot="On the shop floor"
         />
         <Kpi
-          ico="💰"
+          Icon={DollarSign}
           tint="green"
           title="Revenue this week"
           desc="Payments received"
@@ -116,7 +108,7 @@ function Overview({
           foot="Since Monday"
         />
         <Kpi
-          ico="🧾"
+          Icon={Receipt}
           tint="red"
           title="Total unpaid"
           desc="Outstanding balance"
@@ -127,7 +119,7 @@ function Overview({
       </div>
 
       {/* status row */}
-      <div className="grid" style={{ gridTemplateColumns: '1.35fr 1fr' }}>
+      <div className="grid" style={{ gridTemplateColumns: '1.4fr 1fr' }}>
         <div className="card">
           <div className="card-head">
             <div>
@@ -140,7 +132,7 @@ function Overview({
               Open board →
             </Link>
           </div>
-          <PipelineChart summary={summary} totalJobs={totalJobs} />
+          <PipelineChart summary={summary} />
         </div>
         <div className="card">
           <div className="card-head">
@@ -155,14 +147,14 @@ function Overview({
       <div className="grid cols-3">
         <TasksCard jobs={jobs} />
         <ActivityCard jobs={jobs} leads={leads} />
-        <EventsCard bookings={bookings} jobs={jobs} />
+        <EventsCard bookings={bookings} />
       </div>
     </div>
   );
 }
 
 function Kpi({
-  ico,
+  Icon,
   tint,
   title,
   desc,
@@ -170,7 +162,7 @@ function Kpi({
   trend,
   foot,
 }: {
-  ico: string;
+  Icon: LucideIcon;
   tint: string;
   title: string;
   desc: string;
@@ -185,11 +177,12 @@ function Kpi({
     red: ['var(--red-soft)', 'var(--red)'],
   };
   const [bg, fg] = tints[tint] ?? tints.brand;
+  const TrendIco = trend.dir === 'up' ? ArrowUpRight : trend.dir === 'down' ? ArrowDownRight : Dot;
   return (
     <div className="kpi-card">
       <div className="kpi-top">
         <span className="kpi-ico" style={{ background: bg, color: fg }}>
-          {ico}
+          <Icon size={17} />
         </span>
         <div>
           <div className="kpi-title">{title}</div>
@@ -199,7 +192,7 @@ function Kpi({
       <div className="kpi-value">
         {value}
         <span className={`trend ${trend.dir}`}>
-          {trend.dir === 'up' ? '↑' : trend.dir === 'down' ? '↓' : '•'} {trend.text}
+          <TrendIco size={13} /> {trend.text}
         </span>
       </div>
       <div className="kpi-foot">{foot}</div>
@@ -207,9 +200,8 @@ function Kpi({
   );
 }
 
-function PipelineChart({ summary, totalJobs }: { summary: DashboardSummary; totalJobs: number }) {
-  const order = ['Booked', 'InProgress', 'AwaitingParts', 'Ready', 'Collected'];
-  const states = order.filter((s) => s in summary.jobsByState || true);
+function PipelineChart({ summary }: { summary: DashboardSummary }) {
+  const states = ['Booked', 'InProgress', 'AwaitingParts', 'Ready', 'Collected'];
   const max = Math.max(1, ...Object.values(summary.jobsByState));
   return (
     <div className="stack" style={{ gap: 18 }}>
@@ -219,36 +211,30 @@ function PipelineChart({ summary, totalJobs }: { summary: DashboardSummary; tota
           gridTemplateColumns: `repeat(${states.length}, 1fr)`,
           gap: 14,
           alignItems: 'end',
-          height: 200,
+          height: 210,
           padding: '10px 4px 0',
         }}
       >
         {states.map((s) => {
           const n = summary.jobsByState[s] ?? 0;
-          const h = Math.max(6, (n / max) * 170);
+          const h = Math.max(6, (n / max) * 175);
           return (
             <div key={s} style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 8, height: '100%', justifyContent: 'flex-end' }}>
               <div style={{ fontWeight: 700, fontSize: 14, color: 'var(--ink)' }}>{n}</div>
               <div
                 style={{
                   width: '100%',
-                  maxWidth: 46,
+                  maxWidth: 54,
                   height: h,
                   borderRadius: 10,
-                  background: `linear-gradient(180deg, ${STATE_COLOR[s]}, ${STATE_COLOR[s]}bb)`,
+                  background: `linear-gradient(180deg, ${stateColor(s)}, ${stateColor(s)}bb)`,
                 }}
               />
             </div>
           );
         })}
       </div>
-      <div
-        style={{
-          display: 'grid',
-          gridTemplateColumns: `repeat(${states.length}, 1fr)`,
-          gap: 14,
-        }}
-      >
+      <div style={{ display: 'grid', gridTemplateColumns: `repeat(${states.length}, 1fr)`, gap: 14 }}>
         {states.map((s) => (
           <div key={s} style={{ textAlign: 'center', fontSize: 11.5, color: 'var(--text-dim)', fontWeight: 550 }}>
             {humanize(s)}
@@ -267,7 +253,7 @@ function StatusDonut({ summary, totalJobs }: { summary: DashboardSummary; totalJ
   let offset = 0;
   const segs = entries.map(([state, n]) => {
     const frac = n / total;
-    const seg = { state, n, color: STATE_COLOR[state] ?? '#94a3b8', dash: frac * C, offset };
+    const seg = { state, n, color: stateColor(state), dash: frac * C, offset };
     offset += frac * C;
     return seg;
   });
@@ -303,7 +289,7 @@ function StatusDonut({ summary, totalJobs }: { summary: DashboardSummary; totalJ
         {segs.map((s) => (
           <div key={s.state} className="pbar">
             <span className="pbar-ico" style={{ background: `${s.color}1a`, color: s.color }}>
-              {STATE_ICON[s.state] ?? '•'}
+              <StateIcon state={s.state} size={15} />
             </span>
             <div style={{ flex: 1 }}>
               <div className="row" style={{ marginBottom: 5 }}>
@@ -324,7 +310,6 @@ function StatusDonut({ summary, totalJobs }: { summary: DashboardSummary; totalJ
 }
 
 function TasksCard({ jobs }: { jobs: WorkItem[] }) {
-  // "Tasks" = jobs that need action next: Booked (start) or Ready (collect).
   const tasks = jobs.filter((j) => j.stateName === 'Booked' || j.stateName === 'Ready').slice(0, 3);
   return (
     <div className="card">
@@ -341,7 +326,9 @@ function TasksCard({ jobs }: { jobs: WorkItem[] }) {
           return (
             <div key={j.id} className="task">
               <div className="task-head">
-                <span className="list-ico dot-ico">{STATE_ICON[j.stateName] ?? '🔧'}</span>
+                <span className="list-ico" style={{ background: `${stateColor(j.stateName)}1a`, color: stateColor(j.stateName) }}>
+                  <StateIcon state={j.stateName} size={16} />
+                </span>
                 <div style={{ flex: 1, minWidth: 0 }}>
                   <div style={{ fontWeight: 640, fontSize: 13.5 }}>{j.reference}</div>
                   <div className="faint" style={{ fontSize: 12, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
@@ -369,12 +356,14 @@ function TasksCard({ jobs }: { jobs: WorkItem[] }) {
 function ActivityCard({ jobs, leads }: { jobs: WorkItem[]; leads: Lead[] }) {
   const items = [
     ...jobs.slice(0, 3).map((j) => ({
-      ico: '🔧',
+      kind: 'job' as const,
+      state: j.stateName,
       title: `${j.reference} — ${(j.fields as { description?: string }).description ?? 'job'}`,
       meta: humanize(j.stateName),
     })),
     ...leads.slice(0, 2).map((l) => ({
-      ico: '✉',
+      kind: 'lead' as const,
+      state: '',
       title: `New lead — ${l.name}`,
       meta: l.status,
     })),
@@ -389,7 +378,16 @@ function ActivityCard({ jobs, leads }: { jobs: WorkItem[]; leads: Lead[] }) {
         {items.length === 0 && <span className="faint" style={{ fontSize: 13 }}>No recent activity.</span>}
         {items.map((it, i) => (
           <div key={i} className="list-row">
-            <span className="list-ico dot-ico">{it.ico}</span>
+            <span
+              className="list-ico"
+              style={
+                it.kind === 'job'
+                  ? { background: `${stateColor(it.state)}1a`, color: stateColor(it.state) }
+                  : { background: 'var(--brand-soft)', color: 'var(--brand)' }
+              }
+            >
+              {it.kind === 'job' ? <StateIcon state={it.state} size={15} /> : <Mail size={15} />}
+            </span>
             <div style={{ flex: 1, minWidth: 0 }}>
               <div style={{ fontSize: 13, fontWeight: 550, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
                 {it.title}
@@ -403,7 +401,7 @@ function ActivityCard({ jobs, leads }: { jobs: WorkItem[]; leads: Lead[] }) {
   );
 }
 
-function EventsCard({ bookings, jobs }: { bookings: Booking[]; jobs: WorkItem[] }) {
+function EventsCard({ bookings }: { bookings: Booking[] }) {
   const sorted = [...bookings].sort((a, b) => +new Date(a.startsAt) - +new Date(b.startsAt)).slice(0, 4);
   return (
     <div className="card">
@@ -414,9 +412,7 @@ function EventsCard({ bookings, jobs }: { bookings: Booking[]; jobs: WorkItem[] 
         </Link>
       </div>
       <div>
-        {sorted.length === 0 && (
-          <span className="faint" style={{ fontSize: 13 }}>No bookings scheduled.</span>
-        )}
+        {sorted.length === 0 && <span className="faint" style={{ fontSize: 13 }}>No bookings scheduled.</span>}
         {sorted.map((b) => {
           const d = new Date(b.startsAt);
           return (
