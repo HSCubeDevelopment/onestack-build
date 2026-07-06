@@ -67,6 +67,28 @@ export class SubjectService {
     return rows.map(toView);
   }
 
+  /** Search subjects of a type by a JSONB field value (e.g. vehicles by rego). This tenant only. */
+  async searchByField(
+    tenantId: string,
+    type: string,
+    fieldKey: string,
+    valueContains: string,
+  ): Promise<SubjectView[]> {
+    const rows = await this.tenants.runInTenant(
+      tenantId,
+      (tx) =>
+        tx.$queryRaw<
+          { id: string; type: string; label: string; fields: unknown; contactId: string | null }[]
+        >`SELECT "id", "type", "label", "fields", "contactId"
+        FROM "onestack_subject"
+        WHERE "type" = ${type}
+          AND "fields" ->> ${fieldKey} ILIKE ${`%${valueContains}%`}
+          AND "deletedAt" IS NULL
+        ORDER BY "createdAt" DESC`,
+    );
+    return rows.map(toView);
+  }
+
   /** Referenced by a Work Item → soft-delete + the caller should warn (per card #6.4 edge case). */
   async softDelete(tenantId: string, id: string): Promise<{ referencedByWorkItems: number }> {
     return this.tenants.runInTenant(tenantId, async (tx) => {

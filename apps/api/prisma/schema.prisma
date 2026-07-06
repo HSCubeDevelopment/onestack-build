@@ -189,6 +189,7 @@ model Contact {
   displayName String
   email       String?
   phone       String?
+  fields      Json      @default("{}")
   createdAt   DateTime  @default(now())
   updatedAt   DateTime  @updatedAt
   deletedAt   DateTime?
