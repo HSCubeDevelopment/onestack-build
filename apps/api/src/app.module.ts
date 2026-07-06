@@ -1,6 +1,7 @@
 import { Module } from '@nestjs/common';
 import { ConfigModule } from '@nestjs/config';
 import { EventEmitterModule } from '@nestjs/event-emitter';
+import { AuditModule } from './audit/audit.module';
 import { AuthModule } from './auth/auth.module';
 import { CompositionModule } from './composition/composition.module';
 import { ContactsModule } from './contacts/contacts.module';
@@ -8,6 +9,7 @@ import { CoreModule } from './core/core.module';
 import { EventingModule } from './eventing/eventing.module';
 import { HealthController } from './health/health.controller';
 import { JobsModule } from './jobs/jobs.module';
+import { NotificationsModule } from './notifications/notifications.module';
 import { SchedulingModule } from './scheduling/scheduling.module';
 import { SubjectModule } from './subjects/subject.module';
 import { TenantModule } from './tenancy/tenant.module';
@@ -21,6 +23,8 @@ import { WorkItemModule } from './work-items/work-item.module';
     AuthModule, // global: JwtAuthGuard + RolesGuard
     JobsModule, // global: BackgroundJobRunner (tenant-context wrapper for jobs)
     EventingModule, // global: EventBus + OutboxService + OutboxRelay (durable eventing backbone)
+    AuditModule, // global: AuditService (append-only who-did-what trail)
+    NotificationsModule, // global: NotificationService (multi-channel)
     CompositionModule, // global: FeatureFlagService + FeatureGuard + EventBus
     CoreModule, // global: PackRegistry + WorkflowEngine
     ContactsModule,

@@ -32,8 +32,45 @@ model Tenant {
   workItemSubjects WorkItemSubject[]
   outboxEvents     OutboxEvent[]
   inboxConsumed    InboxConsumed[]
+  auditLogs        AuditLog[]
+  notifications    Notification[]
 
   @@map("onestack_tenant")
+}
+
+/// Immutable who-did-what trail (card #9.2). App role has INSERT+SELECT only (no UPDATE/DELETE).
+model AuditLog {
+  id          String   @id @default(uuid()) @db.Uuid
+  tenantId    String   @db.Uuid
+  actorUserId String?  @db.Uuid
+  action      String
+  entityType  String?
+  entityId    String?
+  metadata    Json     @default("{}")
+  createdAt   DateTime @default(now())
+  tenant      Tenant   @relation(fields: [tenantId], references: [id])
+
+  @@index([tenantId, createdAt])
+  @@map("onestack_audit_log")
+}
+
+/// Internal + customer notifications across channels (card #9.1). Tenant-scoped.
+model Notification {
+  id        String    @id @default(uuid()) @db.Uuid
+  tenantId  String    @db.Uuid
+  channel   String
+  recipient String
+  template  String
+  payload   Json      @default("{}")
+  status    String    @default("pending")
+  error     String?
+  createdAt DateTime  @default(now())
+  sentAt    DateTime?
+  tenant    Tenant    @relation(fields: [tenantId], references: [id])
+
+  @@index([tenantId])
+  @@index([status])
+  @@map("onestack_notification")
 }
 
 /// Transactional outbox (cards #9 / #9.15). Events written in the same txn as the state change; a relay
