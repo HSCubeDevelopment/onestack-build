@@ -30,6 +30,11 @@ model Tenant {
   workItemCounter  WorkItemCounter?
   subjects         Subject[]
   workItemSubjects WorkItemSubject[]
+  outboxEvents     OutboxEvent[]
+  inboxConsumed    InboxConsumed[]
+  auditLogs        AuditLog[]
+  notifications    Notification[]
+  lineItems        LineItem[]
   documents        Document[]
 
   @@map("onestack_tenant")
@@ -52,6 +57,100 @@ model Document {
   @@index([tenantId])
   @@index([tenantId, parentType, parentId])
   @@map("onestack_document")
+}
+
+/// Line Item shared by Quote & Invoice (card #6.9). Linked polymorphically by parentType + parentId.
+/// Money is integer cents; net/gst/total are computed per docs/money-rules.md (#29) and stored.
+model LineItem {
+  id             String   @id @default(uuid()) @db.Uuid
+  tenantId       String   @db.Uuid
+  parentType     String // 'quote' | 'invoice'
+  parentId       String   @db.Uuid
+  description    String
+  type           String // labour | product | time
+  quantity       Int
+  unitPriceCents Int
+  taxCode        String // GST | GST_FREE
+  taxTreatment   String // inclusive | exclusive
+  netCents       Int
+  gstCents       Int
+  lineTotalCents Int
+  sortOrder      Int
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+  tenant         Tenant   @relation(fields: [tenantId], references: [id])
+
+  @@index([tenantId])
+  @@index([tenantId, parentType, parentId, sortOrder])
+  @@map("onestack_line_item")
+}
+
+/// Immutable who-did-what trail (card #9.2). App role has INSERT+SELECT only (no UPDATE/DELETE).
+model AuditLog {
+  id          String   @id @default(uuid()) @db.Uuid
+  tenantId    String   @db.Uuid
+  actorUserId String?  @db.Uuid
+  action      String
+  entityType  String?
+  entityId    String?
+  metadata    Json     @default("{}")
+  createdAt   DateTime @default(now())
+  tenant      Tenant   @relation(fields: [tenantId], references: [id])
+
+  @@index([tenantId, createdAt])
+  @@map("onestack_audit_log")
+}
+
+/// Internal + customer notifications across channels (card #9.1). Tenant-scoped.
+model Notification {
+  id        String    @id @default(uuid()) @db.Uuid
+  tenantId  String    @db.Uuid
+  channel   String
+  recipient String
+  template  String
+  payload   Json      @default("{}")
+  status    String    @default("pending")
+  error     String?
+  createdAt DateTime  @default(now())
+  sentAt    DateTime?
+  tenant    Tenant    @relation(fields: [tenantId], references: [id])
+
+  @@index([tenantId])
+  @@index([status])
+  @@map("onestack_notification")
+}
+
+/// Transactional outbox (cards #9 / #9.15). Events written in the same txn as the state change; a relay
+/// publishes them. status pending → published, or → dead (DLQ) after max attempts.
+model OutboxEvent {
+  id            String    @id @default(uuid()) @db.Uuid
+  tenantId      String    @db.Uuid
+  type          String
+  payload       Json      @default("{}")
+  status        String    @default("pending")
+  attempts      Int       @default(0)
+  lastError     String?
+  nextAttemptAt DateTime  @default(now())
+  createdAt     DateTime  @default(now())
+  publishedAt   DateTime?
+  tenant        Tenant    @relation(fields: [tenantId], references: [id])
+
+  @@index([tenantId])
+  @@index([status, nextAttemptAt])
+  @@map("onestack_outbox_event")
+}
+
+/// Idempotency inbox (card #9.15): one row per (consumer, event); a duplicate delivery no-ops.
+model InboxConsumed {
+  tenantId     String   @db.Uuid
+  consumerName String
+  eventId      String   @db.Uuid
+  consumedAt   DateTime @default(now())
+  tenant       Tenant   @relation(fields: [tenantId], references: [id])
+
+  @@id([consumerName, eventId])
+  @@index([tenantId])
+  @@map("onestack_inbox_consumed")
 }
 
 /// Per-tenant module on/off flag (composition engine, cards #6 / #6.2). Tenant-scoped.

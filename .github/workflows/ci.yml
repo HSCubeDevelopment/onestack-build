@@ -107,6 +107,9 @@ jobs:
           npx prisma db execute --file prisma/sql/0002_rls.sql --schema prisma/schema.prisma
           npx prisma db execute --file prisma/sql/0003_feature_flags.sql --schema prisma/schema.prisma
           npx prisma db execute --file prisma/sql/0004_platform_core.sql --schema prisma/schema.prisma
+          npx prisma db execute --file prisma/sql/0005_eventing.sql --schema prisma/schema.prisma
+          npx prisma db execute --file prisma/sql/0006_audit_notifications.sql --schema prisma/schema.prisma
+          npx prisma db execute --file prisma/sql/0007_line_item.sql --schema prisma/schema.prisma
           npx prisma db execute --file prisma/sql/0008_document.sql --schema prisma/schema.prisma
       - name: RLS gate
         run: npm run check:rls
