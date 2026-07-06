@@ -83,4 +83,9 @@ export class PackRegistry {
   hasSubjectType(type: string): boolean {
     return this.subjectTypes.has(type);
   }
+
+  /** All installed packs, in registration order (used by the terminology layer). */
+  listPacks(): Pack[] {
+    return [...this.packs.values()];
+  }
 }
