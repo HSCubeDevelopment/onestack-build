@@ -405,6 +405,42 @@ export class InvoiceService {
     return this.setSplit(tenantId, id, portions);
   }
 
+  /**
+   * Total outstanding across all non-Void invoices (card #52): sum of line totals minus money received.
+   * Clamped at 0 (an over-payment doesn't make the shop "owe" money). Tenant-scoped.
+   */
+  async outstandingCents(tenantId: string): Promise<number> {
+    return this.tenants.runInTenant(tenantId, async (tx) => {
+      const invoices = await tx.invoice.findMany({
+        where: { status: { not: 'Void' } },
+        select: { id: true },
+      });
+      if (invoices.length === 0) return 0;
+      const ids = invoices.map((i) => i.id);
+      const [lineSum, paySum] = await Promise.all([
+        tx.lineItem.aggregate({
+          _sum: { lineTotalCents: true },
+          where: { parentType: 'invoice', parentId: { in: ids } },
+        }),
+        tx.payment.aggregate({ _sum: { amountCents: true }, where: { invoiceId: { in: ids } } }),
+      ]);
+      const billed = lineSum._sum.lineTotalCents ?? 0;
+      const paid = paySum._sum.amountCents ?? 0;
+      return Math.max(0, billed - paid);
+    });
+  }
+
+  /** Money received since a point in time (card #52 — this-week revenue). Tenant-scoped. */
+  async revenueSince(tenantId: string, since: Date): Promise<number> {
+    return this.tenants.runInTenant(tenantId, async (tx) => {
+      const agg = await tx.payment.aggregate({
+        _sum: { amountCents: true },
+        where: { receivedAt: { gte: since } },
+      });
+      return agg._sum.amountCents ?? 0;
+    });
+  }
+
   private async insert(
     tx: TenantClient,
     tenantId: string,

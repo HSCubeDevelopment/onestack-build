@@ -8,6 +8,7 @@ import { CompositionModule } from './composition/composition.module';
 import { ContactsModule } from './contacts/contacts.module';
 import { CoreModule } from './core/core.module';
 import { CustomFieldsModule } from './custom-fields/custom-fields.module';
+import { DashboardModule } from './dashboard/dashboard.module';
 import { EventingModule } from './eventing/eventing.module';
 import { HealthController } from './health/health.controller';
 import { JobsModule } from './jobs/jobs.module';
@@ -49,6 +50,7 @@ import { WorkItemModule } from './work-items/work-item.module';
     InvoicesModule, // invoices from a job/quote (#40)
     PriceBookModule, // reusable labour/parts catalogue (#32)
     BoardModule, // job board read-model over work items (#22)
+    DashboardModule, // thin owner dashboard read-model (#52)
   ],
   controllers: [HealthController],
 })
