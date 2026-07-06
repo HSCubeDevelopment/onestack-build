@@ -105,6 +105,7 @@ jobs:
         run: |
           npx prisma db execute --file prisma/sql/0001_init.sql --schema prisma/schema.prisma
           npx prisma db execute --file prisma/sql/0002_rls.sql --schema prisma/schema.prisma
+          npx prisma db execute --file prisma/sql/0003_feature_flags.sql --schema prisma/schema.prisma
       - name: RLS gate
         run: npm run check:rls
       - name: Tenant-isolation + integration tests
