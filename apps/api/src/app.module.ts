@@ -6,6 +6,7 @@ import { CompositionModule } from './composition/composition.module';
 import { ContactsModule } from './contacts/contacts.module';
 import { CoreModule } from './core/core.module';
 import { HealthController } from './health/health.controller';
+import { ModulesModule } from './modules/modules.module';
 import { SchedulingModule } from './scheduling/scheduling.module';
 import { SubjectModule } from './subjects/subject.module';
 import { TenantModule } from './tenancy/tenant.module';
@@ -18,6 +19,7 @@ import { WorkItemModule } from './work-items/work-item.module';
     TenantModule, // global: PrismaService (admin) + TenantService (app_user wrapper)
     AuthModule, // global: JwtAuthGuard + RolesGuard
     CompositionModule, // global: FeatureFlagService + FeatureGuard + EventBus
+    ModulesModule, // global: ModuleCatalog (dependency graph — valid provisioning combos)
     CoreModule, // global: PackRegistry + WorkflowEngine
     ContactsModule,
     SchedulingModule, // toggleable module (OFF by default) — demonstrates feature enforcement
