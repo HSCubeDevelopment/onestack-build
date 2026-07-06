@@ -26,6 +26,24 @@ export const VehicleFields = z.object({
   year: z.number().int().gte(1900).lte(2100),
 });
 
+/**
+ * Insurance claim block on a job (card #15). Most panel-shop jobs are insurer-driven: the party billed
+ * (insurer) differs from the party served (customer), who pays only the excess. The generic money model
+ * (core #40.5 payer + split billing) carries the actual invoice split; THIS is the automotive-specific
+ * paperwork captured on the job — insurer, claim number, assessor, the AUTHORISED amount (which can
+ * differ from the quote), and the customer excess. All optional so a cash/retail job needs none of it.
+ */
+export const ClaimFields = z.object({
+  insurer: z.string().min(1),
+  insurerContactId: z.string().uuid().optional(), // the Contact billed for the authorised portion
+  claimNumber: z.string().min(1),
+  assessor: z.string().optional(),
+  dateLodged: z.string().optional(),
+  authorisedAmountCents: z.number().int().nonnegative().optional(), // assessor-approved (≠ quote)
+  excessCents: z.number().int().nonnegative().optional(), // customer's out-of-pocket
+  billPayer: z.enum(['insurer', 'customer']).default('insurer'),
+});
+
 export const automotivePack: Pack = {
   id: 'automotive',
   label: 'Automotive Panel & Paint',
@@ -47,6 +65,7 @@ export const automotivePack: Pack = {
         bookedInDate: z.string().optional(),
         promisedDate: z.string().optional(),
         completedDate: z.string().optional(),
+        claim: ClaimFields.optional(), // present ⇒ insured job (card #15)
       }),
       workflow: {
         workItemType: 'job',
