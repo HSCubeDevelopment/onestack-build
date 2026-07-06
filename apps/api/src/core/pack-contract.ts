@@ -72,6 +72,14 @@ export interface UiSlotContribution {
   component: string;
 }
 
+/** A relabelling of one core concept for a vertical (card #6.6). */
+export interface TerminologyTerm {
+  label: string;
+  plural: string;
+}
+/** concept key (e.g. "work_item", "contact", "subject") → its vertical label. */
+export type TerminologyMap = Record<string, TerminologyTerm>;
+
 export interface Pack {
   id: string;
   label: string;
@@ -79,4 +87,6 @@ export interface Pack {
   subjectTypes?: SubjectTypeDef[];
   documents?: DocumentTemplateDef[];
   uiSlots?: UiSlotContribution[];
+  /** Overrides the labels shown for core concepts (card #6.6). Missing terms fall back to the default. */
+  terminology?: TerminologyMap;
 }
