@@ -19,9 +19,20 @@ export default defineConfig({
     // Unit tests: src/**/*.test.ts (no DB, always run in CI).
     // Integration tests: test/**/*.int.spec.ts (need a Supabase DB; skipIf(!hasDb)).
     include: ['src/**/*.test.ts', 'test/**/*.spec.ts'],
+    // Flaky quarantine (card #5.1): *.quarantine.test.ts are NOT part of the gating run. Investigate,
+    // don't blanket-retry. `retry: 0` makes flakiness fail loudly instead of being papered over.
+    exclude: ['**/node_modules/**', '**/dist/**', '**/*.quarantine.*'],
+    retry: 0,
     setupFiles: ['./test/setup.ts'],
     testTimeout: 30_000,
     hookTimeout: 30_000,
     fileParallelism: false, // integration specs share tenant tables; run files serially
+    coverage: {
+      provider: 'v8',
+      reporter: ['text-summary', 'json-summary'],
+      reportsDirectory: './coverage',
+      include: ['src/**/*.ts'],
+      exclude: ['src/**/*.test.ts', 'src/main.ts', 'src/**/*.module.ts'],
+    },
   },
 });

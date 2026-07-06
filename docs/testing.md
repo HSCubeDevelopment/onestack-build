@@ -60,9 +60,33 @@ describe.skipIf(!hasDb)('<feature> isolation', () => {
 });
 ```
 
+## CI gates (cards #5.1–#5.3)
+
+Every PR must pass these before merge:
+
+| Gate                        | Command                                         | What it blocks                                                                                         |
+| --------------------------- | ----------------------------------------------- | ------------------------------------------------------------------------------------------------------ |
+| Coverage ratchet            | `npm run test:cov` + `npm run coverage:ratchet` | coverage dropping below `coverage/baseline.json`                                                       |
+| Contract tests              | part of `npm test`                              | a module/event boundary drifting from its Zod schema (`src/contracts/`)                                |
+| GST money                   | part of `npm test`                              | wrong rounding / net+gst≠total (property + golden)                                                     |
+| Destructive-migration guard | `npm run check:migrations`                      | `DROP`/`RENAME`/`TRUNCATE` in forward migrations without the `approved-destructive-migration` PR label |
+| RLS gate                    | `npm run check:rls`                             | any `tenantId` table missing forced RLS + policy                                                       |
+| Dependency audit            | `npm run audit:ci`                              | new high/critical prod-dep vulns (known ones allowlisted in `.audit-ci.jsonc`)                         |
+| Secret scan                 | gitleaks (CI)                                   | committed secrets                                                                                      |
+| SAST                        | semgrep (CI)                                    | ERROR-severity findings                                                                                |
+| CODEOWNERS                  | `.github/CODEOWNERS`                            | changes to RLS/auth/money paths without a code-owner review                                            |
+
+**Raising coverage:** after adding tests, `npm run coverage:ratchet -- --update` bumps the baseline; commit it.
+
+**Migration up→down→up:** `ALLOW_DESTRUCTIVE_ROUNDTRIP=true npm run migrate:roundtrip` — DESTRUCTIVE, dedicated test DB only. Applies `0001/0002` → `*_down` → `0001/0002`, then re-checks RLS.
+
+**Flaky quarantine:** name a flaky spec `*.quarantine.test.ts` — it's excluded from the gating run (investigate it, don't blanket-retry; `retry: 0` is enforced).
+
 ## Rules
 
 - All request-path queries go through `TenantService.runInTenant` — never the admin client.
 - Assert **both** read and write isolation (WITH CHECK blocks cross-tenant writes).
 - Background jobs must set the same tenant context before any query.
 - New tenant table → it must appear protected by `check:rls`, or the build goes red.
+- Every module/event boundary ships a Zod contract in `src/contracts/` + a contract test.
+- Money is integer cents; anything GST-related gets property + golden tests (`src/money/`).
