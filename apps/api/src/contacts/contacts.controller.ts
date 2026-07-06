@@ -81,6 +81,7 @@ export class ContactsController {
       type: 'vehicle',
       label: `${dto.make} ${dto.model} (${dto.rego})`,
       fields: { rego: dto.rego, vin: dto.vin, make: dto.make, model: dto.model, year: dto.year },
+      customFields: dto.customFields,
       contactId: id,
     });
   }

@@ -10,6 +10,7 @@ describe('Contact contract', () => {
       email: 'casey@example.com',
       phone: null,
       fields: {},
+      customFields: {},
       createdAt: new Date(),
     });
     expect(ok.success).toBe(true);

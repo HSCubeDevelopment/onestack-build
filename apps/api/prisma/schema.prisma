@@ -47,6 +47,7 @@ model Tenant {
   bookings            Booking[]
   leadForms           LeadForm[]
   leads               Lead[]
+  customFieldDefs     CustomField[]
 
   @@map("onestack_tenant")
 }
@@ -295,6 +296,7 @@ model Contact {
   email       String?
   phone       String?
   fields      Json      @default("{}")
+  customFields Json     @default("{}")
   createdAt   DateTime  @default(now())
   updatedAt   DateTime  @updatedAt
   deletedAt   DateTime?
@@ -452,6 +454,26 @@ model Lead {
   @@map("onestack_lead")
 }
 
+/// A per-tenant custom field definition (card #11) for customers or vehicles. Values live in the target
+/// record's `customFields` JSONB. Archiving hides the field but preserves existing values. Tenant-scoped.
+model CustomField {
+  id        String   @id @default(uuid()) @db.Uuid
+  tenantId  String   @db.Uuid
+  appliesTo String // 'customer' | 'vehicle'
+  key       String
+  label     String
+  type      String // 'text' | 'number' | 'date' | 'select' | 'boolean'
+  required  Boolean  @default(false)
+  options   Json     @default("[]")
+  archived  Boolean  @default(false)
+  createdAt DateTime @default(now())
+  tenant    Tenant   @relation(fields: [tenantId], references: [id])
+
+  @@unique([tenantId, appliesTo, key])
+  @@index([tenantId])
+  @@map("onestack_custom_field")
+}
+
 /// Per-tenant reference sequence for Work Items (card #6.3).
 model WorkItemCounter {
   tenantId String @id @db.Uuid
@@ -468,6 +490,7 @@ model Subject {
   type      String
   label     String
   fields    Json              @default("{}")
+  customFields Json           @default("{}")
   contactId String?           @db.Uuid
   createdAt DateTime          @default(now())
   updatedAt DateTime          @updatedAt

@@ -6,6 +6,7 @@ import { AuthModule } from './auth/auth.module';
 import { CompositionModule } from './composition/composition.module';
 import { ContactsModule } from './contacts/contacts.module';
 import { CoreModule } from './core/core.module';
+import { CustomFieldsModule } from './custom-fields/custom-fields.module';
 import { EventingModule } from './eventing/eventing.module';
 import { HealthController } from './health/health.controller';
 import { JobsModule } from './jobs/jobs.module';
@@ -34,6 +35,7 @@ import { WorkItemModule } from './work-items/work-item.module';
     CompositionModule, // global: FeatureFlagService + FeatureGuard + EventBus
     ModulesModule, // global: ModuleCatalog (dependency graph — valid provisioning combos)
     CoreModule, // global: PackRegistry + WorkflowEngine
+    CustomFieldsModule, // global: CustomFieldService (per-tenant custom fields, #11)
     PacksModule, // installs the automotive pack into the registry at boot
     TerminologyModule, // global: TerminologyService (pack-driven labels for core concepts)
     ContactsModule,
