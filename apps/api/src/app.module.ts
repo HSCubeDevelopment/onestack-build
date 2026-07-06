@@ -14,6 +14,7 @@ import { NotificationsModule } from './notifications/notifications.module';
 import { SchedulingModule } from './scheduling/scheduling.module';
 import { SubjectModule } from './subjects/subject.module';
 import { TenantModule } from './tenancy/tenant.module';
+import { TerminologyModule } from './terminology/terminology.module';
 import { WorkItemModule } from './work-items/work-item.module';
 
 @Module({
@@ -29,6 +30,7 @@ import { WorkItemModule } from './work-items/work-item.module';
     CompositionModule, // global: FeatureFlagService + FeatureGuard + EventBus
     ModulesModule, // global: ModuleCatalog (dependency graph — valid provisioning combos)
     CoreModule, // global: PackRegistry + WorkflowEngine
+    TerminologyModule, // global: TerminologyService (pack-driven labels for core concepts)
     ContactsModule,
     SchedulingModule, // toggleable module (OFF by default) — demonstrates feature enforcement
     WorkItemModule,
