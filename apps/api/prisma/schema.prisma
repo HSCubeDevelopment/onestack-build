@@ -39,6 +39,16 @@ model Tenant {
   quotes            Quote[]
   referenceCounters ReferenceCounter[]
   invoices          Invoice[]
+  invoicePortions   InvoicePortion[]
+  payments          Payment[]
+  workItemNotes       WorkItemNote[]
+  workItemAttachments WorkItemAttachment[]
+  resources           Resource[]
+  bookings            Booking[]
+  leadForms           LeadForm[]
+  leads               Lead[]
+  customFieldDefs     CustomField[]
+  priceBookItems      PriceBookItem[]
 
   @@map("onestack_tenant")
 }
@@ -46,24 +56,67 @@ model Tenant {
 /// An invoice on a job (card #40), optionally from an accepted quote. Line items are the shared
 /// onestack_line_item; totals derived. Paid manually (records who + when). Tenant-scoped.
 model Invoice {
-  id         String    @id @default(uuid()) @db.Uuid
-  tenantId   String    @db.Uuid
-  workItemId String    @db.Uuid // the job
-  quoteId    String?   @db.Uuid // source quote (optional)
-  reference  String
-  status     String    @default("Unpaid") // Unpaid | Paid | Void
-  issueDate  DateTime  @default(now())
-  dueDate    DateTime?
-  paidAt     DateTime?
-  paidBy     String?   @db.Uuid
-  createdAt  DateTime  @default(now())
-  updatedAt  DateTime  @updatedAt
-  tenant     Tenant    @relation(fields: [tenantId], references: [id])
+  id             String           @id @default(uuid()) @db.Uuid
+  tenantId       String           @db.Uuid
+  workItemId     String           @db.Uuid // the job
+  quoteId        String?          @db.Uuid // source quote (optional)
+  payerContactId String?          @db.Uuid // bill-to (may differ from the served customer) — card #40.5
+  reference      String
+  status         String           @default("Unpaid") // Unpaid | Paid | Void | WrittenOff
+  issueDate      DateTime         @default(now())
+  dueDate        DateTime?
+  paidAt         DateTime?
+  paidBy         String?          @db.Uuid
+  createdAt      DateTime         @default(now())
+  updatedAt      DateTime         @updatedAt
+  tenant         Tenant           @relation(fields: [tenantId], references: [id])
+  payer          Contact?         @relation("InvoicePayer", fields: [payerContactId], references: [id])
+  portions       InvoicePortion[]
+  payments       Payment[]
 
   @@unique([tenantId, reference])
   @@index([tenantId])
   @@index([tenantId, workItemId])
   @@map("onestack_invoice")
+}
+
+/// A portion of an invoice billed to one payer (card #40.5). Portions reconcile to the invoice total.
+model InvoicePortion {
+  id             String    @id @default(uuid()) @db.Uuid
+  tenantId       String    @db.Uuid
+  invoiceId      String    @db.Uuid
+  payerContactId String?   @db.Uuid
+  payerName      String? // external payer (e.g. insurer not in Contacts)
+  description    String
+  amountCents    Int
+  createdAt      DateTime  @default(now())
+  tenant         Tenant    @relation(fields: [tenantId], references: [id])
+  invoice        Invoice   @relation(fields: [invoiceId], references: [id])
+  payer          Contact?  @relation("PortionPayer", fields: [payerContactId], references: [id])
+  payments       Payment[]
+
+  @@index([tenantId])
+  @@index([tenantId, invoiceId])
+  @@map("onestack_invoice_portion")
+}
+
+/// Money received against an invoice (optionally a specific portion) — card #40.5, per money-rules #29.
+model Payment {
+  id          String          @id @default(uuid()) @db.Uuid
+  tenantId    String          @db.Uuid
+  invoiceId   String          @db.Uuid
+  portionId   String?         @db.Uuid
+  amountCents Int
+  method      String // cash | bank_transfer | card | eftpos | other
+  receivedAt  DateTime        @default(now())
+  createdAt   DateTime        @default(now())
+  tenant      Tenant          @relation(fields: [tenantId], references: [id])
+  invoice     Invoice         @relation(fields: [invoiceId], references: [id])
+  portion     InvoicePortion? @relation(fields: [portionId], references: [id])
+
+  @@index([tenantId])
+  @@index([tenantId, invoiceId])
+  @@map("onestack_payment")
 }
 
 /// Generic per-tenant reference sequence (scope = 'quote' | 'invoice' | …). Card #30.
@@ -79,18 +132,23 @@ model ReferenceCounter {
 
 /// A quote on a job (card #30). Line items are the shared onestack_line_item; totals are derived.
 model Quote {
-  id         String   @id @default(uuid()) @db.Uuid
-  tenantId   String   @db.Uuid
-  workItemId String   @db.Uuid // the job
-  reference  String
-  status     String   @default("Draft") // Draft | Sent | Accepted | Declined
-  createdAt  DateTime @default(now())
-  updatedAt  DateTime @updatedAt
-  tenant     Tenant   @relation(fields: [tenantId], references: [id])
+  id           String   @id @default(uuid()) @db.Uuid
+  tenantId     String   @db.Uuid
+  workItemId   String   @db.Uuid // the job
+  reference    String
+  status       String   @default("Draft") // Draft | Sent | Accepted | Declined
+  revision     Int      @default(1) // v1, v2… (card #33)
+  supersedesId String?  @db.Uuid // the quote this one revises (history chain)
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+  tenant       Tenant   @relation(fields: [tenantId], references: [id])
+  supersedes   Quote?   @relation("QuoteRevision", fields: [supersedesId], references: [id])
+  revisions    Quote[]  @relation("QuoteRevision")
 
   @@unique([tenantId, reference])
   @@index([tenantId])
   @@index([tenantId, workItemId])
+  @@index([tenantId, supersedesId])
   @@map("onestack_quote")
 }
 
@@ -244,11 +302,15 @@ model Contact {
   email       String?
   phone       String?
   fields      Json      @default("{}")
+  customFields Json     @default("{}")
   createdAt   DateTime  @default(now())
   updatedAt   DateTime  @updatedAt
   deletedAt   DateTime?
   tenant      Tenant    @relation(fields: [tenantId], references: [id])
   subjects    Subject[]
+  payerInvoices   Invoice[]        @relation("InvoicePayer")
+  payerPortions   InvoicePortion[] @relation("PortionPayer")
+  convertedLeads  Lead[]
 
   @@index([tenantId])
   @@map("onestack_contact")
@@ -271,10 +333,174 @@ model WorkItem {
   deletedAt       DateTime?
   tenant          Tenant            @relation(fields: [tenantId], references: [id])
   subjects        WorkItemSubject[]
+  notes           WorkItemNote[]
+  attachments     WorkItemAttachment[]
+  bookings        Booking[]
 
   @@unique([tenantId, reference])
   @@index([tenantId])
   @@map("onestack_work_item")
+}
+
+/// A running note on a work item (card #21) — text + who + when. Newest-first log. Tenant-scoped.
+model WorkItemNote {
+  id           String   @id @default(uuid()) @db.Uuid
+  tenantId     String   @db.Uuid
+  workItemId   String   @db.Uuid
+  authorUserId String   @db.Uuid
+  body         String
+  createdAt    DateTime @default(now())
+  tenant       Tenant   @relation(fields: [tenantId], references: [id])
+  workItem     WorkItem @relation(fields: [workItemId], references: [id])
+
+  @@index([tenantId])
+  @@index([tenantId, workItemId])
+  @@map("onestack_work_item_note")
+}
+
+/// A file attached to a work item (card #21) — photos of the car/damage/work. Bytes live in Supabase
+/// Storage under a per-tenant path; this row holds the metadata. Tenant-scoped.
+model WorkItemAttachment {
+  id               String   @id @default(uuid()) @db.Uuid
+  tenantId         String   @db.Uuid
+  workItemId       String   @db.Uuid
+  storageRef       String
+  fileName         String
+  contentType      String
+  sizeBytes        Int
+  caption          String?
+  uploadedByUserId String   @db.Uuid
+  createdAt        DateTime @default(now())
+  tenant           Tenant   @relation(fields: [tenantId], references: [id])
+  workItem         WorkItem @relation(fields: [workItemId], references: [id])
+
+  @@index([tenantId])
+  @@index([tenantId, workItemId])
+  @@map("onestack_work_item_attachment")
+}
+
+/// A bookable thing — a bay, a technician, a room (card #23). Set up per shop. Part of the toggleable
+/// `scheduling` module. Tenant-scoped.
+model Resource {
+  id        String    @id @default(uuid()) @db.Uuid
+  tenantId  String    @db.Uuid
+  type      String // 'bay' | 'technician'
+  name      String
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+  deletedAt DateTime?
+  tenant    Tenant    @relation(fields: [tenantId], references: [id])
+  bookings  Booking[]
+
+  @@index([tenantId])
+  @@map("onestack_resource")
+}
+
+/// A reservation of one resource for a time range (card #23), optionally linked to a work item.
+/// Overlaps on the same resource are prevented unless explicitly overridden. Tenant-scoped.
+model Booking {
+  id         String    @id @default(uuid()) @db.Uuid
+  tenantId   String    @db.Uuid
+  resourceId String    @db.Uuid
+  workItemId String?   @db.Uuid
+  title      String
+  startsAt   DateTime
+  endsAt     DateTime
+  notes      String?
+  createdAt  DateTime  @default(now())
+  updatedAt  DateTime  @updatedAt
+  tenant     Tenant    @relation(fields: [tenantId], references: [id])
+  resource   Resource  @relation(fields: [resourceId], references: [id])
+  workItem   WorkItem? @relation(fields: [workItemId], references: [id])
+
+  @@index([tenantId])
+  @@index([tenantId, resourceId, startsAt])
+  @@index([tenantId, workItemId])
+  @@map("onestack_booking")
+}
+
+/// A shop's public web form (card #12), addressed by an unguessable token embedded in the snippet /
+/// hosted page. Submissions create Leads under this form's tenant. Tenant-scoped.
+model LeadForm {
+  id          String   @id @default(uuid()) @db.Uuid
+  tenantId    String   @db.Uuid
+  publicToken String   @unique
+  name        String
+  enabled     Boolean  @default(true)
+  createdAt   DateTime @default(now())
+  tenant      Tenant   @relation(fields: [tenantId], references: [id])
+  leads       Lead[]
+
+  @@index([tenantId])
+  @@map("onestack_lead_form")
+}
+
+/// An inbound enquiry (card #12). Converts into a Contact (the shared core record) + optionally a job.
+/// New → Contacted → Converted. Tenant-scoped.
+model Lead {
+  id                 String    @id @default(uuid()) @db.Uuid
+  tenantId           String    @db.Uuid
+  formId             String?   @db.Uuid
+  name               String
+  phone              String
+  email              String?
+  message            String?
+  vehicleInfo        String?
+  source             String    @default("web_form")
+  status             String    @default("New")
+  convertedContactId String?   @db.Uuid
+  createdAt          DateTime  @default(now())
+  updatedAt          DateTime  @updatedAt
+  tenant             Tenant    @relation(fields: [tenantId], references: [id])
+  form               LeadForm? @relation(fields: [formId], references: [id])
+  convertedContact   Contact?  @relation(fields: [convertedContactId], references: [id])
+
+  @@index([tenantId])
+  @@index([tenantId, status])
+  @@map("onestack_lead")
+}
+
+/// A per-tenant custom field definition (card #11) for customers or vehicles. Values live in the target
+/// record's `customFields` JSONB. Archiving hides the field but preserves existing values. Tenant-scoped.
+model CustomField {
+  id        String   @id @default(uuid()) @db.Uuid
+  tenantId  String   @db.Uuid
+  appliesTo String // 'customer' | 'vehicle'
+  key       String
+  label     String
+  type      String // 'text' | 'number' | 'date' | 'select' | 'boolean'
+  required  Boolean  @default(false)
+  options   Json     @default("[]")
+  archived  Boolean  @default(false)
+  createdAt DateTime @default(now())
+  tenant    Tenant   @relation(fields: [tenantId], references: [id])
+
+  @@unique([tenantId, appliesTo, key])
+  @@index([tenantId])
+  @@map("onestack_custom_field")
+}
+
+/// The shop's reusable catalogue of labour items & parts with default prices (card #32). Picking an item
+/// COPIES its values onto a quote/invoice line — the line is then independently editable and never
+/// mutates the book. Prices are integer cents. Deactivating hides it from search; existing lines keep
+/// their copied values. Tenant-scoped.
+model PriceBookItem {
+  id                    String   @id @default(uuid()) @db.Uuid
+  tenantId              String   @db.Uuid
+  name                  String
+  description           String?
+  type                  String // 'labour' | 'part'
+  unit                  String // 'hour' | 'each'
+  defaultUnitPriceCents Int
+  code                  String?
+  active                Boolean  @default(true)
+  createdAt             DateTime @default(now())
+  updatedAt             DateTime @updatedAt
+  tenant                Tenant   @relation(fields: [tenantId], references: [id])
+
+  @@index([tenantId])
+  @@index([tenantId, active])
+  @@map("onestack_price_book_item")
 }
 
 /// Per-tenant reference sequence for Work Items (card #6.3).
@@ -293,6 +519,7 @@ model Subject {
   type      String
   label     String
   fields    Json              @default("{}")
+  customFields Json           @default("{}")
   contactId String?           @db.Uuid
   createdAt DateTime          @default(now())
   updatedAt DateTime          @updatedAt

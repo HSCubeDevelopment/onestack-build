@@ -3,9 +3,12 @@ import { ConfigModule } from '@nestjs/config';
 import { EventEmitterModule } from '@nestjs/event-emitter';
 import { AuditModule } from './audit/audit.module';
 import { AuthModule } from './auth/auth.module';
+import { BoardModule } from './board/board.module';
 import { CompositionModule } from './composition/composition.module';
 import { ContactsModule } from './contacts/contacts.module';
 import { CoreModule } from './core/core.module';
+import { CustomFieldsModule } from './custom-fields/custom-fields.module';
+import { DashboardModule } from './dashboard/dashboard.module';
 import { EventingModule } from './eventing/eventing.module';
 import { HealthController } from './health/health.controller';
 import { JobsModule } from './jobs/jobs.module';
@@ -13,6 +16,7 @@ import { LineItemsModule } from './line-items/line-items.module';
 import { ModulesModule } from './modules/modules.module';
 import { NotificationsModule } from './notifications/notifications.module';
 import { InvoicesModule } from './invoices/invoices.module';
+import { PriceBookModule } from './price-book/price-book.module';
 import { PacksModule } from './packs/packs.module';
 import { QuotesModule } from './quotes/quotes.module';
 import { SchedulingModule } from './scheduling/scheduling.module';
@@ -34,6 +38,7 @@ import { WorkItemModule } from './work-items/work-item.module';
     CompositionModule, // global: FeatureFlagService + FeatureGuard + EventBus
     ModulesModule, // global: ModuleCatalog (dependency graph — valid provisioning combos)
     CoreModule, // global: PackRegistry + WorkflowEngine
+    CustomFieldsModule, // global: CustomFieldService (per-tenant custom fields, #11)
     PacksModule, // installs the automotive pack into the registry at boot
     TerminologyModule, // global: TerminologyService (pack-driven labels for core concepts)
     ContactsModule,
@@ -43,6 +48,9 @@ import { WorkItemModule } from './work-items/work-item.module';
     LineItemsModule, // shared Quote/Invoice line items (#6.9)
     QuotesModule, // quotes on a job (#30)
     InvoicesModule, // invoices from a job/quote (#40)
+    PriceBookModule, // reusable labour/parts catalogue (#32)
+    BoardModule, // job board read-model over work items (#22)
+    DashboardModule, // thin owner dashboard read-model (#52)
   ],
   controllers: [HealthController],
 })

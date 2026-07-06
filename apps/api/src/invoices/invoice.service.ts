@@ -27,19 +27,65 @@ export interface InvoiceLineView {
   lineTotalCents: number;
 }
 
+export interface InvoicePortionView {
+  id: string;
+  payerContactId: string | null;
+  payerName: string | null;
+  description: string;
+  amountCents: number;
+  paidCents: number;
+  balanceCents: number;
+}
+
+export interface PaymentView {
+  id: string;
+  portionId: string | null;
+  amountCents: number;
+  method: string;
+  receivedAt: Date;
+}
+
 export interface InvoiceView {
   id: string;
   reference: string;
   status: string;
   workItemId: string;
   quoteId: string | null;
+  payerContactId: string | null;
   dueDate: Date | null;
   paidAt: Date | null;
   paidBy: string | null;
   subtotalCents: number;
   gstCents: number;
   totalCents: number;
+  paidCents: number;
+  balanceCents: number;
+  paidState: 'Unpaid' | 'PartiallyPaid' | 'Paid' | 'Overpaid';
   lines: InvoiceLineView[];
+  portions: InvoicePortionView[];
+  payments: PaymentView[];
+}
+
+export interface PortionInput {
+  payerContactId?: string;
+  payerName?: string;
+  description: string;
+  amountCents: number;
+}
+
+export interface RecordPaymentInput {
+  amountCents: number;
+  method: string;
+  portionId?: string;
+  receivedAt?: string;
+}
+
+export interface ExcessSplitInput {
+  primaryPayerContactId: string; // e.g. the insurer (billed for the authorised amount)
+  primaryAmountCents: number; // e.g. the assessor-authorised amount
+  excessAmountCents: number; // the customer's out-of-pocket excess
+  excessPayerContactId?: string; // the customer (Contact), if in the system
+  excessPayerName?: string; // …or an external name
 }
 
 /**
@@ -183,6 +229,218 @@ export class InvoiceService {
     return { sent: true };
   }
 
+  /** Set the bill-to party (may differ from the served customer). Card #40.5. */
+  async setPayer(tenantId: string, id: string, payerContactId: string): Promise<InvoiceView> {
+    return this.tenants.runInTenant(tenantId, async (tx) => {
+      const inv = await tx.invoice.findFirst({ where: { id } });
+      if (!inv) throw new NotFoundException('Invoice not found');
+      if (inv.status !== 'Unpaid')
+        throw new ConflictException(`Cannot change the payer of a ${inv.status} invoice`);
+      const contact = await tx.contact.findFirst({
+        where: { id: payerContactId, deletedAt: null },
+      });
+      if (!contact) throw new NotFoundException('Payer contact not found');
+      const updated = await tx.invoice.update({ where: { id }, data: { payerContactId } });
+      return this.viewFrom(tx, updated);
+    });
+  }
+
+  /**
+   * Split an invoice across payers (e.g. insurer-authorised vs customer excess). Portions MUST reconcile
+   * to the cent against the invoice total; replaces any existing split. Card #40.5.
+   */
+  async setSplit(tenantId: string, id: string, portions: PortionInput[]): Promise<InvoiceView> {
+    if (portions.length === 0) throw new BadRequestException('Provide at least one portion');
+    for (const p of portions) {
+      if (!Number.isInteger(p.amountCents) || p.amountCents < 1)
+        throw new BadRequestException('Each portion amount must be a positive integer (cents)');
+      if (!p.payerContactId && !p.payerName?.trim())
+        throw new BadRequestException('Each portion needs a payerContactId or a payerName');
+    }
+    return this.tenants.runInTenant(tenantId, async (tx) => {
+      const inv = await tx.invoice.findFirst({ where: { id } });
+      if (!inv) throw new NotFoundException('Invoice not found');
+      if (inv.status !== 'Unpaid')
+        throw new ConflictException(`Cannot split a ${inv.status} invoice`);
+      const lines = await tx.lineItem.findMany({
+        where: { parentType: 'invoice', parentId: id },
+      });
+      const total = lines.reduce((s, l) => s + l.lineTotalCents, 0);
+      if (total === 0) throw new BadRequestException('Cannot split an invoice with no line items');
+      const sum = portions.reduce((s, p) => s + p.amountCents, 0);
+      if (sum !== total)
+        throw new BadRequestException(
+          `Portions (${sum}c) must reconcile to the invoice total (${total}c)`,
+        );
+      // A portion with a still-existing payment can't be removed — protect recorded money.
+      const paid = await tx.payment.findFirst({
+        where: { invoiceId: id, portionId: { not: null } },
+      });
+      if (paid) throw new ConflictException('Cannot re-split an invoice that already has payments');
+      for (const contactId of portions.map((p) => p.payerContactId).filter(Boolean) as string[]) {
+        const contact = await tx.contact.findFirst({ where: { id: contactId, deletedAt: null } });
+        if (!contact) throw new NotFoundException(`Payer contact ${contactId} not found`);
+      }
+      await tx.invoicePortion.deleteMany({ where: { invoiceId: id } });
+      for (const p of portions) {
+        await tx.invoicePortion.create({
+          data: {
+            tenantId,
+            invoiceId: id,
+            payerContactId: p.payerContactId ?? null,
+            payerName: p.payerName?.trim() || null,
+            description: p.description,
+            amountCents: p.amountCents,
+          },
+        });
+      }
+      return this.viewFrom(tx, inv);
+    });
+  }
+
+  /**
+   * Record money received against an invoice (optionally a specific portion). Over-payment beyond the
+   * invoice total (or a portion's balance) is rejected. Fully paid ⇒ invoice flips to Paid. Card #40.5.
+   */
+  async recordPayment(
+    tenantId: string,
+    id: string,
+    input: RecordPaymentInput,
+    userId: string,
+  ): Promise<InvoiceView> {
+    if (!Number.isInteger(input.amountCents) || input.amountCents < 1)
+      throw new BadRequestException('Payment amount must be a positive integer (cents)');
+    return this.tenants.runInTenant(tenantId, async (tx) => {
+      const inv = await tx.invoice.findFirst({ where: { id } });
+      if (!inv) throw new NotFoundException('Invoice not found');
+      if (inv.status === 'Void')
+        throw new ConflictException('Cannot record a payment against a Void invoice');
+      const lines = await tx.lineItem.findMany({
+        where: { parentType: 'invoice', parentId: id },
+      });
+      const total = lines.reduce((s, l) => s + l.lineTotalCents, 0);
+      if (total === 0) throw new BadRequestException('Cannot pay an invoice with no line items');
+
+      const existing = await tx.payment.findMany({ where: { invoiceId: id } });
+      const alreadyPaid = existing.reduce((s, p) => s + p.amountCents, 0);
+      if (alreadyPaid + input.amountCents > total)
+        throw new BadRequestException(
+          `Payment would over-pay the invoice (balance ${total - alreadyPaid}c)`,
+        );
+
+      if (input.portionId) {
+        const portion = await tx.invoicePortion.findFirst({
+          where: { id: input.portionId, invoiceId: id },
+        });
+        if (!portion) throw new NotFoundException('Portion not found on this invoice');
+        const portionPaid = existing
+          .filter((p) => p.portionId === input.portionId)
+          .reduce((s, p) => s + p.amountCents, 0);
+        if (portionPaid + input.amountCents > portion.amountCents)
+          throw new BadRequestException(
+            `Payment would over-pay the portion (balance ${portion.amountCents - portionPaid}c)`,
+          );
+      }
+
+      await tx.payment.create({
+        data: {
+          tenantId,
+          invoiceId: id,
+          portionId: input.portionId ?? null,
+          amountCents: input.amountCents,
+          method: input.method,
+          receivedAt: input.receivedAt ? new Date(input.receivedAt) : new Date(),
+        },
+      });
+
+      const nowPaid = alreadyPaid + input.amountCents;
+      const patch =
+        nowPaid === total && inv.status === 'Unpaid'
+          ? { status: 'Paid', paidAt: new Date(), paidBy: userId }
+          : {};
+      const updated =
+        Object.keys(patch).length > 0
+          ? await tx.invoice.update({ where: { id }, data: patch })
+          : inv;
+      return this.viewFrom(tx, updated);
+    });
+  }
+
+  /**
+   * Excess handling (card #42): the one-call insured-job split. Bills the primary payer (insurer) for
+   * the authorised amount and the customer for the excess, so the shop collects the excess and bills the
+   * insurer separately — reconciling to the cent. Generic 2-payer helper (also fits Medicare gap, NDIS
+   * co-pay, etc.); the caller supplies the figures (e.g. from the automotive claim block). Card #15 records
+   * those figures on the job; this turns them into the money split via the core #40.5 machinery.
+   */
+  async applyExcessSplit(
+    tenantId: string,
+    id: string,
+    input: ExcessSplitInput,
+  ): Promise<InvoiceView> {
+    if (!Number.isInteger(input.primaryAmountCents) || input.primaryAmountCents < 0)
+      throw new BadRequestException('primaryAmountCents must be a non-negative integer');
+    if (!Number.isInteger(input.excessAmountCents) || input.excessAmountCents < 1)
+      throw new BadRequestException('excessAmountCents must be a positive integer');
+    if (!input.excessPayerContactId && !input.excessPayerName?.trim())
+      throw new BadRequestException('An excess payer (contact id or name) is required');
+
+    const portions: PortionInput[] = [
+      {
+        payerContactId: input.excessPayerContactId,
+        payerName: input.excessPayerName,
+        description: 'Customer excess',
+        amountCents: input.excessAmountCents,
+      },
+    ];
+    // Only include the insurer portion if they actually pay something (a $0 authorised = fully self-paid).
+    if (input.primaryAmountCents > 0)
+      portions.unshift({
+        payerContactId: input.primaryPayerContactId,
+        description: 'Insurer authorised',
+        amountCents: input.primaryAmountCents,
+      });
+
+    await this.setPayer(tenantId, id, input.primaryPayerContactId);
+    return this.setSplit(tenantId, id, portions);
+  }
+
+  /**
+   * Total outstanding across all non-Void invoices (card #52): sum of line totals minus money received.
+   * Clamped at 0 (an over-payment doesn't make the shop "owe" money). Tenant-scoped.
+   */
+  async outstandingCents(tenantId: string): Promise<number> {
+    return this.tenants.runInTenant(tenantId, async (tx) => {
+      const invoices = await tx.invoice.findMany({
+        where: { status: { not: 'Void' } },
+        select: { id: true },
+      });
+      if (invoices.length === 0) return 0;
+      const ids = invoices.map((i) => i.id);
+      const [lineSum, paySum] = await Promise.all([
+        tx.lineItem.aggregate({
+          _sum: { lineTotalCents: true },
+          where: { parentType: 'invoice', parentId: { in: ids } },
+        }),
+        tx.payment.aggregate({ _sum: { amountCents: true }, where: { invoiceId: { in: ids } } }),
+      ]);
+      const billed = lineSum._sum.lineTotalCents ?? 0;
+      const paid = paySum._sum.amountCents ?? 0;
+      return Math.max(0, billed - paid);
+    });
+  }
+
+  /** Money received since a point in time (card #52 — this-week revenue). Tenant-scoped. */
+  async revenueSince(tenantId: string, since: Date): Promise<number> {
+    return this.tenants.runInTenant(tenantId, async (tx) => {
+      const agg = await tx.payment.aggregate({
+        _sum: { amountCents: true },
+        where: { receivedAt: { gte: since } },
+      });
+      return agg._sum.amountCents ?? 0;
+    });
+  }
+
   private async insert(
     tx: TenantClient,
     tenantId: string,
@@ -240,27 +498,52 @@ export class InvoiceService {
       status: string;
       workItemId: string;
       quoteId: string | null;
+      payerContactId: string | null;
       dueDate: Date | null;
       paidAt: Date | null;
       paidBy: string | null;
     },
   ): Promise<InvoiceView> {
-    const lines = await tx.lineItem.findMany({
-      where: { parentType: 'invoice', parentId: inv.id },
-      orderBy: { sortOrder: 'asc' },
-    });
+    const [lines, portionRows, paymentRows] = await Promise.all([
+      tx.lineItem.findMany({
+        where: { parentType: 'invoice', parentId: inv.id },
+        orderBy: { sortOrder: 'asc' },
+      }),
+      tx.invoicePortion.findMany({ where: { invoiceId: inv.id }, orderBy: { createdAt: 'asc' } }),
+      tx.payment.findMany({ where: { invoiceId: inv.id }, orderBy: { receivedAt: 'asc' } }),
+    ]);
+
+    const totalCents = lines.reduce((s, l) => s + l.lineTotalCents, 0);
+    const paidCents = paymentRows.reduce((s, p) => s + p.amountCents, 0);
+    const balanceCents = totalCents - paidCents;
+
+    let paidState: InvoiceView['paidState'] = 'Unpaid';
+    if (paidCents > totalCents) paidState = 'Overpaid';
+    else if (paidCents > 0 && paidCents < totalCents) paidState = 'PartiallyPaid';
+    else if (totalCents > 0 && paidCents === totalCents) paidState = 'Paid';
+
+    const paidPerPortion = new Map<string, number>();
+    for (const p of paymentRows) {
+      if (p.portionId)
+        paidPerPortion.set(p.portionId, (paidPerPortion.get(p.portionId) ?? 0) + p.amountCents);
+    }
+
     return {
       id: inv.id,
       reference: inv.reference,
       status: inv.status,
       workItemId: inv.workItemId,
       quoteId: inv.quoteId,
+      payerContactId: inv.payerContactId,
       dueDate: inv.dueDate,
       paidAt: inv.paidAt,
       paidBy: inv.paidBy,
       subtotalCents: lines.reduce((s, l) => s + l.netCents, 0),
       gstCents: lines.reduce((s, l) => s + l.gstCents, 0),
-      totalCents: lines.reduce((s, l) => s + l.lineTotalCents, 0),
+      totalCents,
+      paidCents,
+      balanceCents,
+      paidState,
       lines: lines.map((l) => ({
         id: l.id,
         description: l.description,
@@ -270,6 +553,25 @@ export class InvoiceService {
         netCents: l.netCents,
         gstCents: l.gstCents,
         lineTotalCents: l.lineTotalCents,
+      })),
+      portions: portionRows.map((p) => {
+        const portionPaid = paidPerPortion.get(p.id) ?? 0;
+        return {
+          id: p.id,
+          payerContactId: p.payerContactId,
+          payerName: p.payerName,
+          description: p.description,
+          amountCents: p.amountCents,
+          paidCents: portionPaid,
+          balanceCents: p.amountCents - portionPaid,
+        };
+      }),
+      payments: paymentRows.map((p) => ({
+        id: p.id,
+        portionId: p.portionId,
+        amountCents: p.amountCents,
+        method: p.method,
+        receivedAt: p.receivedAt,
       })),
     };
   }

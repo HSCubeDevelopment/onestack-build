@@ -4,6 +4,7 @@ import { EventEmitter2 } from '@nestjs/event-emitter';
 import { PrismaClient } from '@prisma/client';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import { PackRegistry } from '../src/core/pack-registry';
+import { CustomFieldService } from '../src/custom-fields/custom-field.service';
 import { WorkflowEngine } from '../src/core/workflow.engine';
 import { SubjectService } from '../src/subjects/subject.service';
 import { TenantService } from '../src/tenancy/tenant.service';
@@ -32,7 +33,7 @@ describe.skipIf(!hasDb)('platform core (work item + subject + workflow)', () => 
     registry.register(tradesPack);
     emitter = new EventEmitter2();
     workItems = new WorkItemService(tenants, registry, new WorkflowEngine(registry), emitter);
-    subjects = new SubjectService(tenants, registry);
+    subjects = new SubjectService(tenants, registry, new CustomFieldService(tenants));
     a = await makeTenant(admin, 'Core A');
     b = await makeTenant(admin, 'Core B');
   });

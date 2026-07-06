@@ -19,4 +19,9 @@ export class CreateContactDto {
   @IsOptional()
   @IsObject()
   fields?: Record<string, unknown>;
+
+  // Values for the shop's custom fields (card #11). Validated against the tenant's definitions.
+  @IsOptional()
+  @IsObject()
+  customFields?: Record<string, unknown>;
 }

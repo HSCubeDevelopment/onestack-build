@@ -20,4 +20,8 @@ export class UpdateContactDto {
   @IsOptional()
   @IsObject()
   fields?: Record<string, unknown>;
+
+  @IsOptional()
+  @IsObject()
+  customFields?: Record<string, unknown>;
 }
