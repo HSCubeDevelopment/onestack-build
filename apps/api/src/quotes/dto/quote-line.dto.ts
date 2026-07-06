@@ -22,6 +22,12 @@ export class AddQuoteLineDto {
   taxCode?: 'GST' | 'GST_FREE';
 }
 
+/** Card #33 — move a quote along Draft → Sent → Accepted|Declined. */
+export class SetQuoteStatusDto {
+  @IsIn(['Sent', 'Accepted', 'Declined'])
+  status!: 'Sent' | 'Accepted' | 'Declined';
+}
+
 export class EditQuoteLineDto {
   @IsOptional()
   @IsString()

@@ -3,7 +3,7 @@ import { AuthContext } from '../auth/auth.types';
 import { CurrentUser } from '../auth/current-user.decorator';
 import { JwtAuthGuard } from '../auth/jwt-auth.guard';
 import { RolesGuard } from '../auth/roles.guard';
-import { AddQuoteLineDto, EditQuoteLineDto } from './dto/quote-line.dto';
+import { AddQuoteLineDto, EditQuoteLineDto, SetQuoteStatusDto } from './dto/quote-line.dto';
 import { QuoteService, QuoteView } from './quote.service';
 
 /** Quote API (card #30). A quote hangs off a job; line items reuse the shared money engine (#6.9/#29). */
@@ -28,6 +28,21 @@ export class QuoteController {
   @Get('quotes/:id')
   get(@CurrentUser() user: AuthContext, @Param('id') id: string): Promise<QuoteView> {
     return this.quotes.get(user.tenantId, id);
+  }
+
+  @Post('quotes/:id/status')
+  setStatus(
+    @CurrentUser() user: AuthContext,
+    @Param('id') id: string,
+    @Body() dto: SetQuoteStatusDto,
+  ): Promise<QuoteView> {
+    return this.quotes.setStatus(user.tenantId, id, dto.status);
+  }
+
+  /** Card #33 — create a supplementary/revised quote (v2, v3…) copying this one's lines. */
+  @Post('quotes/:id/revise')
+  revise(@CurrentUser() user: AuthContext, @Param('id') id: string): Promise<QuoteView> {
+    return this.quotes.revise(user.tenantId, id);
   }
 
   @Post('quotes/:id/lines')
