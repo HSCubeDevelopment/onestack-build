@@ -41,6 +41,8 @@ model Tenant {
   invoices          Invoice[]
   invoicePortions   InvoicePortion[]
   payments          Payment[]
+  workItemNotes       WorkItemNote[]
+  workItemAttachments WorkItemAttachment[]
 
   @@map("onestack_tenant")
 }
@@ -318,10 +320,49 @@ model WorkItem {
   deletedAt       DateTime?
   tenant          Tenant            @relation(fields: [tenantId], references: [id])
   subjects        WorkItemSubject[]
+  notes           WorkItemNote[]
+  attachments     WorkItemAttachment[]
 
   @@unique([tenantId, reference])
   @@index([tenantId])
   @@map("onestack_work_item")
+}
+
+/// A running note on a work item (card #21) — text + who + when. Newest-first log. Tenant-scoped.
+model WorkItemNote {
+  id           String   @id @default(uuid()) @db.Uuid
+  tenantId     String   @db.Uuid
+  workItemId   String   @db.Uuid
+  authorUserId String   @db.Uuid
+  body         String
+  createdAt    DateTime @default(now())
+  tenant       Tenant   @relation(fields: [tenantId], references: [id])
+  workItem     WorkItem @relation(fields: [workItemId], references: [id])
+
+  @@index([tenantId])
+  @@index([tenantId, workItemId])
+  @@map("onestack_work_item_note")
+}
+
+/// A file attached to a work item (card #21) — photos of the car/damage/work. Bytes live in Supabase
+/// Storage under a per-tenant path; this row holds the metadata. Tenant-scoped.
+model WorkItemAttachment {
+  id               String   @id @default(uuid()) @db.Uuid
+  tenantId         String   @db.Uuid
+  workItemId       String   @db.Uuid
+  storageRef       String
+  fileName         String
+  contentType      String
+  sizeBytes        Int
+  caption          String?
+  uploadedByUserId String   @db.Uuid
+  createdAt        DateTime @default(now())
+  tenant           Tenant   @relation(fields: [tenantId], references: [id])
+  workItem         WorkItem @relation(fields: [workItemId], references: [id])
+
+  @@index([tenantId])
+  @@index([tenantId, workItemId])
+  @@map("onestack_work_item_attachment")
 }
 
 /// Per-tenant reference sequence for Work Items (card #6.3).

@@ -169,6 +169,30 @@ export class WorkItemService {
     return this.get(tenantId, id);
   }
 
+  /**
+   * Assign (or clear) the staff members working a job (card #21). Each id MUST be a member of THIS
+   * tenant — validated against onestack_membership — so you can't assign another shop's user. In the
+   * automotive pack this is the "technician" via the Terminology layer; the engine stays generic.
+   */
+  async assign(tenantId: string, id: string, assignees: string[]): Promise<WorkItemView> {
+    const unique = [...new Set(assignees)];
+    await this.tenants.runInTenant(tenantId, async (tx) => {
+      const wi = await tx.workItem.findFirst({ where: { id, deletedAt: null } });
+      if (!wi) throw new NotFoundException('Work item not found');
+      if (unique.length > 0) {
+        const members = await tx.membership.count({ where: { userId: { in: unique } } });
+        if (members !== unique.length)
+          throw new BadRequestException('One or more assignees are not staff of this shop');
+      }
+      await tx.workItem.updateMany({
+        where: { id, deletedAt: null },
+        data: { assignees: unique as Prisma.InputJsonValue, version: { increment: 1 } },
+      });
+    });
+    // Read AFTER the write transaction commits — a nested read runs on a different pooled connection.
+    return this.get(tenantId, id);
+  }
+
   async softDelete(tenantId: string, id: string): Promise<void> {
     await this.tenants.runInTenant(tenantId, (tx) =>
       tx.workItem.updateMany({ where: { id, deletedAt: null }, data: { deletedAt: new Date() } }),
