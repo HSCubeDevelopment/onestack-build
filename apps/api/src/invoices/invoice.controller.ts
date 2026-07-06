@@ -1,9 +1,15 @@
-import { Body, Controller, Delete, Get, Param, Post, UseGuards } from '@nestjs/common';
+import { Body, Controller, Delete, Get, Param, Post, Put, UseGuards } from '@nestjs/common';
 import { AuthContext } from '../auth/auth.types';
 import { CurrentUser } from '../auth/current-user.decorator';
 import { JwtAuthGuard } from '../auth/jwt-auth.guard';
 import { RolesGuard } from '../auth/roles.guard';
-import { AddInvoiceLineDto, CreateInvoiceDto } from './dto/invoice.dto';
+import {
+  AddInvoiceLineDto,
+  CreateInvoiceDto,
+  RecordPaymentDto,
+  SetPayerDto,
+  SetSplitDto,
+} from './dto/invoice.dto';
 import { InvoiceService, InvoiceView } from './invoice.service';
 
 /** Invoice API (card #40). From a job or an accepted quote; paid manually (records who + when). */
@@ -74,5 +80,34 @@ export class InvoiceController {
   @Post('invoices/:id/void')
   voidInvoice(@CurrentUser() user: AuthContext, @Param('id') id: string): Promise<InvoiceView> {
     return this.invoices.void(user.tenantId, id);
+  }
+
+  // ---- Card #40.5: payer / split billing / payments ----
+
+  @Post('invoices/:id/payer')
+  setPayer(
+    @CurrentUser() user: AuthContext,
+    @Param('id') id: string,
+    @Body() dto: SetPayerDto,
+  ): Promise<InvoiceView> {
+    return this.invoices.setPayer(user.tenantId, id, dto.payerContactId);
+  }
+
+  @Put('invoices/:id/split')
+  setSplit(
+    @CurrentUser() user: AuthContext,
+    @Param('id') id: string,
+    @Body() dto: SetSplitDto,
+  ): Promise<InvoiceView> {
+    return this.invoices.setSplit(user.tenantId, id, dto.portions);
+  }
+
+  @Post('invoices/:id/payments')
+  recordPayment(
+    @CurrentUser() user: AuthContext,
+    @Param('id') id: string,
+    @Body() dto: RecordPaymentDto,
+  ): Promise<InvoiceView> {
+    return this.invoices.recordPayment(user.tenantId, id, dto, user.userId);
   }
 }

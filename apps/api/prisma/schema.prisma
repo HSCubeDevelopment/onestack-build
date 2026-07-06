@@ -39,6 +39,8 @@ model Tenant {
   quotes            Quote[]
   referenceCounters ReferenceCounter[]
   invoices          Invoice[]
+  invoicePortions   InvoicePortion[]
+  payments          Payment[]
 
   @@map("onestack_tenant")
 }
@@ -46,24 +48,67 @@ model Tenant {
 /// An invoice on a job (card #40), optionally from an accepted quote. Line items are the shared
 /// onestack_line_item; totals derived. Paid manually (records who + when). Tenant-scoped.
 model Invoice {
-  id         String    @id @default(uuid()) @db.Uuid
-  tenantId   String    @db.Uuid
-  workItemId String    @db.Uuid // the job
-  quoteId    String?   @db.Uuid // source quote (optional)
-  reference  String
-  status     String    @default("Unpaid") // Unpaid | Paid | Void
-  issueDate  DateTime  @default(now())
-  dueDate    DateTime?
-  paidAt     DateTime?
-  paidBy     String?   @db.Uuid
-  createdAt  DateTime  @default(now())
-  updatedAt  DateTime  @updatedAt
-  tenant     Tenant    @relation(fields: [tenantId], references: [id])
+  id             String           @id @default(uuid()) @db.Uuid
+  tenantId       String           @db.Uuid
+  workItemId     String           @db.Uuid // the job
+  quoteId        String?          @db.Uuid // source quote (optional)
+  payerContactId String?          @db.Uuid // bill-to (may differ from the served customer) — card #40.5
+  reference      String
+  status         String           @default("Unpaid") // Unpaid | Paid | Void | WrittenOff
+  issueDate      DateTime         @default(now())
+  dueDate        DateTime?
+  paidAt         DateTime?
+  paidBy         String?          @db.Uuid
+  createdAt      DateTime         @default(now())
+  updatedAt      DateTime         @updatedAt
+  tenant         Tenant           @relation(fields: [tenantId], references: [id])
+  payer          Contact?         @relation("InvoicePayer", fields: [payerContactId], references: [id])
+  portions       InvoicePortion[]
+  payments       Payment[]
 
   @@unique([tenantId, reference])
   @@index([tenantId])
   @@index([tenantId, workItemId])
   @@map("onestack_invoice")
+}
+
+/// A portion of an invoice billed to one payer (card #40.5). Portions reconcile to the invoice total.
+model InvoicePortion {
+  id             String    @id @default(uuid()) @db.Uuid
+  tenantId       String    @db.Uuid
+  invoiceId      String    @db.Uuid
+  payerContactId String?   @db.Uuid
+  payerName      String? // external payer (e.g. insurer not in Contacts)
+  description    String
+  amountCents    Int
+  createdAt      DateTime  @default(now())
+  tenant         Tenant    @relation(fields: [tenantId], references: [id])
+  invoice        Invoice   @relation(fields: [invoiceId], references: [id])
+  payer          Contact?  @relation("PortionPayer", fields: [payerContactId], references: [id])
+  payments       Payment[]
+
+  @@index([tenantId])
+  @@index([tenantId, invoiceId])
+  @@map("onestack_invoice_portion")
+}
+
+/// Money received against an invoice (optionally a specific portion) — card #40.5, per money-rules #29.
+model Payment {
+  id          String          @id @default(uuid()) @db.Uuid
+  tenantId    String          @db.Uuid
+  invoiceId   String          @db.Uuid
+  portionId   String?         @db.Uuid
+  amountCents Int
+  method      String // cash | bank_transfer | card | eftpos | other
+  receivedAt  DateTime        @default(now())
+  createdAt   DateTime        @default(now())
+  tenant      Tenant          @relation(fields: [tenantId], references: [id])
+  invoice     Invoice         @relation(fields: [invoiceId], references: [id])
+  portion     InvoicePortion? @relation(fields: [portionId], references: [id])
+
+  @@index([tenantId])
+  @@index([tenantId, invoiceId])
+  @@map("onestack_payment")
 }
 
 /// Generic per-tenant reference sequence (scope = 'quote' | 'invoice' | …). Card #30.
@@ -249,6 +294,8 @@ model Contact {
   deletedAt   DateTime?
   tenant      Tenant    @relation(fields: [tenantId], references: [id])
   subjects    Subject[]
+  payerInvoices   Invoice[]        @relation("InvoicePayer")
+  payerPortions   InvoicePortion[] @relation("PortionPayer")
 
   @@index([tenantId])
   @@map("onestack_contact")
