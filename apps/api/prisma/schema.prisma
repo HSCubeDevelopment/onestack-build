@@ -35,8 +35,28 @@ model Tenant {
   auditLogs        AuditLog[]
   notifications    Notification[]
   lineItems        LineItem[]
+  documents        Document[]
 
   @@map("onestack_tenant")
+}
+
+/// Metadata for a generated document (card #6.7). File bytes live in Supabase Storage; this row links
+/// the stored file to its source entity and records the template version that produced it. Tenant-scoped.
+model Document {
+  id              String   @id @default(uuid()) @db.Uuid
+  tenantId        String   @db.Uuid
+  type            String
+  parentType      String
+  parentId        String   @db.Uuid
+  templateRef     String
+  templateVersion String
+  storageRef      String
+  generatedAt     DateTime @default(now())
+  tenant          Tenant   @relation(fields: [tenantId], references: [id])
+
+  @@index([tenantId])
+  @@index([tenantId, parentType, parentId])
+  @@map("onestack_document")
 }
 
 /// Line Item shared by Quote & Invoice (card #6.9). Linked polymorphically by parentType + parentId.
