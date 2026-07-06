@@ -48,6 +48,7 @@ model Tenant {
   leadForms           LeadForm[]
   leads               Lead[]
   customFieldDefs     CustomField[]
+  priceBookItems      PriceBookItem[]
 
   @@map("onestack_tenant")
 }
@@ -472,6 +473,29 @@ model CustomField {
   @@unique([tenantId, appliesTo, key])
   @@index([tenantId])
   @@map("onestack_custom_field")
+}
+
+/// The shop's reusable catalogue of labour items & parts with default prices (card #32). Picking an item
+/// COPIES its values onto a quote/invoice line — the line is then independently editable and never
+/// mutates the book. Prices are integer cents. Deactivating hides it from search; existing lines keep
+/// their copied values. Tenant-scoped.
+model PriceBookItem {
+  id                    String   @id @default(uuid()) @db.Uuid
+  tenantId              String   @db.Uuid
+  name                  String
+  description           String?
+  type                  String // 'labour' | 'part'
+  unit                  String // 'hour' | 'each'
+  defaultUnitPriceCents Int
+  code                  String?
+  active                Boolean  @default(true)
+  createdAt             DateTime @default(now())
+  updatedAt             DateTime @updatedAt
+  tenant                Tenant   @relation(fields: [tenantId], references: [id])
+
+  @@index([tenantId])
+  @@index([tenantId, active])
+  @@map("onestack_price_book_item")
 }
 
 /// Per-tenant reference sequence for Work Items (card #6.3).

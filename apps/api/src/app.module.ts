@@ -14,6 +14,7 @@ import { LineItemsModule } from './line-items/line-items.module';
 import { ModulesModule } from './modules/modules.module';
 import { NotificationsModule } from './notifications/notifications.module';
 import { InvoicesModule } from './invoices/invoices.module';
+import { PriceBookModule } from './price-book/price-book.module';
 import { PacksModule } from './packs/packs.module';
 import { QuotesModule } from './quotes/quotes.module';
 import { SchedulingModule } from './scheduling/scheduling.module';
@@ -45,6 +46,7 @@ import { WorkItemModule } from './work-items/work-item.module';
     LineItemsModule, // shared Quote/Invoice line items (#6.9)
     QuotesModule, // quotes on a job (#30)
     InvoicesModule, // invoices from a job/quote (#40)
+    PriceBookModule, // reusable labour/parts catalogue (#32)
   ],
   controllers: [HealthController],
 })
