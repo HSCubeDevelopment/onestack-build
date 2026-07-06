@@ -9,6 +9,7 @@ import { CoreModule } from './core/core.module';
 import { EventingModule } from './eventing/eventing.module';
 import { HealthController } from './health/health.controller';
 import { JobsModule } from './jobs/jobs.module';
+import { LineItemsModule } from './line-items/line-items.module';
 import { ModulesModule } from './modules/modules.module';
 import { NotificationsModule } from './notifications/notifications.module';
 import { SchedulingModule } from './scheduling/scheduling.module';
@@ -35,6 +36,7 @@ import { WorkItemModule } from './work-items/work-item.module';
     SchedulingModule, // toggleable module (OFF by default) — demonstrates feature enforcement
     WorkItemModule,
     SubjectModule,
+    LineItemsModule, // shared Quote/Invoice line items (#6.9)
   ],
   controllers: [HealthController],
 })
