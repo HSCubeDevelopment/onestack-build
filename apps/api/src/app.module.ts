@@ -3,6 +3,7 @@ import { ConfigModule } from '@nestjs/config';
 import { EventEmitterModule } from '@nestjs/event-emitter';
 import { AuditModule } from './audit/audit.module';
 import { AuthModule } from './auth/auth.module';
+import { BoardModule } from './board/board.module';
 import { CompositionModule } from './composition/composition.module';
 import { ContactsModule } from './contacts/contacts.module';
 import { CoreModule } from './core/core.module';
@@ -47,6 +48,7 @@ import { WorkItemModule } from './work-items/work-item.module';
     QuotesModule, // quotes on a job (#30)
     InvoicesModule, // invoices from a job/quote (#40)
     PriceBookModule, // reusable labour/parts catalogue (#32)
+    BoardModule, // job board read-model over work items (#22)
   ],
   controllers: [HealthController],
 })

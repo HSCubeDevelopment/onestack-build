@@ -17,5 +17,6 @@ import { VehiclesController } from './vehicles.controller';
   imports: [SubjectModule], // vehicles are pack Subjects
   controllers: [ContactsController, VehiclesController, LeadController, PublicLeadController],
   providers: [ContactsService, LeadFormService, LeadService],
+  exports: [ContactsService], // the shared Contact record — read by the board read-model (#22)
 })
 export class ContactsModule {}
