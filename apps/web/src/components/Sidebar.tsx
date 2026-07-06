@@ -10,11 +10,11 @@ import {
   Mail,
   Tags,
   SlidersHorizontal,
-  Moon,
   LifeBuoy,
   Layers3,
   type LucideIcon,
 } from 'lucide-react';
+import { ThemeToggle } from '@/components/ThemeToggle';
 
 type NavItem = { href: string; label: string; Icon: LucideIcon; alert?: boolean };
 type NavRow = { section: string } | NavItem;
@@ -65,12 +65,7 @@ export function Sidebar() {
         )}
       </nav>
       <div className="sidebar-foot">
-        <span className="foot-item">
-          <span className="ico">
-            <Moon size={18} />
-          </span>
-          Dark mode
-        </span>
+        <ThemeToggle />
         <span className="foot-item">
           <span className="ico">
             <LifeBuoy size={18} />
