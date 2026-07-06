@@ -6,6 +6,7 @@ import { CompositionModule } from './composition/composition.module';
 import { ContactsModule } from './contacts/contacts.module';
 import { CoreModule } from './core/core.module';
 import { HealthController } from './health/health.controller';
+import { LineItemsModule } from './line-items/line-items.module';
 import { SchedulingModule } from './scheduling/scheduling.module';
 import { SubjectModule } from './subjects/subject.module';
 import { TenantModule } from './tenancy/tenant.module';
@@ -23,6 +24,7 @@ import { WorkItemModule } from './work-items/work-item.module';
     SchedulingModule, // toggleable module (OFF by default) — demonstrates feature enforcement
     WorkItemModule,
     SubjectModule,
+    LineItemsModule, // shared Quote/Invoice line items (#6.9)
   ],
   controllers: [HealthController],
 })
