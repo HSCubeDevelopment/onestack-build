@@ -2,12 +2,26 @@
   "name": "@onestack/web",
   "version": "0.0.0",
   "private": true,
-  "description": "OneStack web frontend (Next.js lands in the walking-skeleton card). Hosts on Vercel (syd1).",
+  "description": "OneStack web frontend — the Phase-1 walking skeleton (card #4). Next.js App Router, proxies the OneStack API. Hosts on Vercel (syd1).",
   "scripts": {
+    "dev": "next dev -p 3000",
+    "build": "next build",
+    "start": "next start -p 3000",
+    "seed": "tsx scripts/seed-demo.ts",
     "typecheck": "tsc -p tsconfig.json --noEmit"
   },
+  "dependencies": {
+    "jsonwebtoken": "^9.0.2",
+    "next": "14.2.15",
+    "react": "18.3.1",
+    "react-dom": "18.3.1"
+  },
   "devDependencies": {
+    "@types/jsonwebtoken": "^9.0.6",
     "@types/node": "^20.14.0",
+    "@types/react": "18.3.3",
+    "@types/react-dom": "18.3.0",
+    "tsx": "^4.16.2",
     "typescript": "^5.5.4"
   }
 }
