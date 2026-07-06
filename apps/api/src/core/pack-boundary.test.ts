@@ -1,15 +1,17 @@
-import { readdirSync, readFileSync, existsSync } from 'node:fs';
+import { existsSync, readdirSync, readFileSync, statSync } from 'node:fs';
 import { join } from 'node:path';
 import { describe, expect, it } from 'vitest';
 
 /**
- * Architecture rule (card #6.1): "packs don't modify core." A pack may import ONLY the pack contract
- * (plus zod / @xstate) — never core services, the registry/engine internals, tenancy, or Prisma. This
- * test scans every pack file's imports and fails if a pack reaches into the core.
+ * Architecture rule (card #6.1): "packs don't modify core." A pack DEFINITION (`*.pack.ts`) may import
+ * ONLY the pack contract (plus zod / @xstate) — never core services, the registry/engine internals,
+ * tenancy, or Prisma. This test scans every pack definition's imports and fails if a pack reaches into
+ * the core. (The PacksModule that INSTALLS packs is infrastructure, not a pack definition, so it is not
+ * scanned — it is the sanctioned wiring point.)
  */
-const PACK_DIRS = [
+const SCAN_ROOTS = [
   join(__dirname, '..', '..', 'test', 'fixtures', 'packs'),
-  join(__dirname, '..', 'packs'), // real packs will live here later
+  join(__dirname, '..', 'packs'),
 ];
 
 function isAllowed(source: string): boolean {
@@ -20,13 +22,18 @@ function isAllowed(source: string): boolean {
   return false;
 }
 
+/** Recursively find every `*.pack.ts` (a pack definition) under the scan roots. */
 function packFiles(): string[] {
   const out: string[] = [];
-  for (const dir of PACK_DIRS) {
-    if (!existsSync(dir)) continue;
-    for (const f of readdirSync(dir))
-      if (f.endsWith('.ts') && !f.endsWith('.test.ts')) out.push(join(dir, f));
-  }
+  const walk = (dir: string): void => {
+    if (!existsSync(dir)) return;
+    for (const name of readdirSync(dir)) {
+      const p = join(dir, name);
+      if (statSync(p).isDirectory()) walk(p);
+      else if (name.endsWith('.pack.ts')) out.push(p);
+    }
+  };
+  SCAN_ROOTS.forEach(walk);
   return out;
 }
 

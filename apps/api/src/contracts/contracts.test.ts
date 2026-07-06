@@ -9,6 +9,7 @@ describe('Contact contract', () => {
       displayName: 'Casey',
       email: 'casey@example.com',
       phone: null,
+      fields: {},
       createdAt: new Date(),
     });
     expect(ok.success).toBe(true);

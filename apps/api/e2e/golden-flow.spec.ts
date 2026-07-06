@@ -32,7 +32,7 @@ test('login → create contact → see it', async ({ request }) => {
 
   const created = await request.post('/api/v1/contacts', {
     headers: auth,
-    data: { displayName: name },
+    data: { displayName: name, phone: '0400000000' },
   });
   expect(created.ok()).toBeTruthy();
 

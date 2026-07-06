@@ -7,6 +7,7 @@ export const ContactContract = z.object({
   displayName: z.string().min(1),
   email: z.string().email().nullable(),
   phone: z.string().nullable(),
+  fields: z.record(z.unknown()),
   createdAt: z.date(),
 });
 export type ContactContractType = z.infer<typeof ContactContract>;

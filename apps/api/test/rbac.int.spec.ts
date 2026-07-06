@@ -38,7 +38,7 @@ describe.skipIf(!hasDb)('auth + RBAC (HTTP)', () => {
     await http()
       .post('/api/v1/contacts')
       .set('Authorization', `Bearer ${a.staffToken}`)
-      .send({ displayName: 'Casey (A)' })
+      .send({ displayName: 'Casey (A)', phone: '0400000000' })
       .expect(201);
 
     const res = await http()
