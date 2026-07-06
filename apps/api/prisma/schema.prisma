@@ -43,6 +43,8 @@ model Tenant {
   payments          Payment[]
   workItemNotes       WorkItemNote[]
   workItemAttachments WorkItemAttachment[]
+  resources           Resource[]
+  bookings            Booking[]
 
   @@map("onestack_tenant")
 }
@@ -322,6 +324,7 @@ model WorkItem {
   subjects        WorkItemSubject[]
   notes           WorkItemNote[]
   attachments     WorkItemAttachment[]
+  bookings        Booking[]
 
   @@unique([tenantId, reference])
   @@index([tenantId])
@@ -363,6 +366,46 @@ model WorkItemAttachment {
   @@index([tenantId])
   @@index([tenantId, workItemId])
   @@map("onestack_work_item_attachment")
+}
+
+/// A bookable thing — a bay, a technician, a room (card #23). Set up per shop. Part of the toggleable
+/// `scheduling` module. Tenant-scoped.
+model Resource {
+  id        String    @id @default(uuid()) @db.Uuid
+  tenantId  String    @db.Uuid
+  type      String // 'bay' | 'technician'
+  name      String
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+  deletedAt DateTime?
+  tenant    Tenant    @relation(fields: [tenantId], references: [id])
+  bookings  Booking[]
+
+  @@index([tenantId])
+  @@map("onestack_resource")
+}
+
+/// A reservation of one resource for a time range (card #23), optionally linked to a work item.
+/// Overlaps on the same resource are prevented unless explicitly overridden. Tenant-scoped.
+model Booking {
+  id         String    @id @default(uuid()) @db.Uuid
+  tenantId   String    @db.Uuid
+  resourceId String    @db.Uuid
+  workItemId String?   @db.Uuid
+  title      String
+  startsAt   DateTime
+  endsAt     DateTime
+  notes      String?
+  createdAt  DateTime  @default(now())
+  updatedAt  DateTime  @updatedAt
+  tenant     Tenant    @relation(fields: [tenantId], references: [id])
+  resource   Resource  @relation(fields: [resourceId], references: [id])
+  workItem   WorkItem? @relation(fields: [workItemId], references: [id])
+
+  @@index([tenantId])
+  @@index([tenantId, resourceId, startsAt])
+  @@index([tenantId, workItemId])
+  @@map("onestack_booking")
 }
 
 /// Per-tenant reference sequence for Work Items (card #6.3).
