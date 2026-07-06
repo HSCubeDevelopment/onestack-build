@@ -5,20 +5,43 @@ import { RefreshCw } from 'lucide-react';
 import { api, Board, BoardCard } from '@/lib/api';
 import { ErrorBanner, Loading, PageHead, StatusBadge, useAsync } from '@/components/ui';
 
+/** Pure: return a new board with `id` moved into `targetState` (and its stateName updated). */
+function withCardMoved(board: Board, id: string, targetState: string): Board {
+  let moved: BoardCard | undefined;
+  const stripped = board.columns.map((col) => {
+    const found = col.cards.find((c) => c.id === id);
+    if (found) moved = { ...found, stateName: targetState };
+    return { ...col, cards: col.cards.filter((c) => c.id !== id) };
+  });
+  if (!moved) return board;
+  return {
+    ...board,
+    columns: stripped.map((col) =>
+      col.state === targetState ? { ...col, cards: [...col.cards, moved!] } : col,
+    ),
+  };
+}
+
 export default function BoardPage() {
-  const { data, loading, error, reload } = useAsync(() => api.get<Board>('/board?type=job'), []);
+  const { data, loading, error, reload, setData } = useAsync(
+    () => api.get<Board>('/board?type=job'),
+    [],
+  );
   const [moveError, setMoveError] = useState<string | null>(null);
   const [dragging, setDragging] = useState<{ id: string; from: string } | null>(null);
 
+  // Optimistic move: the card jumps to the new column immediately; the API runs in the background and
+  // we roll back to the previous board only if the server rejects the move (e.g. an illegal skip).
   async function moveCard(id: string, targetState: string) {
+    if (!data) return;
     setMoveError(null);
+    const previous = data;
+    setData(withCardMoved(data, id, targetState));
     try {
       await api.post(`/board/cards/${id}/move`, { targetState });
     } catch (e) {
+      setData(previous); // revert
       setMoveError(e instanceof Error ? e.message : String(e));
-    } finally {
-      // Reload either way — never move optimistically without confirming.
-      await reload();
     }
   }
 
