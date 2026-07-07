@@ -53,6 +53,8 @@ model Tenant {
   scopeParts          ScopePart[]
   purchaseOrders      PurchaseOrder[]
   purchaseOrderLines  PurchaseOrderLine[]
+  materialRequests    MaterialRequest[]
+  materialRequestLines MaterialRequestLine[]
 
   @@map("onestack_tenant")
 }
@@ -343,6 +345,7 @@ model WorkItem {
   damageScopes    DamageScope[]
   scopeParts      ScopePart[]
   purchaseOrders  PurchaseOrder[]
+  materialRequests MaterialRequest[]
 
   @@unique([tenantId, reference])
   @@index([tenantId])
@@ -603,6 +606,51 @@ model PurchaseOrderLine {
   @@index([tenantId])
   @@index([tenantId, purchaseOrderId])
   @@map("onestack_purchase_order_line")
+}
+
+/// Floor ordering (Phase 2). A shop-floor material request: a technician asks for the materials a job
+/// needs; a manager (OWNER) approves or rejects; an approved request can be ordered (emailed to a
+/// supplier — a vendor-gated step, no-op until wired). Just a list of items by description + quantity;
+/// pricing is the PO's job. Generic (Sales & Money core). Tenant-scoped.
+model MaterialRequest {
+  id                String                @id @default(uuid()) @db.Uuid
+  tenantId          String                @db.Uuid
+  workItemId        String                @db.Uuid
+  reference         String
+  status            String                @default("requested") // 'requested' | 'approved' | 'rejected' | 'ordered'
+  requestedByUserId String                @db.Uuid
+  decidedByUserId   String?               @db.Uuid
+  decisionNote      String?
+  notes             String?
+  createdAt         DateTime              @default(now())
+  updatedAt         DateTime              @updatedAt
+  tenant            Tenant                @relation(fields: [tenantId], references: [id])
+  workItem          WorkItem              @relation(fields: [workItemId], references: [id])
+  lines             MaterialRequestLine[]
+
+  @@unique([tenantId, reference])
+  @@index([tenantId])
+  @@index([tenantId, workItemId])
+  @@map("onestack_material_request")
+}
+
+/// A line on a material request (Phase 2 — floor ordering). An item the technician wants, by qty.
+model MaterialRequestLine {
+  id                String          @id @default(uuid()) @db.Uuid
+  tenantId          String          @db.Uuid
+  materialRequestId String          @db.Uuid
+  description       String
+  quantity          Int             @default(1)
+  notes             String?
+  sortOrder         Int             @default(0)
+  createdAt         DateTime        @default(now())
+  updatedAt         DateTime        @updatedAt
+  tenant            Tenant          @relation(fields: [tenantId], references: [id])
+  materialRequest   MaterialRequest @relation(fields: [materialRequestId], references: [id], onDelete: Cascade)
+
+  @@index([tenantId])
+  @@index([tenantId, materialRequestId])
+  @@map("onestack_material_request_line")
 }
 
 /// Per-tenant reference sequence for Work Items (card #6.3).
