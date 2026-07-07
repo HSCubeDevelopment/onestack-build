@@ -8,12 +8,14 @@ export interface Countable {
   photos: unknown[];
   quotes: unknown[];
   invoices: unknown[];
+  documents: unknown[];
 }
 
 export interface ClaimFileCounts {
   photos: number;
   quotes: number;
   invoices: number;
+  documents: number;
 }
 
 export interface InvoiceMoney {
@@ -34,6 +36,7 @@ export function claimFileCounts(pieces: Countable): ClaimFileCounts {
     photos: pieces.photos.length,
     quotes: pieces.quotes.length,
     invoices: pieces.invoices.length,
+    documents: pieces.documents.length,
   };
 }
 

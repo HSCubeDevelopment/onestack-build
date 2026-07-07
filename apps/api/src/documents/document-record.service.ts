@@ -1,6 +1,6 @@
-import { Injectable, NotFoundException } from '@nestjs/common';
+import { Inject, Injectable, NotFoundException } from '@nestjs/common';
 import { TenantService } from '../tenancy/tenant.service';
-import { DocumentStorage } from './document-storage';
+import { DOCUMENT_STORAGE, DocumentStorage } from './document-storage';
 import { renderDocument } from './template-renderer';
 
 export interface GenerateDocInput {
@@ -31,7 +31,7 @@ export interface DocumentRecordView {
 export class DocumentRecordService {
   constructor(
     private readonly tenants: TenantService,
-    private readonly storage: DocumentStorage,
+    @Inject(DOCUMENT_STORAGE) private readonly storage: DocumentStorage,
   ) {}
 
   async generate(tenantId: string, input: GenerateDocInput): Promise<DocumentRecordView> {

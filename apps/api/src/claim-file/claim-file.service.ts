@@ -1,5 +1,6 @@
 import { Inject, Injectable, NotFoundException } from '@nestjs/common';
 import { ContactsService } from '../contacts/contacts.service';
+import { DocumentRecordService } from '../documents/document-record.service';
 import { InvoiceService } from '../invoices/invoice.service';
 import { QuoteService } from '../quotes/quote.service';
 import { SubjectService } from '../subjects/subject.service';
@@ -7,6 +8,32 @@ import { AttachmentService } from '../work-items/attachment.service';
 import { WorkItemService } from '../work-items/work-item.service';
 import { claimFileCounts, claimFinancials, ClaimFileCounts, ClaimFinancials } from './claim-file';
 import { CLAIM_PACK_SHARER, ClaimPackSharer, ShareResult } from './claim-pack-sharer';
+
+/** A generated document that belongs to the claim pack (a quote/invoice/claim PDF). */
+export interface ClaimDocument {
+  id: string;
+  type: string;
+  parentType: string;
+  templateRef: string;
+  templateVersion: string;
+}
+
+const CLAIM_SUMMARY_TEMPLATE = [
+  'CLAIM FILE — {{ jobReference }}',
+  '',
+  'Claim number : {{ claimNumber }}',
+  'Insurer      : {{ insurer }}',
+  'Customer     : {{ customerName }}',
+  'Vehicle(s)   : {{ vehicles }}',
+  'Description  : {{ jobDescription }}',
+  '',
+  'Artefacts    : {{ photos }} photo(s), {{ quotes }} quote(s), {{ invoices }} invoice(s)',
+  'Invoiced     : {{ invoicedText }}',
+  'Paid         : {{ paidText }}',
+  'Outstanding  : {{ outstandingText }}',
+  '',
+  'Generated    : {{ generatedAt }}',
+].join('\n');
 
 /** The insurance-claim block captured on a job (automotive pack). Read-only here. */
 export interface ClaimBlock {
@@ -41,6 +68,7 @@ export interface ClaimFileView {
     paidCents: number;
     balanceCents: number;
   }[];
+  documents: ClaimDocument[];
   counts: ClaimFileCounts;
   financials: ClaimFinancials;
 }
@@ -66,6 +94,7 @@ export class ClaimFileService {
     private readonly attachments: AttachmentService,
     private readonly quotes: QuoteService,
     private readonly invoices: InvoiceService,
+    private readonly documents: DocumentRecordService,
     @Inject(CLAIM_PACK_SHARER) private readonly sharer: ClaimPackSharer,
   ) {}
 
@@ -86,6 +115,24 @@ export class ClaimFileService {
       this.quotes.listForJob(tenantId, jobId),
       this.invoices.listForJob(tenantId, jobId),
     ]);
+
+    // Generated documents (PDFs) that belong to the pack: the claim summary generated for the job, plus
+    // any generated against its quotes and invoices. Gathered through the documents service, not the table.
+    const docParents = [
+      { parentType: 'work_item', parentId: jobId },
+      ...quotes.map((q) => ({ parentType: 'quote', parentId: q.id })),
+      ...invoices.map((i) => ({ parentType: 'invoice', parentId: i.id })),
+    ];
+    const docLists = await Promise.all(
+      docParents.map((p) => this.documents.list(tenantId, p.parentType, p.parentId)),
+    );
+    const documents: ClaimDocument[] = docLists.flat().map((d) => ({
+      id: d.id,
+      type: d.type,
+      parentType: d.parentType,
+      templateRef: d.templateRef,
+      templateVersion: d.templateVersion,
+    }));
 
     return {
       job: {
@@ -127,7 +174,8 @@ export class ClaimFileService {
         paidCents: i.paidCents,
         balanceCents: i.balanceCents,
       })),
-      counts: claimFileCounts({ photos, quotes, invoices }),
+      documents,
+      counts: claimFileCounts({ photos, quotes, invoices, documents }),
       financials: claimFinancials(invoices),
     };
   }
@@ -145,6 +193,49 @@ export class ClaimFileService {
       jobReference: view.job.reference,
       claimNumber: view.claim?.claimNumber ?? null,
     });
+  }
+
+  /**
+   * Generate a claim-summary document (a PDF/text artefact) for the job and store it via the documents
+   * service, so it joins the pack. Regenerating just adds a new, versioned document — the pack lists them.
+   */
+  async generateDocument(tenantId: string, jobId: string, at: Date): Promise<ClaimDocument> {
+    const view = await this.assemble(tenantId, jobId);
+    const data: Record<string, string> = {
+      jobReference: view.job.reference,
+      jobDescription: view.job.description ?? '—',
+      claimNumber: view.claim?.claimNumber ?? '—',
+      insurer: view.claim?.insurer ?? '—',
+      customerName: view.customer?.displayName ?? '—',
+      vehicles: view.vehicles.map((v) => v.label).join(', ') || '—',
+      photos: String(view.counts.photos),
+      quotes: String(view.counts.quotes),
+      invoices: String(view.counts.invoices),
+      invoicedText: dollars(view.financials.invoicedCents),
+      paidText: dollars(view.financials.paidCents),
+      outstandingText: dollars(view.financials.outstandingCents),
+      generatedAt: at.toISOString(),
+    };
+    const doc = await this.documents.generate(tenantId, {
+      type: 'claim_summary',
+      parentType: 'work_item',
+      parentId: jobId,
+      templateRef: 'claim_summary_v1',
+      body: CLAIM_SUMMARY_TEMPLATE,
+      data,
+    });
+    return {
+      id: doc.id,
+      type: doc.type,
+      parentType: doc.parentType,
+      templateRef: doc.templateRef,
+      templateVersion: doc.templateVersion,
+    };
+  }
+
+  /** Download a generated document's content (tenant-scoped by the documents service). */
+  async downloadDocument(tenantId: string, documentId: string): Promise<string> {
+    return this.documents.download(tenantId, documentId);
   }
 
   /** A referenced contact may have been removed; a missing one shouldn't break the whole pack. */
@@ -189,4 +280,9 @@ function stripInsurerContactId(c: ClaimBlock & { insurerContactId?: string }): C
   const { insurerContactId: _omit, ...rest } = c;
   void _omit;
   return rest;
+}
+
+/** Integer cents → a plain dollar string for the document template. */
+function dollars(cents: number): string {
+  return `$${(cents / 100).toFixed(2)}`;
 }

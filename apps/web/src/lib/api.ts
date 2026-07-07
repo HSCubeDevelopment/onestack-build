@@ -24,9 +24,7 @@ async function request<T>(method: string, path: string, body?: unknown): Promise
   const text = await res.text();
   const data = text ? JSON.parse(text) : null;
   if (!res.ok) {
-    const msg =
-      (data && (data.message || data.error)) ||
-      `Request failed (${res.status})`;
+    const msg = (data && (data.message || data.error)) || `Request failed (${res.status})`;
     throw new ApiError(res.status, Array.isArray(msg) ? msg.join(', ') : String(msg));
   }
   return data as T;
@@ -235,6 +233,171 @@ export interface Booking {
   startsAt: string;
   endsAt: string;
   notes: string | null;
+}
+
+// ---- Phase 2 (automotive workflow) view types ----
+
+export interface DamageScopeItem {
+  id: string;
+  panel: string;
+  operation: 'replace' | 'repair' | 'paint';
+  note: string | null;
+  confidence: number | null;
+}
+
+export interface DamageScope {
+  id: string;
+  workItemId: string;
+  status: 'draft' | 'applied';
+  source: 'ai' | 'manual';
+  model: string;
+  summary: string;
+  photoCount: number;
+  items: DamageScopeItem[];
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface ScopePart {
+  id: string;
+  workItemId: string;
+  damageScopeId: string | null;
+  description: string;
+  quantity: number;
+  unitPriceCents: number;
+  priceBookItemId: string | null;
+  source: 'ai' | 'manual';
+  sortOrder: number;
+}
+
+export interface PurchaseOrderLine {
+  id: string;
+  description: string;
+  quantity: number;
+  unitPriceCents: number;
+  lineTotalCents: number;
+  scopePartId: string | null;
+  sortOrder: number;
+}
+
+export interface PurchaseOrder {
+  id: string;
+  workItemId: string;
+  supplierContactId: string | null;
+  reference: string;
+  status: 'draft' | 'confirmed' | 'sent';
+  notes: string | null;
+  totalCents: number;
+  lines: PurchaseOrderLine[];
+}
+
+export interface MaterialRequestLine {
+  id: string;
+  description: string;
+  quantity: number;
+  notes: string | null;
+  sortOrder: number;
+}
+
+export interface MaterialRequest {
+  id: string;
+  workItemId: string;
+  reference: string;
+  status: 'requested' | 'approved' | 'rejected' | 'ordered';
+  requestedByUserId: string;
+  decidedByUserId: string | null;
+  decisionNote: string | null;
+  notes: string | null;
+  lines: MaterialRequestLine[];
+}
+
+export interface SupplierInvoiceLine {
+  id: string;
+  description: string;
+  quantity: number;
+  unitPriceCents: number;
+  lineTotalCents: number;
+  sortOrder: number;
+}
+
+export interface SupplierInvoice {
+  id: string;
+  workItemId: string;
+  supplierContactId: string | null;
+  invoiceNumber: string;
+  invoiceDate: string | null;
+  status: 'draft' | 'confirmed' | 'exported';
+  source: 'manual' | 'ocr';
+  notes: string | null;
+  totalCents: number;
+  lines: SupplierInvoiceLine[];
+}
+
+export interface ClaimDocument {
+  id: string;
+  type: string;
+  parentType: string;
+  templateRef: string;
+  templateVersion: string;
+}
+
+export interface ClaimFile {
+  job: { id: string; reference: string; stateName: string; description: string | null };
+  claim: {
+    insurer: string;
+    claimNumber: string;
+    assessor: string | null;
+    dateLodged: string | null;
+    authorisedAmountCents: number | null;
+    excessCents: number | null;
+    billPayer: string | null;
+  } | null;
+  customer: { id: string; displayName: string; email: string | null; phone: string | null } | null;
+  insurer: { id: string; displayName: string } | null;
+  vehicles: { id: string; label: string }[];
+  photos: {
+    id: string;
+    fileName: string;
+    caption: string | null;
+    contentType: string;
+    createdAt: string;
+  }[];
+  quotes: { id: string; reference: string; status: string; revision: number; totalCents: number }[];
+  invoices: {
+    id: string;
+    reference: string;
+    status: string;
+    totalCents: number;
+    paidCents: number;
+    balanceCents: number;
+  }[];
+  documents: ClaimDocument[];
+  counts: { photos: number; quotes: number; invoices: number; documents: number };
+  financials: { invoicedCents: number; paidCents: number; outstandingCents: number };
+}
+
+export interface ShareResult {
+  shared: boolean;
+  url: string | null;
+  reason?: string;
+}
+
+export interface OrderSendResult {
+  emailed?: boolean;
+  delivered?: boolean;
+  reason?: string;
+}
+
+export interface AccountingExportResult {
+  exported: boolean;
+  externalId: string | null;
+  reason?: string;
+}
+
+export interface OcrScanResult {
+  extracted: boolean;
+  suggestion: unknown | null;
+  reason?: string;
 }
 
 export const money = (cents: number): string =>

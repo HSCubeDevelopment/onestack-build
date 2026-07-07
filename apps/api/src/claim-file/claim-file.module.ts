@@ -1,5 +1,6 @@
 import { Module } from '@nestjs/common';
 import { ContactsModule } from '../contacts/contacts.module';
+import { DocumentsModule } from '../documents/documents.module';
 import { InvoicesModule } from '../invoices/invoices.module';
 import { QuotesModule } from '../quotes/quotes.module';
 import { SubjectModule } from '../subjects/subject.module';
@@ -15,7 +16,14 @@ import { CLAIM_PACK_SHARER, ClaimPackSharer, NoopClaimPackSharer } from './claim
  * InvoicesModule — never their tables. Sharing externally is a vendor boundary (no-op by default).
  */
 @Module({
-  imports: [WorkItemModule, ContactsModule, SubjectModule, QuotesModule, InvoicesModule],
+  imports: [
+    WorkItemModule,
+    ContactsModule,
+    SubjectModule,
+    QuotesModule,
+    InvoicesModule,
+    DocumentsModule,
+  ],
   controllers: [ClaimFileController],
   providers: [
     ClaimFileService,

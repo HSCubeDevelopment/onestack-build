@@ -12,3 +12,6 @@ export interface DocumentStorage {
 }
 
 export class DocumentStorageError extends Error {}
+
+/** DI token for the configured document storage (Supabase when set, in-memory otherwise). */
+export const DOCUMENT_STORAGE = Symbol('DOCUMENT_STORAGE');
