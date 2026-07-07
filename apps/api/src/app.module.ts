@@ -24,6 +24,7 @@ import { PacksModule } from './packs/packs.module';
 import { QuotesModule } from './quotes/quotes.module';
 import { SchedulingModule } from './scheduling/scheduling.module';
 import { SubjectModule } from './subjects/subject.module';
+import { SupplierInvoiceModule } from './supplier-invoices/supplier-invoice.module';
 import { TenantModule } from './tenancy/tenant.module';
 import { TerminologyModule } from './terminology/terminology.module';
 import { WorkItemModule } from './work-items/work-item.module';
@@ -57,6 +58,7 @@ import { WorkItemModule } from './work-items/work-item.module';
     AiModule, // photo-to-quote AI damage scope (Phase 2 flagship, slice A)
     ClaimFileModule, // claim pack read-model: photos/quotes/invoices per claim (Phase 2)
     MaterialRequestModule, // floor ordering: technician request → manager approve → email (Phase 2)
+    SupplierInvoiceModule, // supplier invoice capture → accounting (Phase 2; OCR + sync stubbed)
   ],
   controllers: [HealthController],
 })

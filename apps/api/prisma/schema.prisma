@@ -55,6 +55,8 @@ model Tenant {
   purchaseOrderLines  PurchaseOrderLine[]
   materialRequests    MaterialRequest[]
   materialRequestLines MaterialRequestLine[]
+  supplierInvoices    SupplierInvoice[]
+  supplierInvoiceLines SupplierInvoiceLine[]
 
   @@map("onestack_tenant")
 }
@@ -346,6 +348,7 @@ model WorkItem {
   scopeParts      ScopePart[]
   purchaseOrders  PurchaseOrder[]
   materialRequests MaterialRequest[]
+  supplierInvoices SupplierInvoice[]
 
   @@unique([tenantId, reference])
   @@index([tenantId])
@@ -651,6 +654,50 @@ model MaterialRequestLine {
   @@index([tenantId])
   @@index([tenantId, materialRequestId])
   @@map("onestack_material_request_line")
+}
+
+/// Supplier invoice capture (Phase 2). A supplier's invoice captured against a job as an editable draft
+/// a human confirms. OCR (pre-fill from a scan) and accounting sync (Xero/MYOB) are deferred, stubbed
+/// behind provider interfaces. Its own line table — a supplier invoice is what we OWE, not a customer
+/// money document, so it never touches the customer money engine. Generic (Sales & Money core). Tenant-scoped.
+model SupplierInvoice {
+  id                String                @id @default(uuid()) @db.Uuid
+  tenantId          String                @db.Uuid
+  workItemId        String                @db.Uuid
+  supplierContactId String?               @db.Uuid
+  invoiceNumber     String
+  invoiceDate       String?
+  status            String                @default("draft") // 'draft' | 'confirmed' | 'exported'
+  source            String                @default("manual") // 'manual' | 'ocr'
+  notes             String?
+  createdAt         DateTime              @default(now())
+  updatedAt         DateTime              @updatedAt
+  tenant            Tenant                @relation(fields: [tenantId], references: [id])
+  workItem          WorkItem              @relation(fields: [workItemId], references: [id])
+  lines             SupplierInvoiceLine[]
+
+  @@index([tenantId])
+  @@index([tenantId, workItemId])
+  @@map("onestack_supplier_invoice")
+}
+
+/// A line on a captured supplier invoice (Phase 2). What we owe per item; editable draft.
+model SupplierInvoiceLine {
+  id                String          @id @default(uuid()) @db.Uuid
+  tenantId          String          @db.Uuid
+  supplierInvoiceId String          @db.Uuid
+  description       String
+  quantity          Int             @default(1)
+  unitPriceCents    Int             @default(0)
+  sortOrder         Int             @default(0)
+  createdAt         DateTime        @default(now())
+  updatedAt         DateTime        @updatedAt
+  tenant            Tenant          @relation(fields: [tenantId], references: [id])
+  supplierInvoice   SupplierInvoice @relation(fields: [supplierInvoiceId], references: [id], onDelete: Cascade)
+
+  @@index([tenantId])
+  @@index([tenantId, supplierInvoiceId])
+  @@map("onestack_supplier_invoice_line")
 }
 
 /// Per-tenant reference sequence for Work Items (card #6.3).
