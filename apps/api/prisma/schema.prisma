@@ -50,6 +50,7 @@ model Tenant {
   customFieldDefs     CustomField[]
   priceBookItems      PriceBookItem[]
   damageScopes        DamageScope[]
+  scopeParts          ScopePart[]
 
   @@map("onestack_tenant")
 }
@@ -338,6 +339,7 @@ model WorkItem {
   attachments     WorkItemAttachment[]
   bookings        Booking[]
   damageScopes    DamageScope[]
+  scopeParts      ScopePart[]
 
   @@unique([tenantId, reference])
   @@index([tenantId])
@@ -523,10 +525,37 @@ model DamageScope {
   updatedAt  DateTime @updatedAt
   tenant     Tenant   @relation(fields: [tenantId], references: [id])
   workItem   WorkItem @relation(fields: [workItemId], references: [id])
+  parts      ScopePart[]
 
   @@index([tenantId])
   @@index([tenantId, workItemId])
   @@map("onestack_damage_scope")
+}
+
+/// AI photo-to-quote (Phase 2 flagship, slice B). The editable parts list derived from a damage scope's
+/// "replace" panels, priced from the price book or left at 0 for the estimator. A DRAFT working list —
+/// a fully-priced one is turned into a real quote through the shared Quote engine. Nothing is ordered.
+/// Generic (Sales & Money core). Tenant-scoped.
+model ScopePart {
+  id              String       @id @default(uuid()) @db.Uuid
+  tenantId        String       @db.Uuid
+  workItemId      String       @db.Uuid
+  damageScopeId   String?      @db.Uuid
+  description     String
+  quantity        Int          @default(1)
+  unitPriceCents  Int          @default(0)
+  priceBookItemId String?      @db.Uuid
+  source          String       @default("ai") // 'ai' | 'manual'
+  sortOrder       Int          @default(0)
+  createdAt       DateTime     @default(now())
+  updatedAt       DateTime     @updatedAt
+  tenant          Tenant       @relation(fields: [tenantId], references: [id])
+  workItem        WorkItem     @relation(fields: [workItemId], references: [id])
+  damageScope     DamageScope? @relation(fields: [damageScopeId], references: [id])
+
+  @@index([tenantId])
+  @@index([tenantId, workItemId])
+  @@map("onestack_scope_part")
 }
 
 /// Per-tenant reference sequence for Work Items (card #6.3).

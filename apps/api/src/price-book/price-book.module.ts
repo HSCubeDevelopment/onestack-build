@@ -6,5 +6,6 @@ import { PriceBookService } from './price-book.service';
 @Module({
   controllers: [PriceBookController],
   providers: [PriceBookService],
+  exports: [PriceBookService], // AI parts list prices from the price book
 })
 export class PriceBookModule {}

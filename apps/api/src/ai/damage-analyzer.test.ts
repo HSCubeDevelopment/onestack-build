@@ -2,7 +2,7 @@
 // analyzer, and the parser that turns a Claude reply into a clean, validated scope. These are the
 // error-prone bits — the DB-backed service is covered by the integration test.
 import { describe, expect, it } from 'vitest';
-import { parseScope } from './anthropic-damage-analyzer';
+import { AnthropicDamageAnalyzer, parseScope } from './anthropic-damage-analyzer';
 import { DAMAGE_OPERATIONS, MAX_ANALYSIS_IMAGES } from './damage-analyzer';
 import { StubDamageAnalyzer } from './stub-damage-analyzer';
 
@@ -42,6 +42,16 @@ describe('StubDamageAnalyzer', () => {
     const a = await stub.analyze({ images: img(4) });
     const b = await stub.analyze({ images: img(4) });
     expect(a).toEqual(b);
+  });
+});
+
+describe('AnthropicDamageAnalyzer', () => {
+  it('defaults to claude-opus-4-8 and records it as the audit name (no network call to construct)', () => {
+    expect(new AnthropicDamageAnalyzer('sk-test').name).toBe('claude-opus-4-8');
+  });
+
+  it('honours an explicit model override', () => {
+    expect(new AnthropicDamageAnalyzer('sk-test', 'claude-sonnet-5').name).toBe('claude-sonnet-5');
   });
 });
 
