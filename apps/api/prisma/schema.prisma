@@ -51,6 +51,8 @@ model Tenant {
   priceBookItems      PriceBookItem[]
   damageScopes        DamageScope[]
   scopeParts          ScopePart[]
+  purchaseOrders      PurchaseOrder[]
+  purchaseOrderLines  PurchaseOrderLine[]
 
   @@map("onestack_tenant")
 }
@@ -340,6 +342,7 @@ model WorkItem {
   bookings        Booking[]
   damageScopes    DamageScope[]
   scopeParts      ScopePart[]
+  purchaseOrders  PurchaseOrder[]
 
   @@unique([tenantId, reference])
   @@index([tenantId])
@@ -556,6 +559,50 @@ model ScopePart {
   @@index([tenantId])
   @@index([tenantId, workItemId])
   @@map("onestack_scope_part")
+}
+
+/// AI photo-to-quote (Phase 2 flagship, slice C). A draft purchase order — the parts to buy from a
+/// supplier for a job — that a human confirms. NOTHING is sent: emailing the supplier is a separate,
+/// vendor-gated step. Its own line table (a PO is what we expect to pay a supplier, not a customer
+/// money document). Generic (Sales & Money core). Tenant-scoped.
+model PurchaseOrder {
+  id                String              @id @default(uuid()) @db.Uuid
+  tenantId          String              @db.Uuid
+  workItemId        String              @db.Uuid
+  supplierContactId String?             @db.Uuid
+  reference         String
+  status            String              @default("draft") // 'draft' | 'confirmed' | 'sent'
+  notes             String?
+  createdAt         DateTime            @default(now())
+  updatedAt         DateTime            @updatedAt
+  tenant            Tenant              @relation(fields: [tenantId], references: [id])
+  workItem          WorkItem            @relation(fields: [workItemId], references: [id])
+  lines             PurchaseOrderLine[]
+
+  @@unique([tenantId, reference])
+  @@index([tenantId])
+  @@index([tenantId, workItemId])
+  @@map("onestack_purchase_order")
+}
+
+/// A line on a draft purchase order (Phase 2 flagship, slice C). Expected cost to us, editable draft.
+model PurchaseOrderLine {
+  id              String        @id @default(uuid()) @db.Uuid
+  tenantId        String        @db.Uuid
+  purchaseOrderId String        @db.Uuid
+  scopePartId     String?       @db.Uuid
+  description     String
+  quantity        Int           @default(1)
+  unitPriceCents  Int           @default(0)
+  sortOrder       Int           @default(0)
+  createdAt       DateTime      @default(now())
+  updatedAt       DateTime      @updatedAt
+  tenant          Tenant        @relation(fields: [tenantId], references: [id])
+  purchaseOrder   PurchaseOrder @relation(fields: [purchaseOrderId], references: [id], onDelete: Cascade)
+
+  @@index([tenantId])
+  @@index([tenantId, purchaseOrderId])
+  @@map("onestack_purchase_order_line")
 }
 
 /// Per-tenant reference sequence for Work Items (card #6.3).

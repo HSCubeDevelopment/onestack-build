@@ -83,7 +83,7 @@ describe.skipIf(!hasDb)('AI damage scope — photo-to-quote slice A (Phase 2)', 
     await dropTenant(admin, a.tenantId);
     await dropTenant(admin, b.tenantId);
     await admin.$disconnect();
-  });
+  }, 120_000); // generous: cleanup spans many tables and the pooler can be slow under load
 
   it('requires at least one photo before generating a scope', async () => {
     await http().post(`/api/v1/work-items/${jobNoPhoto}/ai-scope`).set(auth(a)).expect(400);

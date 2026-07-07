@@ -91,7 +91,7 @@ describe.skipIf(!hasDb)('AI parts list → priced quote — slice B (Phase 2)', 
     await dropTenant(admin, a.tenantId);
     await dropTenant(admin, b.tenantId);
     await admin.$disconnect();
-  });
+  }, 120_000); // generous: cleanup spans many tables and the pooler can be slow under load
 
   it('derives a parts list from the scope: replace panels only, priced from the book or left at 0', async () => {
     const parts = (
