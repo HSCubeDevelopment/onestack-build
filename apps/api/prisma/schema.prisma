@@ -49,6 +49,10 @@ model Tenant {
   leads               Lead[]
   customFieldDefs     CustomField[]
   priceBookItems      PriceBookItem[]
+  damageScopes        DamageScope[]
+  scopeParts          ScopePart[]
+  purchaseOrders      PurchaseOrder[]
+  purchaseOrderLines  PurchaseOrderLine[]
 
   @@map("onestack_tenant")
 }
@@ -336,6 +340,9 @@ model WorkItem {
   notes           WorkItemNote[]
   attachments     WorkItemAttachment[]
   bookings        Booking[]
+  damageScopes    DamageScope[]
+  scopeParts      ScopePart[]
+  purchaseOrders  PurchaseOrder[]
 
   @@unique([tenantId, reference])
   @@index([tenantId])
@@ -501,6 +508,101 @@ model PriceBookItem {
   @@index([tenantId])
   @@index([tenantId, active])
   @@map("onestack_price_book_item")
+}
+
+/// AI photo-to-quote (Phase 2 flagship, slice A). The AI's proposed damage scope for a job, held as an
+/// EDITABLE DRAFT a human confirms — nothing auto-sent or auto-ordered. `items` is a list of panels +
+/// operations (replace | repair | paint); "replace" items become priced part lines downstream. Generic
+/// storage — the automotive meaning lives in the pack. `model` records which analyzer produced it. Tenant-scoped.
+model DamageScope {
+  id         String   @id @default(uuid()) @db.Uuid
+  tenantId   String   @db.Uuid
+  workItemId String   @db.Uuid
+  status     String   @default("draft") // 'draft' | 'applied'
+  source     String   @default("ai") // 'ai' | 'manual'
+  model      String
+  summary    String   @default("")
+  items      Json     @default("[]")
+  photoCount Int      @default(0)
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+  tenant     Tenant   @relation(fields: [tenantId], references: [id])
+  workItem   WorkItem @relation(fields: [workItemId], references: [id])
+  parts      ScopePart[]
+
+  @@index([tenantId])
+  @@index([tenantId, workItemId])
+  @@map("onestack_damage_scope")
+}
+
+/// AI photo-to-quote (Phase 2 flagship, slice B). The editable parts list derived from a damage scope's
+/// "replace" panels, priced from the price book or left at 0 for the estimator. A DRAFT working list —
+/// a fully-priced one is turned into a real quote through the shared Quote engine. Nothing is ordered.
+/// Generic (Sales & Money core). Tenant-scoped.
+model ScopePart {
+  id              String       @id @default(uuid()) @db.Uuid
+  tenantId        String       @db.Uuid
+  workItemId      String       @db.Uuid
+  damageScopeId   String?      @db.Uuid
+  description     String
+  quantity        Int          @default(1)
+  unitPriceCents  Int          @default(0)
+  priceBookItemId String?      @db.Uuid
+  source          String       @default("ai") // 'ai' | 'manual'
+  sortOrder       Int          @default(0)
+  createdAt       DateTime     @default(now())
+  updatedAt       DateTime     @updatedAt
+  tenant          Tenant       @relation(fields: [tenantId], references: [id])
+  workItem        WorkItem     @relation(fields: [workItemId], references: [id])
+  damageScope     DamageScope? @relation(fields: [damageScopeId], references: [id])
+
+  @@index([tenantId])
+  @@index([tenantId, workItemId])
+  @@map("onestack_scope_part")
+}
+
+/// AI photo-to-quote (Phase 2 flagship, slice C). A draft purchase order — the parts to buy from a
+/// supplier for a job — that a human confirms. NOTHING is sent: emailing the supplier is a separate,
+/// vendor-gated step. Its own line table (a PO is what we expect to pay a supplier, not a customer
+/// money document). Generic (Sales & Money core). Tenant-scoped.
+model PurchaseOrder {
+  id                String              @id @default(uuid()) @db.Uuid
+  tenantId          String              @db.Uuid
+  workItemId        String              @db.Uuid
+  supplierContactId String?             @db.Uuid
+  reference         String
+  status            String              @default("draft") // 'draft' | 'confirmed' | 'sent'
+  notes             String?
+  createdAt         DateTime            @default(now())
+  updatedAt         DateTime            @updatedAt
+  tenant            Tenant              @relation(fields: [tenantId], references: [id])
+  workItem          WorkItem            @relation(fields: [workItemId], references: [id])
+  lines             PurchaseOrderLine[]
+
+  @@unique([tenantId, reference])
+  @@index([tenantId])
+  @@index([tenantId, workItemId])
+  @@map("onestack_purchase_order")
+}
+
+/// A line on a draft purchase order (Phase 2 flagship, slice C). Expected cost to us, editable draft.
+model PurchaseOrderLine {
+  id              String        @id @default(uuid()) @db.Uuid
+  tenantId        String        @db.Uuid
+  purchaseOrderId String        @db.Uuid
+  scopePartId     String?       @db.Uuid
+  description     String
+  quantity        Int           @default(1)
+  unitPriceCents  Int           @default(0)
+  sortOrder       Int           @default(0)
+  createdAt       DateTime      @default(now())
+  updatedAt       DateTime      @updatedAt
+  tenant          Tenant        @relation(fields: [tenantId], references: [id])
+  purchaseOrder   PurchaseOrder @relation(fields: [purchaseOrderId], references: [id], onDelete: Cascade)
+
+  @@index([tenantId])
+  @@index([tenantId, purchaseOrderId])
+  @@map("onestack_purchase_order_line")
 }
 
 /// Per-tenant reference sequence for Work Items (card #6.3).
