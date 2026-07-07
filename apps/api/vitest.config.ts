@@ -25,7 +25,9 @@ export default defineConfig({
     retry: 0,
     setupFiles: ['./test/setup.ts'],
     testTimeout: 45_000,
-    hookTimeout: 60_000, // cold Supabase direct-connection setup in beforeAll can be slow
+    // Integration beforeAll/afterAll do multi-step setup + multi-table cleanup over the Supabase pooler,
+    // which can be slow under load. Generous so real work isn't cut off; a genuinely hung hook still fails.
+    hookTimeout: 180_000,
     fileParallelism: false, // integration specs share tenant tables; run files serially
     coverage: {
       provider: 'v8',
