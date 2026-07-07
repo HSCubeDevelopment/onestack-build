@@ -23,6 +23,12 @@ import {
   StatusBadge,
   useAsync,
 } from '@/components/ui';
+import {
+  ClaimFileTab,
+  EstimateTab,
+  FloorOrdersTab,
+  SupplierInvoicesTab,
+} from '@/components/job/Phase2Tabs';
 
 const EVENTS: Record<string, { event: string; label: string }[]> = {
   Booked: [{ event: 'START', label: 'Start work' }],
@@ -35,7 +41,28 @@ const EVENTS: Record<string, { event: string; label: string }[]> = {
   Collected: [],
 };
 
-type Tab = 'overview' | 'quotes' | 'invoices' | 'notes' | 'photos';
+type Tab =
+  | 'overview'
+  | 'estimate'
+  | 'quotes'
+  | 'invoices'
+  | 'claim'
+  | 'floor'
+  | 'supplier'
+  | 'notes'
+  | 'photos';
+
+const TAB_LABELS: Record<Tab, string> = {
+  overview: 'Overview',
+  estimate: 'AI estimate',
+  quotes: 'Quotes',
+  invoices: 'Invoices',
+  claim: 'Claim file',
+  floor: 'Floor orders',
+  supplier: 'Supplier invoices',
+  notes: 'Notes',
+  photos: 'Photos',
+};
 
 export default function JobDetailPage() {
   const { id } = useParams<{ id: string }>();
@@ -143,8 +170,7 @@ function JobDetail({
     act(() => api.post(`/work-items/${jobId}/transition`, { event }));
   const assignMe = () =>
     act(() => api.post(`/work-items/${jobId}/assign`, { assignees: [userId] }));
-  const unassign = () =>
-    act(() => api.post(`/work-items/${jobId}/assign`, { assignees: [] }));
+  const unassign = () => act(() => api.post(`/work-items/${jobId}/assign`, { assignees: [] }));
 
   return (
     <>
@@ -181,14 +207,21 @@ function JobDetail({
       <ErrorBanner message={actionErr} />
 
       <div className="tabs">
-        {(['overview', 'quotes', 'invoices', 'notes', 'photos'] as Tab[]).map((t) => (
-          <div
-            key={t}
-            className={`tab ${tab === t ? 'active' : ''}`}
-            onClick={() => setTab(t)}
-            style={{ textTransform: 'capitalize' }}
-          >
-            {t}
+        {(
+          [
+            'overview',
+            'estimate',
+            'quotes',
+            'invoices',
+            'claim',
+            'floor',
+            'supplier',
+            'notes',
+            'photos',
+          ] as Tab[]
+        ).map((t) => (
+          <div key={t} className={`tab ${tab === t ? 'active' : ''}`} onClick={() => setTab(t)}>
+            {TAB_LABELS[t]}
           </div>
         ))}
       </div>
@@ -196,9 +229,13 @@ function JobDetail({
       {tab === 'overview' && (
         <OverviewTab job={job} subjects={subjects} contactName={contactName} />
       )}
-      {tab === 'quotes' && (
-        <QuotesTab quotes={quotes} jobId={jobId} act={act} setTab={setTab} />
+      {tab === 'estimate' && (
+        <EstimateTab jobId={jobId} reloadJob={reload} setTab={(t) => setTab(t as Tab)} />
       )}
+      {tab === 'claim' && <ClaimFileTab jobId={jobId} />}
+      {tab === 'floor' && <FloorOrdersTab jobId={jobId} />}
+      {tab === 'supplier' && <SupplierInvoicesTab jobId={jobId} />}
+      {tab === 'quotes' && <QuotesTab quotes={quotes} jobId={jobId} act={act} setTab={setTab} />}
       {tab === 'invoices' && (
         <InvoicesTab
           invoices={invoices}
@@ -254,9 +291,7 @@ function OverviewTab({
             />
             <Field
               label="Excess"
-              value={
-                typeof claim.excessCents === 'number' ? money(claim.excessCents) : undefined
-              }
+              value={typeof claim.excessCents === 'number' ? money(claim.excessCents) : undefined}
             />
             <Field
               label="Bill payer"
@@ -314,7 +349,13 @@ function LinesTable({
   totalCents,
   onDelete,
 }: {
-  lines: { id: string; description: string; quantity: number; unitPriceCents: number; lineTotalCents: number }[];
+  lines: {
+    id: string;
+    description: string;
+    quantity: number;
+    unitPriceCents: number;
+    lineTotalCents: number;
+  }[];
   subtotalCents: number;
   gstCents: number;
   totalCents: number;
@@ -446,9 +487,7 @@ function QuotesTab({
                     <button
                       className="btn sm"
                       onClick={() =>
-                        void act(() =>
-                          api.post(`/quotes/${q.id}/status`, { status: 'Accepted' }),
-                        )
+                        void act(() => api.post(`/quotes/${q.id}/status`, { status: 'Accepted' }))
                       }
                     >
                       Accept
@@ -456,9 +495,7 @@ function QuotesTab({
                     <button
                       className="btn sm"
                       onClick={() =>
-                        void act(() =>
-                          api.post(`/quotes/${q.id}/status`, { status: 'Declined' }),
-                        )
+                        void act(() => api.post(`/quotes/${q.id}/status`, { status: 'Declined' }))
                       }
                     >
                       Decline
@@ -494,8 +531,7 @@ function QuotesTab({
                 totalCents={q.totalCents}
                 onDelete={
                   isDraft
-                    ? (lineId) =>
-                        void act(() => api.del(`/quotes/${q.id}/lines/${lineId}`))
+                    ? (lineId) => void act(() => api.del(`/quotes/${q.id}/lines/${lineId}`))
                     : undefined
                 }
               />
@@ -648,7 +684,9 @@ function InvoicesTab({
 
       {invoices.length === 0 ? (
         <div className="card">
-          <EmptyState>No invoices yet. Invoices are usually created from an accepted quote.</EmptyState>
+          <EmptyState>
+            No invoices yet. Invoices are usually created from an accepted quote.
+          </EmptyState>
         </div>
       ) : (
         invoices.map((inv) => {
@@ -1008,11 +1046,7 @@ function RecordPaymentModal({
 }: {
   invoice: Invoice;
   onClose: () => void;
-  onSubmit: (body: {
-    amountCents: number;
-    method: string;
-    portionId?: string;
-  }) => Promise<void>;
+  onSubmit: (body: { amountCents: number; method: string; portionId?: string }) => Promise<void>;
 }) {
   const [amount, setAmount] = useState('');
   const [method, setMethod] = useState('cash');

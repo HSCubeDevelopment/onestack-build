@@ -4,7 +4,12 @@ import { AuthContext } from '../auth/auth.types';
 import { CurrentUser } from '../auth/current-user.decorator';
 import { JwtAuthGuard } from '../auth/jwt-auth.guard';
 import { RolesGuard } from '../auth/roles.guard';
-import { ClaimFileExport, ClaimFileService, ClaimFileView } from './claim-file.service';
+import {
+  ClaimDocument,
+  ClaimFileExport,
+  ClaimFileService,
+  ClaimFileView,
+} from './claim-file.service';
 import { ShareResult } from './claim-pack-sharer';
 
 /**
@@ -38,5 +43,27 @@ export class ClaimFileController {
   @Post('work-items/:jobId/claim-file/share')
   share(@CurrentUser() user: AuthContext, @Param('jobId') jobId: string): Promise<ShareResult> {
     return this.claims.share(user.tenantId, jobId);
+  }
+
+  /** Generate a claim-summary document for the job; it joins the pack's documents list. */
+  @Post('work-items/:jobId/claim-file/document')
+  generateDocument(
+    @CurrentUser() user: AuthContext,
+    @Param('jobId') jobId: string,
+  ): Promise<ClaimDocument> {
+    return this.claims.generateDocument(user.tenantId, jobId, new Date());
+  }
+
+  /** Download a generated document's content (tenant-scoped). */
+  @Get('claim-file/documents/:documentId/content')
+  async downloadDocument(
+    @CurrentUser() user: AuthContext,
+    @Param('documentId') documentId: string,
+    @Res({ passthrough: true }) res: Response,
+  ): Promise<string> {
+    const content = await this.claims.downloadDocument(user.tenantId, documentId);
+    res.setHeader('Content-Type', 'text/plain; charset=utf-8');
+    res.setHeader('Content-Disposition', `attachment; filename="document-${documentId}.txt"`);
+    return content;
   }
 }

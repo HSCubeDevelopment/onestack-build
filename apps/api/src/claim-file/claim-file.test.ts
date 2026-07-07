@@ -6,10 +6,13 @@ import { NoopClaimPackSharer } from './claim-pack-sharer';
 
 describe('claimFileCounts', () => {
   it('counts each artefact kind', () => {
-    expect(claimFileCounts({ photos: [1, 2, 3], quotes: [1], invoices: [] })).toEqual({
+    expect(
+      claimFileCounts({ photos: [1, 2, 3], quotes: [1], invoices: [], documents: [1, 2] }),
+    ).toEqual({
       photos: 3,
       quotes: 1,
       invoices: 0,
+      documents: 2,
     });
   });
 });

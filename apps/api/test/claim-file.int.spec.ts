@@ -96,6 +96,7 @@ describe.skipIf(!hasDb)('Claim file — claim pack per job (Phase 2)', () => {
         'onestack_line_item',
         'onestack_invoice',
         'onestack_quote',
+        'onestack_document',
         'onestack_reference_counter',
         'onestack_work_item_attachment',
         'onestack_work_item_subject',
@@ -129,7 +130,8 @@ describe.skipIf(!hasDb)('Claim file — claim pack per job (Phase 2)', () => {
     expect(pack.customer.displayName).toBe('Jane Motorist');
     expect(pack.insurer).toMatchObject({ id: insurerId, displayName: 'AAMI Insurance' });
     expect(pack.vehicles).toHaveLength(1);
-    expect(pack.counts).toEqual({ photos: 1, quotes: 1, invoices: 1 });
+    expect(pack.counts).toEqual({ photos: 1, quotes: 1, invoices: 1, documents: 0 });
+    expect(pack.documents).toEqual([]);
     // Invoice from a 2×5000 labour quote → 10000 net + 10% GST = 11000 invoiced, unpaid.
     expect(pack.financials).toEqual({
       invoicedCents: 11000,
@@ -149,6 +151,33 @@ describe.skipIf(!hasDb)('Claim file — claim pack per job (Phase 2)', () => {
     expect(res.body.generatedAt).toBeTruthy();
     expect(res.body.claim.claimNumber).toBe('CLM-2026-777');
     expect(res.body.counts.invoices).toBe(1);
+  });
+
+  it('generates a claim-summary document that joins the pack and can be downloaded', async () => {
+    const doc = (
+      await http().post(`/api/v1/work-items/${jobId}/claim-file/document`).set(auth(a)).expect(201)
+    ).body;
+    expect(doc.type).toBe('claim_summary');
+    expect(doc.parentType).toBe('work_item');
+    expect(doc.templateRef).toBe('claim_summary_v1');
+
+    // It now appears in the pack.
+    const pack = (
+      await http().get(`/api/v1/work-items/${jobId}/claim-file`).set(auth(a)).expect(200)
+    ).body;
+    expect(pack.counts.documents).toBe(1);
+    expect(pack.documents.some((d: { id: string }) => d.id === doc.id)).toBe(true);
+
+    // Its content downloads as an attachment and carries the claim number.
+    const dl = await http()
+      .get(`/api/v1/claim-file/documents/${doc.id}/content`)
+      .set(auth(a))
+      .expect(200);
+    expect(dl.headers['content-disposition']).toContain('attachment');
+    expect(dl.text).toContain('CLM-2026-777');
+
+    // Tenant-isolated: shop B cannot download shop A's document.
+    await http().get(`/api/v1/claim-file/documents/${doc.id}/content`).set(auth(b)).expect(404);
   });
 
   it('reports the pack was not shared (no provider configured — never auto-shares)', async () => {
