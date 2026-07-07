@@ -1,6 +1,7 @@
 import { Module } from '@nestjs/common';
 import { ConfigModule } from '@nestjs/config';
 import { EventEmitterModule } from '@nestjs/event-emitter';
+import { AiModule } from './ai/ai.module';
 import { AuditModule } from './audit/audit.module';
 import { AuthModule } from './auth/auth.module';
 import { BoardModule } from './board/board.module';
@@ -51,6 +52,7 @@ import { WorkItemModule } from './work-items/work-item.module';
     PriceBookModule, // reusable labour/parts catalogue (#32)
     BoardModule, // job board read-model over work items (#22)
     DashboardModule, // thin owner dashboard read-model (#52)
+    AiModule, // photo-to-quote AI damage scope (Phase 2 flagship, slice A)
   ],
   controllers: [HealthController],
 })

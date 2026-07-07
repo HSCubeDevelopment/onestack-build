@@ -49,6 +49,7 @@ model Tenant {
   leads               Lead[]
   customFieldDefs     CustomField[]
   priceBookItems      PriceBookItem[]
+  damageScopes        DamageScope[]
 
   @@map("onestack_tenant")
 }
@@ -336,6 +337,7 @@ model WorkItem {
   notes           WorkItemNote[]
   attachments     WorkItemAttachment[]
   bookings        Booking[]
+  damageScopes    DamageScope[]
 
   @@unique([tenantId, reference])
   @@index([tenantId])
@@ -501,6 +503,30 @@ model PriceBookItem {
   @@index([tenantId])
   @@index([tenantId, active])
   @@map("onestack_price_book_item")
+}
+
+/// AI photo-to-quote (Phase 2 flagship, slice A). The AI's proposed damage scope for a job, held as an
+/// EDITABLE DRAFT a human confirms — nothing auto-sent or auto-ordered. `items` is a list of panels +
+/// operations (replace | repair | paint); "replace" items become priced part lines downstream. Generic
+/// storage — the automotive meaning lives in the pack. `model` records which analyzer produced it. Tenant-scoped.
+model DamageScope {
+  id         String   @id @default(uuid()) @db.Uuid
+  tenantId   String   @db.Uuid
+  workItemId String   @db.Uuid
+  status     String   @default("draft") // 'draft' | 'applied'
+  source     String   @default("ai") // 'ai' | 'manual'
+  model      String
+  summary    String   @default("")
+  items      Json     @default("[]")
+  photoCount Int      @default(0)
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+  tenant     Tenant   @relation(fields: [tenantId], references: [id])
+  workItem   WorkItem @relation(fields: [workItemId], references: [id])
+
+  @@index([tenantId])
+  @@index([tenantId, workItemId])
+  @@map("onestack_damage_scope")
 }
 
 /// Per-tenant reference sequence for Work Items (card #6.3).
