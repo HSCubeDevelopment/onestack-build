@@ -3,6 +3,7 @@ import { ConfigModule } from '@nestjs/config';
 import { EventEmitterModule } from '@nestjs/event-emitter';
 import { AiModule } from './ai/ai.module';
 import { AuditModule } from './audit/audit.module';
+import { ClaimFileModule } from './claim-file/claim-file.module';
 import { AuthModule } from './auth/auth.module';
 import { BoardModule } from './board/board.module';
 import { CompositionModule } from './composition/composition.module';
@@ -53,6 +54,7 @@ import { WorkItemModule } from './work-items/work-item.module';
     BoardModule, // job board read-model over work items (#22)
     DashboardModule, // thin owner dashboard read-model (#52)
     AiModule, // photo-to-quote AI damage scope (Phase 2 flagship, slice A)
+    ClaimFileModule, // claim pack read-model: photos/quotes/invoices per claim (Phase 2)
   ],
   controllers: [HealthController],
 })
