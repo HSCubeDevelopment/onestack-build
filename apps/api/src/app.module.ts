@@ -12,6 +12,7 @@ import { CoreModule } from './core/core.module';
 import { CustomFieldsModule } from './custom-fields/custom-fields.module';
 import { DashboardModule } from './dashboard/dashboard.module';
 import { EventingModule } from './eventing/eventing.module';
+import { MaterialRequestModule } from './floor-ordering/material-request.module';
 import { HealthController } from './health/health.controller';
 import { JobsModule } from './jobs/jobs.module';
 import { LineItemsModule } from './line-items/line-items.module';
@@ -55,6 +56,7 @@ import { WorkItemModule } from './work-items/work-item.module';
     DashboardModule, // thin owner dashboard read-model (#52)
     AiModule, // photo-to-quote AI damage scope (Phase 2 flagship, slice A)
     ClaimFileModule, // claim pack read-model: photos/quotes/invoices per claim (Phase 2)
+    MaterialRequestModule, // floor ordering: technician request → manager approve → email (Phase 2)
   ],
   controllers: [HealthController],
 })
