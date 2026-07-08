@@ -6,6 +6,7 @@ import { AssistantModule } from './assistant/assistant.module';
 import { AuditModule } from './audit/audit.module';
 import { DocumentsModule } from './documents/documents.module';
 import { InsightsModule } from './insights/insights.module';
+import { PortalModule } from './portal/portal.module';
 import { ReportingModule } from './reporting/reporting.module';
 import { ClaimFileModule } from './claim-file/claim-file.module';
 import { AuthModule } from './auth/auth.module';
@@ -81,6 +82,7 @@ import { WorkItemModule } from './work-items/work-item.module';
     InsightsModule, // AI insights & prediction: no-show/churn risk + activity summary (Phase 3; deterministic MVP)
     DocumentsModule, // documents & e-signature: generate → tokenised public sign page (Phase 3; certified e-sign vendor-gated)
     ReportingModule, // reporting & dashboards: revenue/jobs/turnaround/utilisation overview (Phase 3; read-only)
+    PortalModule, // customer portal: passwordless per-customer self-service (jobs/docs/quotes/invoices) (Phase 3)
   ],
   controllers: [HealthController],
 })

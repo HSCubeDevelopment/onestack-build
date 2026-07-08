@@ -67,6 +67,7 @@ model Tenant {
   reviews             Review[]
   assistantMessages   AssistantMessage[]
   documentSignatures  DocumentSignature[]
+  portalAccess        PortalAccess[]
 
   @@map("onestack_tenant")
 }
@@ -359,9 +360,29 @@ model Contact {
   convertedLeads  Lead[]
   contactTags     ContactTag[]
   intakeSubmissions IntakeSubmission[]
+  portalAccess    PortalAccess[]
 
   @@index([tenantId])
   @@map("onestack_contact")
+}
+
+/// Customer / client portal access (card #150). A per-customer, passwordless credential: an unguessable
+/// token opens a branded self-service page (jobs, documents, quotes, invoices). Passwordless by design —
+/// we do NOT hand-roll customer auth; the token is the credential and can be revoked. Tenant-scoped.
+model PortalAccess {
+  id              String    @id @default(uuid()) @db.Uuid
+  tenantId        String    @db.Uuid
+  contactId       String    @db.Uuid
+  token           String    @unique
+  createdByUserId String?   @db.Uuid
+  createdAt       DateTime  @default(now())
+  revokedAt       DateTime?
+  tenant          Tenant    @relation(fields: [tenantId], references: [id])
+  contact         Contact   @relation(fields: [contactId], references: [id], onDelete: Cascade)
+
+  @@index([tenantId])
+  @@index([tenantId, contactId])
+  @@map("onestack_portal_access")
 }
 
 /// Digital intake & forms (Phase 3). A custom form a shop defines — a list of question fields — filled in
