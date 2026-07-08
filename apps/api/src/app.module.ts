@@ -27,6 +27,7 @@ import { SubjectModule } from './subjects/subject.module';
 import { SupplierInvoiceModule } from './supplier-invoices/supplier-invoice.module';
 import { TagsModule } from './tags/tags.module';
 import { TenantModule } from './tenancy/tenant.module';
+import { TimelineModule } from './timeline/timeline.module';
 import { TerminologyModule } from './terminology/terminology.module';
 import { WorkItemModule } from './work-items/work-item.module';
 
@@ -61,6 +62,7 @@ import { WorkItemModule } from './work-items/work-item.module';
     MaterialRequestModule, // floor ordering: technician request → manager approve → email (Phase 2)
     SupplierInvoiceModule, // supplier invoice capture → accounting (Phase 2; OCR + sync stubbed)
     TagsModule, // segmentation & tagging: group contacts into segments (Phase 3)
+    TimelineModule, // customer timeline read-model: jobs + notes per customer (Phase 3)
   ],
   controllers: [HealthController],
 })

@@ -27,6 +27,7 @@ export interface WorkItemView {
   assignees: string[];
   fields: Record<string, unknown>;
   version: number;
+  createdAt: Date;
 }
 
 /**
@@ -224,6 +225,7 @@ function toView(wi: {
   assignees: unknown;
   fields: unknown;
   version: number;
+  createdAt: Date;
 }): WorkItemView {
   return {
     id: wi.id,
@@ -234,5 +236,6 @@ function toView(wi: {
     assignees: (wi.assignees as string[]) ?? [],
     fields: (wi.fields as Record<string, unknown>) ?? {},
     version: wi.version,
+    createdAt: wi.createdAt,
   };
 }
