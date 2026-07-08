@@ -66,6 +66,7 @@ model Tenant {
   campaigns           Campaign[]
   reviews             Review[]
   assistantMessages   AssistantMessage[]
+  documentSignatures  DocumentSignature[]
 
   @@map("onestack_tenant")
 }
@@ -182,10 +183,38 @@ model Document {
   storageRef      String
   generatedAt     DateTime @default(now())
   tenant          Tenant   @relation(fields: [tenantId], references: [id])
+  signatures      DocumentSignature[]
 
   @@index([tenantId])
   @@index([tenantId, parentType, parentId])
   @@map("onestack_document")
+}
+
+/// An e-signature request on a generated document (card #143). An unguessable token opens a public sign
+/// page (secure document exchange); the signer views the document and signs by typed-name acknowledgement.
+/// A legally-binding CERTIFIED e-signature via a provider (DocuSign / Adobe Sign) is a deferred vendor,
+/// recorded via `provider` + `certified` (the built-in flow is a basic, non-certified acknowledgement).
+/// Tenant-scoped.
+model DocumentSignature {
+  id                String    @id @default(uuid()) @db.Uuid
+  tenantId          String    @db.Uuid
+  documentId        String    @db.Uuid
+  token             String    @unique
+  signerName        String
+  signerEmail       String?
+  status            String    @default("pending") // 'pending' | 'signed' | 'declined'
+  signedName        String?
+  signedAt          DateTime?
+  provider          String    @default("noop")
+  certified         Boolean   @default(false)
+  requestedByUserId String?   @db.Uuid
+  createdAt         DateTime  @default(now())
+  tenant            Tenant    @relation(fields: [tenantId], references: [id])
+  document          Document  @relation(fields: [documentId], references: [id], onDelete: Cascade)
+
+  @@index([tenantId])
+  @@index([tenantId, documentId])
+  @@map("onestack_document_signature")
 }
 
 /// Line Item shared by Quote & Invoice (card #6.9). Linked polymorphically by parentType + parentId.

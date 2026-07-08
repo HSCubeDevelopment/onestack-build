@@ -4,6 +4,7 @@ import { EventEmitterModule } from '@nestjs/event-emitter';
 import { AiModule } from './ai/ai.module';
 import { AssistantModule } from './assistant/assistant.module';
 import { AuditModule } from './audit/audit.module';
+import { DocumentsModule } from './documents/documents.module';
 import { InsightsModule } from './insights/insights.module';
 import { ClaimFileModule } from './claim-file/claim-file.module';
 import { AuthModule } from './auth/auth.module';
@@ -77,6 +78,7 @@ import { WorkItemModule } from './work-items/work-item.module';
     ReviewsModule, // reviews & reputation: request → public submit → summary (Phase 3)
     AssistantModule, // AI assistant/receptionist: DRAFT replies (Claude when keyed, stub otherwise) (Phase 3)
     InsightsModule, // AI insights & prediction: no-show/churn risk + activity summary (Phase 3; deterministic MVP)
+    DocumentsModule, // documents & e-signature: generate → tokenised public sign page (Phase 3; certified e-sign vendor-gated)
   ],
   controllers: [HealthController],
 })
