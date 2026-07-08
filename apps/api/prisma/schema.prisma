@@ -61,6 +61,7 @@ model Tenant {
   contactTags         ContactTag[]
   intakeForms         IntakeForm[]
   intakeSubmissions   IntakeSubmission[]
+  bookingPage         BookingPage?
 
   @@map("onestack_tenant")
 }
@@ -363,6 +364,25 @@ model IntakeSubmission {
   @@index([tenantId])
   @@index([tenantId, contactId])
   @@map("onestack_intake_submission")
+}
+
+/// Online booking (Phase 3). A per-tenant public self-service booking page: which resources are bookable,
+/// the default slot length, and an unguessable token. Generic (Scheduling & Ops core). One per tenant.
+/// Deposits (payments) + Google/social channels are deferred (not modelled here). Tenant-scoped.
+model BookingPage {
+  id          String   @id @default(uuid()) @db.Uuid
+  tenantId    String   @unique @db.Uuid
+  publicToken String   @unique
+  name        String   @default("Book online")
+  enabled     Boolean  @default(false)
+  slotMinutes Int      @default(60)
+  resourceIds Json     @default("[]")
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+  tenant      Tenant   @relation(fields: [tenantId], references: [id])
+
+  @@index([tenantId])
+  @@map("onestack_booking_page")
 }
 
 /// Segmentation & tagging (Phase 3). A named label a shop defines and assigns to contacts, so customers

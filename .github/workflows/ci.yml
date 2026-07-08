@@ -128,6 +128,7 @@ jobs:
           npx prisma db execute --file prisma/sql/0023_supplier_invoice.sql --schema prisma/schema.prisma
           npx prisma db execute --file prisma/sql/0024_tags.sql --schema prisma/schema.prisma
           npx prisma db execute --file prisma/sql/0025_intake_form.sql --schema prisma/schema.prisma
+          npx prisma db execute --file prisma/sql/0026_booking_page.sql --schema prisma/schema.prisma
       - name: RLS gate
         run: npm run check:rls
       - name: Tenant-isolation + integration tests

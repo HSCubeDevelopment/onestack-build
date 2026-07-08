@@ -18,6 +18,7 @@ import { JobsModule } from './jobs/jobs.module';
 import { LineItemsModule } from './line-items/line-items.module';
 import { ModulesModule } from './modules/modules.module';
 import { NotificationsModule } from './notifications/notifications.module';
+import { OnlineBookingModule } from './online-booking/online-booking.module';
 import { IntakeModule } from './intake/intake.module';
 import { InvoicesModule } from './invoices/invoices.module';
 import { PriceBookModule } from './price-book/price-book.module';
@@ -65,6 +66,7 @@ import { WorkItemModule } from './work-items/work-item.module';
     TagsModule, // segmentation & tagging: group contacts into segments (Phase 3)
     TimelineModule, // customer timeline read-model: jobs + notes per customer (Phase 3)
     IntakeModule, // digital intake & forms: custom forms → customer record (Phase 3)
+    OnlineBookingModule, // public self-service booking (Phase 3; deposits + channels deferred)
   ],
   controllers: [HealthController],
 })
