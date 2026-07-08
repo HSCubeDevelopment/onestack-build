@@ -7,6 +7,7 @@ import { AuditModule } from './audit/audit.module';
 import { BrandingModule } from './branding/branding.module';
 import { DocumentsModule } from './documents/documents.module';
 import { InsightsModule } from './insights/insights.module';
+import { OnboardingModule } from './onboarding/onboarding.module';
 import { PortalModule } from './portal/portal.module';
 import { ReportingModule } from './reporting/reporting.module';
 import { ClaimFileModule } from './claim-file/claim-file.module';
@@ -85,6 +86,7 @@ import { WorkItemModule } from './work-items/work-item.module';
     ReportingModule, // reporting & dashboards: revenue/jobs/turnaround/utilisation overview (Phase 3; read-only)
     PortalModule, // customer portal: passwordless per-customer self-service (jobs/docs/quotes/invoices) (Phase 3)
     BrandingModule, // brand profile: per-tenant business name/logo/colour for customer-facing pages (Phase 3)
+    OnboardingModule, // onboarding & data migration: CSV customer import + setup checklist (Phase 3)
   ],
   controllers: [HealthController],
 })
