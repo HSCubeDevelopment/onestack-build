@@ -13,5 +13,6 @@ import { BoardService } from './board.service';
   imports: [WorkItemModule, SubjectModule, ContactsModule],
   controllers: [BoardController],
   providers: [BoardService],
+  exports: [BoardService], // dispatch board regroups the same cards by technician
 })
 export class BoardModule {}

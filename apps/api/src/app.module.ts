@@ -11,6 +11,7 @@ import { ContactsModule } from './contacts/contacts.module';
 import { CoreModule } from './core/core.module';
 import { CustomFieldsModule } from './custom-fields/custom-fields.module';
 import { DashboardModule } from './dashboard/dashboard.module';
+import { DispatchModule } from './dispatch/dispatch.module';
 import { EventingModule } from './eventing/eventing.module';
 import { MaterialRequestModule } from './floor-ordering/material-request.module';
 import { HealthController } from './health/health.controller';
@@ -67,6 +68,7 @@ import { WorkItemModule } from './work-items/work-item.module';
     TimelineModule, // customer timeline read-model: jobs + notes per customer (Phase 3)
     IntakeModule, // digital intake & forms: custom forms → customer record (Phase 3)
     OnlineBookingModule, // public self-service booking (Phase 3; deposits + channels deferred)
+    DispatchModule, // dispatch & assignment: jobs by technician + status/ETA (Phase 3)
   ],
   controllers: [HealthController],
 })
