@@ -57,6 +57,8 @@ model Tenant {
   materialRequestLines MaterialRequestLine[]
   supplierInvoices    SupplierInvoice[]
   supplierInvoiceLines SupplierInvoiceLine[]
+  tags                Tag[]
+  contactTags         ContactTag[]
 
   @@map("onestack_tenant")
 }
@@ -319,9 +321,44 @@ model Contact {
   payerInvoices   Invoice[]        @relation("InvoicePayer")
   payerPortions   InvoicePortion[] @relation("PortionPayer")
   convertedLeads  Lead[]
+  contactTags     ContactTag[]
 
   @@index([tenantId])
   @@map("onestack_contact")
+}
+
+/// Segmentation & tagging (Phase 3). A named label a shop defines and assigns to contacts, so customers
+/// can be grouped for targeted comms and reporting. Generic (Customer & CRM core). Tenant-scoped.
+model Tag {
+  id          String       @id @default(uuid()) @db.Uuid
+  tenantId    String       @db.Uuid
+  name        String
+  color       String?
+  createdAt   DateTime     @default(now())
+  updatedAt   DateTime     @updatedAt
+  tenant      Tenant       @relation(fields: [tenantId], references: [id])
+  contactTags ContactTag[]
+
+  @@index([tenantId])
+  @@map("onestack_tag")
+}
+
+/// A tag assigned to a contact (Phase 3). The many-to-many join; a tag groups many contacts (a segment).
+model ContactTag {
+  id        String   @id @default(uuid()) @db.Uuid
+  tenantId  String   @db.Uuid
+  tagId     String   @db.Uuid
+  contactId String   @db.Uuid
+  createdAt DateTime @default(now())
+  tenant    Tenant   @relation(fields: [tenantId], references: [id])
+  tag       Tag      @relation(fields: [tagId], references: [id], onDelete: Cascade)
+  contact   Contact  @relation(fields: [contactId], references: [id], onDelete: Cascade)
+
+  @@unique([tenantId, tagId, contactId])
+  @@index([tenantId])
+  @@index([tenantId, contactId])
+  @@index([tenantId, tagId])
+  @@map("onestack_contact_tag")
 }
 
 /// The generic central unit of work (card #6.3). NO vertical nouns — type/state/fields are pack config.
