@@ -20,7 +20,13 @@ describe.skipIf(!hasDb)('Segmentation & tagging (Phase 3)', () => {
   const auth = (t: TestTenant) => ({ Authorization: `Bearer ${t.ownerToken}` });
 
   const makeContact = async (t: TestTenant, name: string): Promise<string> =>
-    (await http().post('/api/v1/contacts').set(auth(t)).send({ displayName: name })).body.id;
+    (
+      await http()
+        .post('/api/v1/contacts')
+        .set(auth(t))
+        .send({ displayName: name, phone: '0400000000' })
+        .expect(201)
+    ).body.id;
 
   beforeAll(async () => {
     admin = adminPrisma();
