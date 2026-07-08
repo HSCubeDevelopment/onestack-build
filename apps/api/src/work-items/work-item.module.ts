@@ -24,6 +24,6 @@ import { WorkItemService } from './work-item.service';
       useFactory: () => SupabaseAttachmentStorage.fromEnv() ?? new InMemoryAttachmentStorage(),
     },
   ],
-  exports: [WorkItemService, AttachmentService], // AttachmentService: AI scope reads a job's photos
+  exports: [WorkItemService, AttachmentService, NoteService], // NoteService: customer timeline reads job notes
 })
 export class WorkItemModule {}
