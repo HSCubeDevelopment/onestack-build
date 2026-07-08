@@ -12,5 +12,6 @@ import { SchedulingController } from './scheduling.controller';
 @Module({
   controllers: [SchedulingController, ResourceController, BookingController],
   providers: [ResourceService, BookingService],
+  exports: [ResourceService, BookingService], // online booking reuses the overlap-checked booking create
 })
 export class SchedulingModule {}
