@@ -26,6 +26,7 @@ import { InvoicesModule } from './invoices/invoices.module';
 import { PriceBookModule } from './price-book/price-book.module';
 import { PacksModule } from './packs/packs.module';
 import { QuotesModule } from './quotes/quotes.module';
+import { ReviewsModule } from './reviews/reviews.module';
 import { SchedulingModule } from './scheduling/scheduling.module';
 import { SubjectModule } from './subjects/subject.module';
 import { SupplierInvoiceModule } from './supplier-invoices/supplier-invoice.module';
@@ -71,6 +72,7 @@ import { WorkItemModule } from './work-items/work-item.module';
     OnlineBookingModule, // public self-service booking (Phase 3; deposits + channels deferred)
     DispatchModule, // dispatch & assignment: jobs by technician + status/ETA (Phase 3)
     CampaignsModule, // marketing campaigns: segmented email/SMS (Phase 3; delivery vendor-gated)
+    ReviewsModule, // reviews & reputation: request → public submit → summary (Phase 3)
   ],
   controllers: [HealthController],
 })

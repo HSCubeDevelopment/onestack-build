@@ -64,6 +64,7 @@ model Tenant {
   bookingPage         BookingPage?
   dispatches          Dispatch[]
   campaigns           Campaign[]
+  reviews             Review[]
 
   @@map("onestack_tenant")
 }
@@ -444,6 +445,31 @@ model Campaign {
 
   @@index([tenantId])
   @@map("onestack_campaign")
+}
+
+/// Reviews & reputation (Phase 3). A review requested from a customer after a job (a tokenised link they
+/// submit a star rating + comment through), aggregated into a reputation summary. Generic (Comms core).
+/// Emailing the invite + pulling external reviews are deferred (vendor). Tenant-scoped.
+model Review {
+  id                String    @id @default(uuid()) @db.Uuid
+  tenantId          String    @db.Uuid
+  workItemId        String?   @db.Uuid
+  contactId         String?   @db.Uuid
+  token             String    @unique
+  status            String    @default("requested") // 'requested' | 'submitted'
+  source            String    @default("web")
+  reviewerName      String?
+  rating            Int?
+  comment           String?
+  published         Boolean   @default(true)
+  requestedByUserId String?   @db.Uuid
+  createdAt         DateTime  @default(now())
+  submittedAt       DateTime?
+  tenant            Tenant    @relation(fields: [tenantId], references: [id])
+
+  @@index([tenantId])
+  @@index([tenantId, status])
+  @@map("onestack_review")
 }
 
 /// A tag assigned to a contact (Phase 3). The many-to-many join; a tag groups many contacts (a segment).
