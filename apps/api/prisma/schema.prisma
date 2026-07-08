@@ -59,6 +59,8 @@ model Tenant {
   supplierInvoiceLines SupplierInvoiceLine[]
   tags                Tag[]
   contactTags         ContactTag[]
+  intakeForms         IntakeForm[]
+  intakeSubmissions   IntakeSubmission[]
 
   @@map("onestack_tenant")
 }
@@ -322,9 +324,45 @@ model Contact {
   payerPortions   InvoicePortion[] @relation("PortionPayer")
   convertedLeads  Lead[]
   contactTags     ContactTag[]
+  intakeSubmissions IntakeSubmission[]
 
   @@index([tenantId])
   @@map("onestack_contact")
+}
+
+/// Digital intake & forms (Phase 3). A custom form a shop defines — a list of question fields — filled in
+/// against a customer. Generic (Customer & CRM core). Tenant-scoped.
+model IntakeForm {
+  id          String             @id @default(uuid()) @db.Uuid
+  tenantId    String             @db.Uuid
+  name        String
+  fields      Json               @default("[]")
+  active      Boolean            @default(true)
+  createdAt   DateTime           @default(now())
+  updatedAt   DateTime           @updatedAt
+  tenant      Tenant             @relation(fields: [tenantId], references: [id])
+  submissions IntakeSubmission[]
+
+  @@index([tenantId])
+  @@map("onestack_intake_form")
+}
+
+/// A completed intake form against a customer (Phase 3) — the answers land on the customer record.
+model IntakeSubmission {
+  id                String     @id @default(uuid()) @db.Uuid
+  tenantId          String     @db.Uuid
+  intakeFormId      String     @db.Uuid
+  contactId         String     @db.Uuid
+  answers           Json       @default("{}")
+  submittedByUserId String?    @db.Uuid
+  submittedAt       DateTime   @default(now())
+  tenant            Tenant     @relation(fields: [tenantId], references: [id])
+  intakeForm        IntakeForm @relation(fields: [intakeFormId], references: [id], onDelete: Cascade)
+  contact           Contact    @relation(fields: [contactId], references: [id], onDelete: Cascade)
+
+  @@index([tenantId])
+  @@index([tenantId, contactId])
+  @@map("onestack_intake_submission")
 }
 
 /// Segmentation & tagging (Phase 3). A named label a shop defines and assigns to contacts, so customers
