@@ -35,6 +35,14 @@ const HEX_COLOR = /^#[0-9a-fA-F]{6}$/;
 export class BrandingService {
   constructor(private readonly tenants: TenantService) {}
 
+  /** Whether the tenant has set up its own brand (vs. the default). Used by the onboarding checklist. */
+  async exists(tenantId: string): Promise<boolean> {
+    const row = await this.tenants.runInTenant(tenantId, (tx) =>
+      tx.brand.findFirst({ where: { tenantId }, select: { id: true } }),
+    );
+    return !!row;
+  }
+
   /** The tenant's brand, or a sensible default when it hasn't been set up yet. */
   async get(tenantId: string): Promise<BrandView> {
     const row = await this.tenants.runInTenant(tenantId, (tx) =>
