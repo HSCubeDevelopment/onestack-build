@@ -11,5 +11,6 @@ import { TagService } from './tag.service';
   imports: [ContactsModule],
   controllers: [TagController],
   providers: [TagService],
+  exports: [TagService], // marketing campaigns target a tag/segment
 })
 export class TagsModule {}

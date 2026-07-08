@@ -63,6 +63,7 @@ model Tenant {
   intakeSubmissions   IntakeSubmission[]
   bookingPage         BookingPage?
   dispatches          Dispatch[]
+  campaigns           Campaign[]
 
   @@map("onestack_tenant")
 }
@@ -416,9 +417,33 @@ model Tag {
   updatedAt   DateTime     @updatedAt
   tenant      Tenant       @relation(fields: [tenantId], references: [id])
   contactTags ContactTag[]
+  campaigns   Campaign[]
 
   @@index([tenantId])
   @@map("onestack_tag")
+}
+
+/// Marketing campaigns (Phase 3). A one-shot segmented email/SMS message targeting a tag/segment. Generic
+/// (Comms & Marketing core). Delivery is a vendor step behind a provider interface (no-op default).
+/// Drip sequences + win-back are a follow-up. Tenant-scoped.
+model Campaign {
+  id             String    @id @default(uuid()) @db.Uuid
+  tenantId       String    @db.Uuid
+  name           String
+  channel        String // 'email' | 'sms'
+  subject        String?
+  body           String    @default("")
+  tagId          String?   @db.Uuid
+  status         String    @default("draft") // 'draft' | 'sent'
+  recipientCount Int?
+  sentAt         DateTime?
+  createdAt      DateTime  @default(now())
+  updatedAt      DateTime  @updatedAt
+  tenant         Tenant    @relation(fields: [tenantId], references: [id])
+  tag            Tag?      @relation(fields: [tagId], references: [id], onDelete: SetNull)
+
+  @@index([tenantId])
+  @@map("onestack_campaign")
 }
 
 /// A tag assigned to a contact (Phase 3). The many-to-many join; a tag groups many contacts (a segment).

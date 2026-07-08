@@ -6,6 +6,7 @@ import { AuditModule } from './audit/audit.module';
 import { ClaimFileModule } from './claim-file/claim-file.module';
 import { AuthModule } from './auth/auth.module';
 import { BoardModule } from './board/board.module';
+import { CampaignsModule } from './campaigns/campaigns.module';
 import { CompositionModule } from './composition/composition.module';
 import { ContactsModule } from './contacts/contacts.module';
 import { CoreModule } from './core/core.module';
@@ -69,6 +70,7 @@ import { WorkItemModule } from './work-items/work-item.module';
     IntakeModule, // digital intake & forms: custom forms → customer record (Phase 3)
     OnlineBookingModule, // public self-service booking (Phase 3; deposits + channels deferred)
     DispatchModule, // dispatch & assignment: jobs by technician + status/ETA (Phase 3)
+    CampaignsModule, // marketing campaigns: segmented email/SMS (Phase 3; delivery vendor-gated)
   ],
   controllers: [HealthController],
 })
