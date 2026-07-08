@@ -65,6 +65,7 @@ model Tenant {
   dispatches          Dispatch[]
   campaigns           Campaign[]
   reviews             Review[]
+  assistantMessages   AssistantMessage[]
 
   @@map("onestack_tenant")
 }
@@ -470,6 +471,25 @@ model Review {
   @@index([tenantId])
   @@index([tenantId, status])
   @@map("onestack_review")
+}
+
+/// AI assistant / receptionist (Phase 3). A provider-abstracted AI that DRAFTS a reply to a customer
+/// question for staff to review before sending. Generic (Workflow & AI core). Every answer is an editable
+/// draft — nothing auto-sent. Each ask + drafted answer is logged. Tenant-scoped.
+model AssistantMessage {
+  id              String    @id @default(uuid()) @db.Uuid
+  tenantId        String    @db.Uuid
+  workItemId      String?   @db.Uuid
+  contactId       String?   @db.Uuid
+  question        String
+  answer          String
+  model           String
+  createdByUserId String?   @db.Uuid
+  createdAt       DateTime  @default(now())
+  tenant          Tenant    @relation(fields: [tenantId], references: [id])
+
+  @@index([tenantId])
+  @@map("onestack_assistant_message")
 }
 
 /// A tag assigned to a contact (Phase 3). The many-to-many join; a tag groups many contacts (a segment).
