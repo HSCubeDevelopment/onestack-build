@@ -101,8 +101,8 @@ describe.skipIf(!hasDb)('Customer timeline (Phase 3)', () => {
     expect(noteIdx).toBeLessThan(jobIdx);
 
     const jobEvent = tl.events.find((e: { type: string }) => e.type === 'job');
-    expect(jobEvent.jobReference).toBe(jobId ? jobEvent.jobReference : '');
-    expect(jobEvent.amountsCents.quotes).toBe(9500);
+    expect(jobEvent.jobReference).toMatch(/^J-\d{6}$/);
+    expect(jobEvent.amountsCents.quotes).toBe(10450); // 9500 net + 950 GST (money engine)
 
     const noteEvent = tl.events.find((e: { type: string }) => e.type === 'note');
     expect(noteEvent.summary).toBe('Customer dropped off the car');
