@@ -1,5 +1,6 @@
 import { BadRequestException, Injectable, NotFoundException } from '@nestjs/common';
 import { randomUUID } from 'node:crypto';
+import { BrandingService, BrandView } from '../branding/branding.service';
 import { ContactsService } from '../contacts/contacts.service';
 import { PrismaService } from '../prisma/prisma.service';
 import { BookingService } from '../scheduling/booking.service';
@@ -20,6 +21,8 @@ export interface PublicBookingPage {
   name: string;
   slotMinutes: number;
   resources: { id: string; name: string }[];
+  /** The shop's brand, so the public page renders under it (card #151). */
+  brand: BrandView;
 }
 
 export interface UpsertBookingPageInput {
@@ -56,6 +59,7 @@ export class OnlineBookingService {
     private readonly contacts: ContactsService,
     private readonly resources: ResourceService,
     private readonly bookings: BookingService,
+    private readonly branding: BrandingService,
   ) {}
 
   /** The shop's booking-page config (or a default if none has been set up). */
@@ -137,12 +141,14 @@ export class OnlineBookingService {
     );
     const byId = new Map(names.map((r) => [r.id, r.name]));
     const ids = page.resourceIds as string[];
+    const brand = await this.branding.get(page.tenantId);
     return {
       name: page.name,
       slotMinutes: page.slotMinutes,
       resources: ids
         .filter((id) => byId.has(id))
         .map((id) => ({ id, name: byId.get(id) as string })),
+      brand,
     };
   }
 

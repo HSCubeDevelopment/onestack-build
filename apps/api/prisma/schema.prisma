@@ -68,6 +68,7 @@ model Tenant {
   assistantMessages   AssistantMessage[]
   documentSignatures  DocumentSignature[]
   portalAccess        PortalAccess[]
+  brand               Brand?
 
   @@map("onestack_tenant")
 }
@@ -383,6 +384,28 @@ model PortalAccess {
   @@index([tenantId])
   @@index([tenantId, contactId])
   @@map("onestack_portal_access")
+}
+
+/// A per-tenant brand profile (card #151) — business name, logo, colour, contact details — that
+/// customer-facing surfaces (the public booking page, portal, …) render under. Generic core (white-label).
+/// One row per tenant. Tenant-scoped.
+model Brand {
+  id           String   @id @default(uuid()) @db.Uuid
+  tenantId     String   @unique @db.Uuid
+  businessName String
+  tagline      String?
+  logoUrl      String?
+  primaryColor String?
+  contactPhone String?
+  contactEmail String?
+  websiteUrl   String?
+  addressText  String?
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+  tenant       Tenant   @relation(fields: [tenantId], references: [id])
+
+  @@index([tenantId])
+  @@map("onestack_brand")
 }
 
 /// Digital intake & forms (Phase 3). A custom form a shop defines — a list of question fields — filled in
