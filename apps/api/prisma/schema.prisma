@@ -62,6 +62,7 @@ model Tenant {
   intakeForms         IntakeForm[]
   intakeSubmissions   IntakeSubmission[]
   bookingPage         BookingPage?
+  dispatches          Dispatch[]
 
   @@map("onestack_tenant")
 }
@@ -385,6 +386,25 @@ model BookingPage {
   @@map("onestack_booking_page")
 }
 
+/// Dispatch & assignment (Phase 3). The field/dispatch state of a job — a status + a manual ETA — so a
+/// dispatcher can route work to a technician and see progress. Generic (Scheduling & Ops core). One per
+/// job. GPS location + customer notifications are deferred (vendor). Tenant-scoped.
+model Dispatch {
+  id              String    @id @default(uuid()) @db.Uuid
+  tenantId        String    @db.Uuid
+  workItemId      String    @unique @db.Uuid
+  status          String    @default("pending") // pending | dispatched | en_route | on_site | completed
+  etaAt           DateTime?
+  note            String?
+  updatedByUserId String?   @db.Uuid
+  updatedAt       DateTime  @updatedAt
+  tenant          Tenant    @relation(fields: [tenantId], references: [id])
+  workItem        WorkItem  @relation(fields: [workItemId], references: [id], onDelete: Cascade)
+
+  @@index([tenantId])
+  @@map("onestack_dispatch")
+}
+
 /// Segmentation & tagging (Phase 3). A named label a shop defines and assigns to contacts, so customers
 /// can be grouped for targeted comms and reporting. Generic (Customer & CRM core). Tenant-scoped.
 model Tag {
@@ -444,6 +464,7 @@ model WorkItem {
   purchaseOrders  PurchaseOrder[]
   materialRequests MaterialRequest[]
   supplierInvoices SupplierInvoice[]
+  dispatch        Dispatch?
 
   @@unique([tenantId, reference])
   @@index([tenantId])
