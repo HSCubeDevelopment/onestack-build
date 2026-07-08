@@ -4,6 +4,7 @@ import { EventEmitterModule } from '@nestjs/event-emitter';
 import { AiModule } from './ai/ai.module';
 import { AssistantModule } from './assistant/assistant.module';
 import { AuditModule } from './audit/audit.module';
+import { BrandingModule } from './branding/branding.module';
 import { DocumentsModule } from './documents/documents.module';
 import { InsightsModule } from './insights/insights.module';
 import { PortalModule } from './portal/portal.module';
@@ -83,6 +84,7 @@ import { WorkItemModule } from './work-items/work-item.module';
     DocumentsModule, // documents & e-signature: generate → tokenised public sign page (Phase 3; certified e-sign vendor-gated)
     ReportingModule, // reporting & dashboards: revenue/jobs/turnaround/utilisation overview (Phase 3; read-only)
     PortalModule, // customer portal: passwordless per-customer self-service (jobs/docs/quotes/invoices) (Phase 3)
+    BrandingModule, // brand profile: per-tenant business name/logo/colour for customer-facing pages (Phase 3)
   ],
   controllers: [HealthController],
 })

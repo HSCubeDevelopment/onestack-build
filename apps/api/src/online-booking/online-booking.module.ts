@@ -1,4 +1,5 @@
 import { Module } from '@nestjs/common';
+import { BrandingModule } from '../branding/branding.module';
 import { ContactsModule } from '../contacts/contacts.module';
 import { SchedulingModule } from '../scheduling/scheduling.module';
 import { OnlineBookingController } from './online-booking.controller';
@@ -12,7 +13,7 @@ import { PublicBookingController } from './public-booking.controller';
  * TenantModule. Deposits (payments) + Google/social channels are deferred.
  */
 @Module({
-  imports: [SchedulingModule, ContactsModule],
+  imports: [SchedulingModule, ContactsModule, BrandingModule],
   controllers: [OnlineBookingController, PublicBookingController],
   providers: [OnlineBookingService],
   exports: [OnlineBookingService],
