@@ -40,6 +40,6 @@ import { SupabaseDocumentStorage } from './supabase-storage';
       useFactory: (): ESignatureProvider => new NoopESignatureProvider(),
     },
   ],
-  exports: [DocumentRecordService],
+  exports: [DocumentRecordService, SignatureService],
 })
 export class DocumentsModule {}

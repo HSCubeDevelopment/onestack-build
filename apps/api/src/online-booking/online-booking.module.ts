@@ -15,5 +15,6 @@ import { PublicBookingController } from './public-booking.controller';
   imports: [SchedulingModule, ContactsModule],
   controllers: [OnlineBookingController, PublicBookingController],
   providers: [OnlineBookingService],
+  exports: [OnlineBookingService],
 })
 export class OnlineBookingModule {}
