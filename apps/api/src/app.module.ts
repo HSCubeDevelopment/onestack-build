@@ -25,6 +25,7 @@ import { QuotesModule } from './quotes/quotes.module';
 import { SchedulingModule } from './scheduling/scheduling.module';
 import { SubjectModule } from './subjects/subject.module';
 import { SupplierInvoiceModule } from './supplier-invoices/supplier-invoice.module';
+import { TagsModule } from './tags/tags.module';
 import { TenantModule } from './tenancy/tenant.module';
 import { TerminologyModule } from './terminology/terminology.module';
 import { WorkItemModule } from './work-items/work-item.module';
@@ -59,6 +60,7 @@ import { WorkItemModule } from './work-items/work-item.module';
     ClaimFileModule, // claim pack read-model: photos/quotes/invoices per claim (Phase 2)
     MaterialRequestModule, // floor ordering: technician request → manager approve → email (Phase 2)
     SupplierInvoiceModule, // supplier invoice capture → accounting (Phase 2; OCR + sync stubbed)
+    TagsModule, // segmentation & tagging: group contacts into segments (Phase 3)
   ],
   controllers: [HealthController],
 })
