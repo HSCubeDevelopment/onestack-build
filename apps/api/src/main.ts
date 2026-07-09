@@ -5,6 +5,11 @@ import { AppModule } from './app.module';
 export async function createApp() {
   const app = await NestFactory.create(AppModule, { bufferLogs: false });
   app.setGlobalPrefix('api/v1');
+  // DEV-ONLY permissive CORS so the mobile app (web target / simulator) can reach the API from a browser
+  // origin during local development. Gated: never enabled in production. Native builds don't need CORS.
+  if (process.env.DEV_LOGIN_ENABLED === 'true' && process.env.NODE_ENV !== 'production') {
+    app.enableCors({ origin: true, credentials: true });
+  }
   app.useGlobalPipes(
     new ValidationPipe({
       whitelist: true,
