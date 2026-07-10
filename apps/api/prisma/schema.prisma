@@ -70,6 +70,7 @@ model Tenant {
   portalAccess        PortalAccess[]
   brand               Brand?
   waitlist            WaitlistEntry[]
+  shifts              Shift[]
 
   @@map("onestack_tenant")
 }
@@ -1022,4 +1023,23 @@ model WaitlistEntry {
   @@index([tenantId])
   @@index([tenantId, status])
   @@map("onestack_waitlist_entry")
+}
+
+/// A staff shift / time-off block (card #211). Generic core (Scheduling & Ops). staffUserId optionally
+/// links a platform user; staffName is the displayed label. Tenant-scoped.
+model Shift {
+  id          String   @id @default(uuid()) @db.Uuid
+  tenantId    String   @db.Uuid
+  staffUserId String?  @db.Uuid
+  staffName   String
+  kind        String   @default("shift") // 'shift' | 'time_off'
+  startsAt    DateTime
+  endsAt      DateTime
+  notes       String?
+  createdAt   DateTime @default(now())
+  tenant      Tenant   @relation(fields: [tenantId], references: [id])
+
+  @@index([tenantId])
+  @@index([tenantId, startsAt])
+  @@map("onestack_shift")
 }
