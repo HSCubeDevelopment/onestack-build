@@ -79,6 +79,8 @@ model Tenant {
   stockMovements      StockMovement[]
   referralCodes       ReferralCode[]
   referrals           Referral[]
+  sales               Sale[]
+  saleLines           SaleLine[]
 
   @@map("onestack_tenant")
 }
@@ -1177,4 +1179,41 @@ model Referral {
   @@index([tenantId])
   @@index([tenantId, referrerContactId])
   @@map("onestack_referral")
+}
+
+/// A point-of-sale walk-in transaction (card #221). Generic core (Sales & Money). On completion records a
+/// tender label (cash/card/other) — no card processing (deferred payments phase). Tenant-scoped.
+model Sale {
+  id              String   @id @default(uuid()) @db.Uuid
+  tenantId        String   @db.Uuid
+  contactId       String?  @db.Uuid
+  reference       String
+  status          String   @default("open") // 'open' | 'completed' | 'void'
+  tenderType      String?
+  subtotalCents   Int      @default(0)
+  gstCents        Int      @default(0)
+  totalCents      Int      @default(0)
+  createdByUserId String?  @db.Uuid
+  createdAt       DateTime @default(now())
+  completedAt     DateTime?
+  tenant          Tenant   @relation(fields: [tenantId], references: [id])
+  lines           SaleLine[]
+  @@index([tenantId])
+  @@map("onestack_sale")
+}
+
+/// A line on a POS sale (card #221). unitPrice is net; GST added at the sale level.
+model SaleLine {
+  id             String   @id @default(uuid()) @db.Uuid
+  tenantId       String   @db.Uuid
+  saleId         String   @db.Uuid
+  description    String
+  quantity       Int
+  unitPriceCents Int
+  lineTotalCents Int
+  createdAt      DateTime @default(now())
+  tenant         Tenant   @relation(fields: [tenantId], references: [id])
+  sale           Sale     @relation(fields: [saleId], references: [id], onDelete: Cascade)
+  @@index([tenantId, saleId])
+  @@map("onestack_sale_line")
 }
