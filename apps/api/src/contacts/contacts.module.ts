@@ -1,5 +1,6 @@
 import { Module } from '@nestjs/common';
 import { SubjectModule } from '../subjects/subject.module';
+import { ContactMergeService } from './contact-merge.service';
 import { ContactsController } from './contacts.controller';
 import { ContactsService } from './contacts.service';
 import { LeadController } from './lead.controller';
@@ -16,7 +17,7 @@ import { VehiclesController } from './vehicles.controller';
 @Module({
   imports: [SubjectModule], // vehicles are pack Subjects
   controllers: [ContactsController, VehiclesController, LeadController, PublicLeadController],
-  providers: [ContactsService, LeadFormService, LeadService],
+  providers: [ContactsService, ContactMergeService, LeadFormService, LeadService],
   exports: [ContactsService], // the shared Contact record — read by the board read-model (#22)
 })
 export class ContactsModule {}

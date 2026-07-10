@@ -55,6 +55,9 @@ export default function CustomersPage() {
   return (
     <>
       <PageHead title="Customers" sub="People and businesses you work with">
+        <button className="btn" onClick={() => router.push('/customers/duplicates')}>
+          Find duplicates
+        </button>
         <button className="btn primary" onClick={() => setCreating(true)}>
           + New customer
         </button>
