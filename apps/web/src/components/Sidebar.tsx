@@ -12,6 +12,7 @@ import {
   SlidersHorizontal,
   LifeBuoy,
   Layers3,
+  ListChecks,
   type LucideIcon,
 } from 'lucide-react';
 import { ThemeToggle } from '@/components/ThemeToggle';
@@ -25,6 +26,7 @@ const NAV: NavRow[] = [
   { href: '/board', label: 'Job board', Icon: KanbanSquare },
   { href: '/jobs', label: 'Jobs', Icon: Wrench },
   { href: '/calendar', label: 'Calendar', Icon: CalendarDays },
+  { href: '/waitlist', label: 'Waitlist', Icon: ListChecks },
   { section: 'Customers & sales' },
   { href: '/customers', label: 'Customers', Icon: Users },
   { href: '/leads', label: 'Leads', Icon: Mail, alert: true },
