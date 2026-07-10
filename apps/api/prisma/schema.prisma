@@ -83,6 +83,7 @@ model Tenant {
   saleLines           SaleLine[]
   webhookEndpoints    WebhookEndpoint[]
   webhookDeliveries   WebhookDelivery[]
+  integrations        IntegrationConnection[]
 
   @@map("onestack_tenant")
 }
@@ -1250,4 +1251,20 @@ model WebhookDelivery {
   endpoint     WebhookEndpoint @relation(fields: [endpointId], references: [id], onDelete: Cascade)
   @@index([tenantId, endpointId])
   @@map("onestack_webhook_delivery")
+}
+
+/// A per-tenant connection to a catalogue integration (card #253). The catalogue is a code registry; the
+/// actual vendor wiring is deferred. Generic core. Tenant-scoped.
+model IntegrationConnection {
+  id          String   @id @default(uuid()) @db.Uuid
+  tenantId    String   @db.Uuid
+  slug        String
+  status      String   @default("connected") // 'connected' | 'disconnected'
+  config      Json     @default("{}")
+  connectedAt DateTime @default(now())
+  updatedAt   DateTime @default(now())
+  tenant      Tenant   @relation(fields: [tenantId], references: [id])
+  @@unique([tenantId, slug])
+  @@index([tenantId])
+  @@map("onestack_integration_connection")
 }

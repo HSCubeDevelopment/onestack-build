@@ -230,6 +230,16 @@ export interface Resource {
   name: string;
 }
 
+export interface Integration {
+  slug: string;
+  name: string;
+  category: string;
+  description: string;
+  available: boolean;
+  status: 'connected' | 'disconnected' | 'not_connected';
+  connectedAt: string | null;
+}
+
 export interface WebhookEndpoint {
   id: string;
   url: string;

@@ -143,6 +143,7 @@ jobs:
           npx prisma db execute --file prisma/sql/0038_referral.sql --schema prisma/schema.prisma
           npx prisma db execute --file prisma/sql/0039_pos.sql --schema prisma/schema.prisma
           npx prisma db execute --file prisma/sql/0040_webhooks.sql --schema prisma/schema.prisma
+          npx prisma db execute --file prisma/sql/0041_integration.sql --schema prisma/schema.prisma
       - name: RLS gate
         run: npm run check:rls
       - name: Tenant-isolation + integration tests

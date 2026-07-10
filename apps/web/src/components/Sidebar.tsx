@@ -18,6 +18,7 @@ import {
   Share2,
   ScanLine,
   Webhook,
+  Blocks,
   type LucideIcon,
 } from 'lucide-react';
 import { ThemeToggle } from '@/components/ThemeToggle';
@@ -44,6 +45,7 @@ const NAV: NavRow[] = [
   { section: 'Settings' },
   { href: '/settings/custom-fields', label: 'Custom fields', Icon: SlidersHorizontal },
   { href: '/settings/webhooks', label: 'Webhooks', Icon: Webhook },
+  { href: '/settings/integrations', label: 'Integrations', Icon: Blocks },
 ];
 
 export function Sidebar() {
