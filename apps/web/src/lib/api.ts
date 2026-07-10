@@ -322,9 +322,11 @@ export interface InventoryItem {
   unit: string | null;
   quantityOnHand: number;
   reorderLevel: number;
+  parLevel: number;
   unitCostCents: number | null;
   active: boolean;
   lowStock: boolean;
+  suggestedReorderQty: number;
 }
 
 export interface Shift {

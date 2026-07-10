@@ -15,6 +15,12 @@ export default function InventoryPage() {
     await api.post(`/inventory/${item.id}/movement`, { delta: delta * Math.round(n), reason });
     reload();
   };
+  const stocktake = async (item: InventoryItem) => {
+    const n = Number(prompt(`Stocktake — counted ${item.unit ?? 'units'} of ${item.name} on hand:`, String(item.quantityOnHand)));
+    if (!Number.isFinite(n) || n < 0) return;
+    await api.post(`/inventory/${item.id}/stocktake`, { countedQuantity: Math.round(n) });
+    reload();
+  };
 
   const lowCount = (data ?? []).filter((i) => i.lowStock).length;
 
@@ -63,13 +69,21 @@ export default function InventoryPage() {
                     <span className="muted">{i.unit ?? ''}</span>
                     {i.lowStock ? <span className="muted"> · low</span> : null}
                   </td>
-                  <td className="muted">{i.reorderLevel}</td>
+                  <td className="muted">
+                    {i.reorderLevel}{i.parLevel ? ` · par ${i.parLevel}` : ''}
+                    {i.lowStock && i.suggestedReorderQty > 0 ? (
+                      <span style={{ color: 'var(--warning, #b37d28)' }}> · reorder {i.suggestedReorderQty}</span>
+                    ) : null}
+                  </td>
                   <td style={{ textAlign: 'right', whiteSpace: 'nowrap' }}>
                     <button className="btn" onClick={() => adjust(i, 1, 'receive')}>
                       Receive
                     </button>{' '}
                     <button className="btn" onClick={() => adjust(i, -1, 'use')}>
                       Use
+                    </button>{' '}
+                    <button className="btn" onClick={() => stocktake(i)}>
+                      Count
                     </button>
                   </td>
                 </tr>
@@ -89,6 +103,7 @@ function AddModal({ onClose, onDone }: { onClose: () => void; onDone: () => void
   const [unit, setUnit] = useState('');
   const [quantityOnHand, setQty] = useState('0');
   const [reorderLevel, setReorder] = useState('0');
+  const [parLevel, setPar] = useState('0');
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -101,6 +116,7 @@ function AddModal({ onClose, onDone }: { onClose: () => void; onDone: () => void
         unit: unit || undefined,
         quantityOnHand: parseInt(quantityOnHand, 10) || 0,
         reorderLevel: parseInt(reorderLevel, 10) || 0,
+        parLevel: parseInt(parLevel, 10) || 0,
       });
       onDone();
     } catch (e) {
@@ -117,6 +133,7 @@ function AddModal({ onClose, onDone }: { onClose: () => void; onDone: () => void
         <div className="row" style={{ gap: 10 }}>
           <input className="input" type="number" placeholder="On hand" value={quantityOnHand} onChange={(e) => setQty(e.target.value)} />
           <input className="input" type="number" placeholder="Reorder at" value={reorderLevel} onChange={(e) => setReorder(e.target.value)} />
+          <input className="input" type="number" placeholder="Par (target)" value={parLevel} onChange={(e) => setPar(e.target.value)} />
         </div>
         <ErrorBanner message={error} />
         <div className="row" style={{ justifyContent: 'flex-end', gap: 8 }}>
