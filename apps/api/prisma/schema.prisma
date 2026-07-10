@@ -71,6 +71,8 @@ model Tenant {
   brand               Brand?
   waitlist            WaitlistEntry[]
   shifts              Shift[]
+  inventoryItems      InventoryItem[]
+  stockMovements      StockMovement[]
 
   @@map("onestack_tenant")
 }
@@ -1042,4 +1044,42 @@ model Shift {
   @@index([tenantId])
   @@index([tenantId, startsAt])
   @@map("onestack_shift")
+}
+
+/// An inventory item with on-hand stock (card #220). Generic core (Sales & Money). Tenant-scoped.
+model InventoryItem {
+  id             String   @id @default(uuid()) @db.Uuid
+  tenantId       String   @db.Uuid
+  name           String
+  sku            String?
+  unit           String?
+  quantityOnHand Int      @default(0)
+  reorderLevel   Int      @default(0)
+  unitCostCents  Int?
+  active         Boolean  @default(true)
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+  tenant         Tenant   @relation(fields: [tenantId], references: [id])
+  movements      StockMovement[]
+
+  @@index([tenantId])
+  @@map("onestack_inventory_item")
+}
+
+/// An append-only stock change (receive / use / adjust) that also updates the item's on-hand qty (card #220).
+model StockMovement {
+  id              String   @id @default(uuid()) @db.Uuid
+  tenantId        String   @db.Uuid
+  itemId          String   @db.Uuid
+  delta           Int
+  reason          String   @default("adjust") // 'receive' | 'use' | 'adjust'
+  note            String?
+  createdByUserId String?  @db.Uuid
+  createdAt       DateTime @default(now())
+  tenant          Tenant        @relation(fields: [tenantId], references: [id])
+  item            InventoryItem @relation(fields: [itemId], references: [id], onDelete: Cascade)
+
+  @@index([tenantId])
+  @@index([tenantId, itemId])
+  @@map("onestack_stock_movement")
 }
