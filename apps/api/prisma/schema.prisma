@@ -77,6 +77,8 @@ model Tenant {
   giftCards           GiftCard[]
   giftCardTxns        GiftCardTxn[]
   stockMovements      StockMovement[]
+  referralCodes       ReferralCode[]
+  referrals           Referral[]
 
   @@map("onestack_tenant")
 }
@@ -1144,4 +1146,35 @@ model GiftCardTxn {
   card        GiftCard @relation(fields: [giftCardId], references: [id], onDelete: Cascade)
   @@index([tenantId, giftCardId])
   @@map("onestack_gift_card_txn")
+}
+
+/// A customer's stable referral code (card #231). Generic core. Tenant-scoped.
+model ReferralCode {
+  id        String   @id @default(uuid()) @db.Uuid
+  tenantId  String   @db.Uuid
+  contactId String   @db.Uuid
+  code      String
+  createdAt DateTime @default(now())
+  tenant    Tenant   @relation(fields: [tenantId], references: [id])
+  @@unique([tenantId, contactId])
+  @@unique([tenantId, code])
+  @@index([tenantId])
+  @@map("onestack_referral_code")
+}
+
+/// A tracked referral: who referred whom, and its incentive status (card #231).
+model Referral {
+  id                String   @id @default(uuid()) @db.Uuid
+  tenantId          String   @db.Uuid
+  referrerContactId String   @db.Uuid
+  referredName      String
+  referredPhone     String?
+  referredContactId String?  @db.Uuid
+  status            String   @default("pending") // 'pending' | 'converted' | 'rewarded'
+  rewardNote        String?
+  createdAt         DateTime @default(now())
+  tenant            Tenant   @relation(fields: [tenantId], references: [id])
+  @@index([tenantId])
+  @@index([tenantId, referrerContactId])
+  @@map("onestack_referral")
 }

@@ -15,6 +15,7 @@ import {
   ListChecks,
   Boxes,
   Gift,
+  Share2,
   type LucideIcon,
 } from 'lucide-react';
 import { ThemeToggle } from '@/components/ThemeToggle';
@@ -36,6 +37,7 @@ const NAV: NavRow[] = [
   { href: '/price-book', label: 'Price book', Icon: Tags },
   { href: '/inventory', label: 'Inventory', Icon: Boxes },
   { href: '/loyalty', label: 'Loyalty', Icon: Gift },
+  { href: '/referrals', label: 'Referrals', Icon: Share2 },
   { section: 'Settings' },
   { href: '/settings/custom-fields', label: 'Custom fields', Icon: SlidersHorizontal },
 ];
