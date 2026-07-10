@@ -69,6 +69,7 @@ model Tenant {
   documentSignatures  DocumentSignature[]
   portalAccess        PortalAccess[]
   brand               Brand?
+  waitlist            WaitlistEntry[]
 
   @@map("onestack_tenant")
 }
@@ -1001,4 +1002,24 @@ model WorkItemSubject {
   @@id([workItemId, subjectId])
   @@index([tenantId])
   @@map("onestack_work_item_subject")
+}
+
+/// A customer waiting for a slot (card #210). A cancellation can be filled from here to protect
+/// utilisation; the owner confirms the fill into a booking. Generic core (Scheduling & Ops). Tenant-scoped.
+model WaitlistEntry {
+  id         String   @id @default(uuid()) @db.Uuid
+  tenantId   String   @db.Uuid
+  contactId  String?  @db.Uuid
+  name       String
+  phone      String
+  resourceId String?  @db.Uuid
+  notes      String?
+  status     String   @default("waiting") // 'waiting' | 'booked' | 'removed'
+  bookingId  String?  @db.Uuid
+  createdAt  DateTime @default(now())
+  tenant     Tenant   @relation(fields: [tenantId], references: [id])
+
+  @@index([tenantId])
+  @@index([tenantId, status])
+  @@map("onestack_waitlist_entry")
 }

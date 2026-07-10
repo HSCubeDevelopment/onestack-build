@@ -230,6 +230,18 @@ export interface Resource {
   name: string;
 }
 
+export interface WaitlistEntry {
+  id: string;
+  contactId: string | null;
+  name: string;
+  phone: string;
+  resourceId: string | null;
+  notes: string | null;
+  status: 'waiting' | 'booked' | 'removed';
+  bookingId: string | null;
+  createdAt: string;
+}
+
 export interface Booking {
   id: string;
   resourceId: string;
