@@ -1066,6 +1066,7 @@ model InventoryItem {
   unit           String?
   quantityOnHand Int      @default(0)
   reorderLevel   Int      @default(0)
+  parLevel       Int      @default(0)
   unitCostCents  Int?
   active         Boolean  @default(true)
   createdAt      DateTime @default(now())

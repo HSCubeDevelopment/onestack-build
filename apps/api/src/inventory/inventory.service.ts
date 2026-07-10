@@ -8,10 +8,14 @@ export interface InventoryItemView {
   unit: string | null;
   quantityOnHand: number;
   reorderLevel: number;
+  /** Target (par) stock level — reorder up to this (card #260). */
+  parLevel: number;
   unitCostCents: number | null;
   active: boolean;
   /** Computed: on-hand is at or below the reorder level. */
   lowStock: boolean;
+  /** Computed: quantity to reorder to reach par (0 if not low). */
+  suggestedReorderQty: number;
 }
 
 export interface CreateItemInput {
@@ -20,6 +24,7 @@ export interface CreateItemInput {
   unit?: string;
   quantityOnHand?: number;
   reorderLevel?: number;
+  parLevel?: number;
   unitCostCents?: number;
 }
 
@@ -28,6 +33,7 @@ export interface UpdateItemInput {
   sku?: string | null;
   unit?: string | null;
   reorderLevel?: number;
+  parLevel?: number;
   unitCostCents?: number | null;
   active?: boolean;
 }
@@ -55,6 +61,7 @@ export class InventoryService {
           unit: input.unit?.trim() || null,
           quantityOnHand: int(input.quantityOnHand, 0),
           reorderLevel: int(input.reorderLevel, 0),
+          parLevel: int(input.parLevel, 0),
           unitCostCents: input.unitCostCents ?? null,
         },
       });
@@ -70,6 +77,29 @@ export class InventoryService {
     return lowOnly ? views.filter((v) => v.lowStock) : views;
   }
 
+  /** Auto-reorder suggestions (card #260): low-stock items with the qty to reorder up to par. */
+  async reorderSuggestions(tenantId: string): Promise<InventoryItemView[]> {
+    return (await this.list(tenantId)).filter((v) => v.lowStock && v.suggestedReorderQty > 0);
+  }
+
+  /** Stocktake (card #260): set the counted on-hand, recording the correction as a movement. */
+  async stocktake(tenantId: string, id: string, countedQuantity: number, userId: string): Promise<InventoryItemView> {
+    if (!Number.isInteger(countedQuantity) || countedQuantity < 0)
+      throw new BadRequestException('countedQuantity must be a non-negative integer');
+    return this.tenants.runInTenant(tenantId, async (tx) => {
+      const item = await tx.inventoryItem.findFirst({ where: { id } });
+      if (!item) throw new NotFoundException('Item not found');
+      const delta = countedQuantity - item.quantityOnHand;
+      if (delta !== 0) {
+        await tx.stockMovement.create({
+          data: { tenantId, itemId: id, delta, reason: 'adjust', note: 'Stocktake', createdByUserId: userId },
+        });
+      }
+      const row = await tx.inventoryItem.update({ where: { id }, data: { quantityOnHand: countedQuantity } });
+      return toView(row);
+    });
+  }
+
   async update(tenantId: string, id: string, patch: UpdateItemInput): Promise<InventoryItemView> {
     return this.tenants.runInTenant(tenantId, async (tx) => {
       const existing = await tx.inventoryItem.findFirst({ where: { id } });
@@ -79,6 +109,7 @@ export class InventoryService {
       if (patch.sku !== undefined) data.sku = patch.sku?.trim() || null;
       if (patch.unit !== undefined) data.unit = patch.unit?.trim() || null;
       if (patch.reorderLevel !== undefined) data.reorderLevel = int(patch.reorderLevel, 0);
+      if (patch.parLevel !== undefined) data.parLevel = int(patch.parLevel, 0);
       if (patch.unitCostCents !== undefined) data.unitCostCents = patch.unitCostCents;
       if (patch.active !== undefined) data.active = patch.active;
       const row = await tx.inventoryItem.update({ where: { id }, data });
@@ -124,9 +155,12 @@ function toView(r: {
   unit: string | null;
   quantityOnHand: number;
   reorderLevel: number;
+  parLevel: number;
   unitCostCents: number | null;
   active: boolean;
 }): InventoryItemView {
+  const lowStock = r.quantityOnHand <= r.reorderLevel;
+  const target = Math.max(r.parLevel, r.reorderLevel);
   return {
     id: r.id,
     name: r.name,
@@ -134,8 +168,10 @@ function toView(r: {
     unit: r.unit,
     quantityOnHand: r.quantityOnHand,
     reorderLevel: r.reorderLevel,
+    parLevel: r.parLevel,
     unitCostCents: r.unitCostCents,
     active: r.active,
-    lowStock: r.quantityOnHand <= r.reorderLevel,
+    lowStock,
+    suggestedReorderQty: Math.max(0, target - r.quantityOnHand),
   };
 }
