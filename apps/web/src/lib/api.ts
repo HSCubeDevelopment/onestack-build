@@ -230,6 +230,16 @@ export interface Resource {
   name: string;
 }
 
+export interface Shift {
+  id: string;
+  staffUserId: string | null;
+  staffName: string;
+  kind: 'shift' | 'time_off';
+  startsAt: string;
+  endsAt: string;
+  notes: string | null;
+}
+
 export interface WaitlistEntry {
   id: string;
   contactId: string | null;

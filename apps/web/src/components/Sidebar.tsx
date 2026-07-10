@@ -27,6 +27,7 @@ const NAV: NavRow[] = [
   { href: '/jobs', label: 'Jobs', Icon: Wrench },
   { href: '/calendar', label: 'Calendar', Icon: CalendarDays },
   { href: '/waitlist', label: 'Waitlist', Icon: ListChecks },
+  { href: '/roster', label: 'Roster', Icon: CalendarDays },
   { section: 'Customers & sales' },
   { href: '/customers', label: 'Customers', Icon: Users },
   { href: '/leads', label: 'Leads', Icon: Mail, alert: true },

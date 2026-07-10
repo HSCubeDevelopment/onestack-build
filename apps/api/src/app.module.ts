@@ -9,6 +9,7 @@ import { DocumentsModule } from './documents/documents.module';
 import { InsightsModule } from './insights/insights.module';
 import { OnboardingModule } from './onboarding/onboarding.module';
 import { WaitlistModule } from './waitlist/waitlist.module';
+import { RosterModule } from './roster/roster.module';
 import { PortalModule } from './portal/portal.module';
 import { ReportingModule } from './reporting/reporting.module';
 import { ClaimFileModule } from './claim-file/claim-file.module';
@@ -88,7 +89,8 @@ import { WorkItemModule } from './work-items/work-item.module';
     PortalModule, // customer portal: passwordless per-customer self-service (jobs/docs/quotes/invoices) (Phase 3)
     BrandingModule, // brand profile: per-tenant business name/logo/colour for customer-facing pages (Phase 3)
     OnboardingModule,
-    WaitlistModule, // waitlist & auto-fill: fill cancellations to protect utilisation (Phase 4) // onboarding & data migration: CSV customer import + setup checklist (Phase 3)
+    WaitlistModule,
+    RosterModule, // roster & staff management: shifts, availability, time-off (Phase 4) // waitlist & auto-fill: fill cancellations to protect utilisation (Phase 4) // onboarding & data migration: CSV customer import + setup checklist (Phase 3)
   ],
   controllers: [HealthController],
 })
