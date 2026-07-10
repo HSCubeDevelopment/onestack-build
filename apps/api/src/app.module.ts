@@ -11,6 +11,7 @@ import { OnboardingModule } from './onboarding/onboarding.module';
 import { WaitlistModule } from './waitlist/waitlist.module';
 import { RosterModule } from './roster/roster.module';
 import { InventoryModule } from './inventory/inventory.module';
+import { LoyaltyModule } from './loyalty/loyalty.module';
 import { PortalModule } from './portal/portal.module';
 import { ReportingModule } from './reporting/reporting.module';
 import { ClaimFileModule } from './claim-file/claim-file.module';
@@ -92,7 +93,8 @@ import { WorkItemModule } from './work-items/work-item.module';
     OnboardingModule,
     WaitlistModule,
     RosterModule,
-    InventoryModule, // inventory & stock: levels, usage, reorder signal (Phase 4) // roster & staff management: shifts, availability, time-off (Phase 4) // waitlist & auto-fill: fill cancellations to protect utilisation (Phase 4) // onboarding & data migration: CSV customer import + setup checklist (Phase 3)
+    InventoryModule,
+    LoyaltyModule, // loyalty, rewards & gift cards: points + gift-card ledgers (Phase 4) // inventory & stock: levels, usage, reorder signal (Phase 4) // roster & staff management: shifts, availability, time-off (Phase 4) // waitlist & auto-fill: fill cancellations to protect utilisation (Phase 4) // onboarding & data migration: CSV customer import + setup checklist (Phase 3)
   ],
   controllers: [HealthController],
 })

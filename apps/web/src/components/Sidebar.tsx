@@ -14,6 +14,7 @@ import {
   Layers3,
   ListChecks,
   Boxes,
+  Gift,
   type LucideIcon,
 } from 'lucide-react';
 import { ThemeToggle } from '@/components/ThemeToggle';
@@ -34,6 +35,7 @@ const NAV: NavRow[] = [
   { href: '/leads', label: 'Leads', Icon: Mail, alert: true },
   { href: '/price-book', label: 'Price book', Icon: Tags },
   { href: '/inventory', label: 'Inventory', Icon: Boxes },
+  { href: '/loyalty', label: 'Loyalty', Icon: Gift },
   { section: 'Settings' },
   { href: '/settings/custom-fields', label: 'Custom fields', Icon: SlidersHorizontal },
 ];

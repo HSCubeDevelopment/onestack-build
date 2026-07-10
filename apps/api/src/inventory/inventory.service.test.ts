@@ -23,7 +23,7 @@ describe('InventoryService', () => {
     const { svc } = make();
     await svc.createItem('t1', { name: 'Bolt', quantityOnHand: 2, reorderLevel: 5 });
     const list = await svc.list('t1');
-    expect(list[0].lowStock).toBe(true);
+    expect(list[0]?.lowStock).toBe(true);
     const low = await svc.list('t1', true);
     expect(low).toHaveLength(1);
   });
