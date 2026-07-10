@@ -72,6 +72,10 @@ model Tenant {
   waitlist            WaitlistEntry[]
   shifts              Shift[]
   inventoryItems      InventoryItem[]
+  loyaltyAccounts     LoyaltyAccount[]
+  loyaltyTxns         LoyaltyTxn[]
+  giftCards           GiftCard[]
+  giftCardTxns        GiftCardTxn[]
   stockMovements      StockMovement[]
 
   @@map("onestack_tenant")
@@ -1082,4 +1086,62 @@ model StockMovement {
   @@index([tenantId])
   @@index([tenantId, itemId])
   @@map("onestack_stock_movement")
+}
+
+/// A customer's loyalty points balance (card #230). Generic core. Tenant-scoped.
+model LoyaltyAccount {
+  id        String   @id @default(uuid()) @db.Uuid
+  tenantId  String   @db.Uuid
+  contactId String   @db.Uuid
+  points    Int      @default(0)
+  updatedAt DateTime @default(now())
+  tenant    Tenant   @relation(fields: [tenantId], references: [id])
+  @@unique([tenantId, contactId])
+  @@index([tenantId])
+  @@map("onestack_loyalty_account")
+}
+
+/// An append-only loyalty points change (card #230).
+model LoyaltyTxn {
+  id        String   @id @default(uuid()) @db.Uuid
+  tenantId  String   @db.Uuid
+  contactId String   @db.Uuid
+  delta     Int
+  reason    String   @default("adjust")
+  note      String?
+  createdAt DateTime @default(now())
+  tenant    Tenant   @relation(fields: [tenantId], references: [id])
+  @@index([tenantId, contactId])
+  @@map("onestack_loyalty_txn")
+}
+
+/// A gift card with a stored balance (card #230). A ledger — no card payment processing. Tenant-scoped.
+model GiftCard {
+  id           String   @id @default(uuid()) @db.Uuid
+  tenantId     String   @db.Uuid
+  code         String
+  initialCents Int
+  balanceCents Int
+  status       String   @default("active") // 'active' | 'void'
+  note         String?
+  createdAt    DateTime @default(now())
+  tenant       Tenant   @relation(fields: [tenantId], references: [id])
+  txns         GiftCardTxn[]
+  @@unique([tenantId, code])
+  @@index([tenantId])
+  @@map("onestack_gift_card")
+}
+
+/// An append-only gift-card balance change (card #230).
+model GiftCardTxn {
+  id          String   @id @default(uuid()) @db.Uuid
+  tenantId    String   @db.Uuid
+  giftCardId  String   @db.Uuid
+  amountCents Int
+  note        String?
+  createdAt   DateTime @default(now())
+  tenant      Tenant   @relation(fields: [tenantId], references: [id])
+  card        GiftCard @relation(fields: [giftCardId], references: [id], onDelete: Cascade)
+  @@index([tenantId, giftCardId])
+  @@map("onestack_gift_card_txn")
 }

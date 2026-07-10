@@ -230,6 +230,30 @@ export interface Resource {
   name: string;
 }
 
+export interface GiftCard {
+  id: string;
+  code: string;
+  initialCents: number;
+  balanceCents: number;
+  status: 'active' | 'void';
+  note: string | null;
+  createdAt: string;
+}
+
+export interface LoyaltyTxn {
+  id: string;
+  delta: number;
+  reason: string;
+  note: string | null;
+  createdAt: string;
+}
+
+export interface LoyaltyAccount {
+  contactId: string;
+  points: number;
+  transactions: LoyaltyTxn[];
+}
+
 export interface InventoryItem {
   id: string;
   name: string;
