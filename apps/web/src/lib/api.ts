@@ -50,6 +50,11 @@ export interface Contact {
   createdAt: string;
 }
 
+export interface DuplicateGroup {
+  reasons: ('phone' | 'email' | 'name')[];
+  contacts: { id: string; displayName: string; email: string | null; phone: string | null }[];
+}
+
 export interface Vehicle {
   id: string;
   type: string;

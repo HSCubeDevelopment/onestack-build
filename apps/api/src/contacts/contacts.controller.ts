@@ -16,7 +16,9 @@ import { JwtAuthGuard } from '../auth/jwt-auth.guard';
 import { Roles } from '../auth/roles.decorator';
 import { RolesGuard } from '../auth/roles.guard';
 import { SubjectService, SubjectView } from '../subjects/subject.service';
+import { ContactMergeService, MergeResult } from './contact-merge.service';
 import { ContactsService, ContactView } from './contacts.service';
+import { DuplicateGroup } from './duplicates';
 import { CreateContactDto } from './dto/create-contact.dto';
 import { CreateVehicleDto } from './dto/create-vehicle.dto';
 import { UpdateContactDto } from './dto/update-contact.dto';
@@ -32,6 +34,7 @@ export class ContactsController {
   constructor(
     private readonly contacts: ContactsService,
     private readonly subjects: SubjectService,
+    private readonly merges: ContactMergeService,
   ) {}
 
   @Post()
@@ -51,9 +54,29 @@ export class ContactsController {
     return { ok: true };
   }
 
+  // Duplicate detection (read-only). Declared BEFORE :id so it isn't matched as one (card #200).
+  @Get('duplicates')
+  duplicates(@CurrentUser() user: AuthContext): Promise<DuplicateGroup[]> {
+    return this.merges.duplicates(user.tenantId);
+  }
+
   @Get(':id')
   get(@CurrentUser() user: AuthContext, @Param('id') id: string): Promise<ContactView> {
     return this.contacts.get(user.tenantId, id);
+  }
+
+  /**
+   * Merge a duplicate contact INTO a primary (card #200). DESTRUCTIVE + PII: repoints the duplicate's
+   * records onto the primary and soft-deletes the duplicate (reversible). OWNER-only.
+   */
+  @Post(':id/merge/:duplicateId')
+  @Roles('OWNER')
+  merge(
+    @CurrentUser() user: AuthContext,
+    @Param('id') id: string,
+    @Param('duplicateId') duplicateId: string,
+  ): Promise<MergeResult> {
+    return this.merges.merge(user.tenantId, id, duplicateId, user.userId);
   }
 
   @Patch(':id')
