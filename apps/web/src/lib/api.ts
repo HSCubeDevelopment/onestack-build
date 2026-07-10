@@ -230,6 +230,28 @@ export interface Resource {
   name: string;
 }
 
+export interface SaleLine {
+  id: string;
+  description: string;
+  quantity: number;
+  unitPriceCents: number;
+  lineTotalCents: number;
+}
+
+export interface Sale {
+  id: string;
+  reference: string;
+  contactId: string | null;
+  status: 'open' | 'completed' | 'void';
+  tenderType: string | null;
+  subtotalCents: number;
+  gstCents: number;
+  totalCents: number;
+  createdAt: string;
+  completedAt: string | null;
+  lines: SaleLine[];
+}
+
 export interface Referral {
   id: string;
   referrerContactId: string;
