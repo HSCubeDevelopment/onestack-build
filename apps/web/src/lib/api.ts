@@ -230,6 +230,24 @@ export interface Resource {
   name: string;
 }
 
+export interface WebhookEndpoint {
+  id: string;
+  url: string;
+  secret: string;
+  events: string[];
+  active: boolean;
+  createdAt: string;
+}
+
+export interface WebhookDelivery {
+  id: string;
+  eventType: string;
+  status: 'success' | 'failed';
+  responseCode: number | null;
+  error: string | null;
+  createdAt: string;
+}
+
 export interface SaleLine {
   id: string;
   description: string;

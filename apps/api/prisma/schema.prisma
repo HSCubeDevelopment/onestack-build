@@ -81,6 +81,8 @@ model Tenant {
   referrals           Referral[]
   sales               Sale[]
   saleLines           SaleLine[]
+  webhookEndpoints    WebhookEndpoint[]
+  webhookDeliveries   WebhookDelivery[]
 
   @@map("onestack_tenant")
 }
@@ -1216,4 +1218,36 @@ model SaleLine {
   sale           Sale     @relation(fields: [saleId], references: [id], onDelete: Cascade)
   @@index([tenantId, saleId])
   @@map("onestack_sale_line")
+}
+
+/// A partner webhook subscription (card #252): an endpoint URL + which events, with a signing secret.
+/// Delivery is our own signed outbound HTTP — no vendor. Generic core. Tenant-scoped.
+model WebhookEndpoint {
+  id        String   @id @default(uuid()) @db.Uuid
+  tenantId  String   @db.Uuid
+  url       String
+  secret    String
+  events    Json     @default("[\"*\"]")
+  active    Boolean  @default(true)
+  createdAt DateTime @default(now())
+  tenant    Tenant   @relation(fields: [tenantId], references: [id])
+  deliveries WebhookDelivery[]
+  @@index([tenantId])
+  @@map("onestack_webhook_endpoint")
+}
+
+/// A logged webhook delivery attempt (card #252).
+model WebhookDelivery {
+  id           String   @id @default(uuid()) @db.Uuid
+  tenantId     String   @db.Uuid
+  endpointId   String   @db.Uuid
+  eventType    String
+  status       String
+  responseCode Int?
+  error        String?
+  createdAt    DateTime @default(now())
+  tenant       Tenant          @relation(fields: [tenantId], references: [id])
+  endpoint     WebhookEndpoint @relation(fields: [endpointId], references: [id], onDelete: Cascade)
+  @@index([tenantId, endpointId])
+  @@map("onestack_webhook_delivery")
 }
