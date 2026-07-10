@@ -17,6 +17,7 @@ import {
   Gift,
   Share2,
   ScanLine,
+  Webhook,
   type LucideIcon,
 } from 'lucide-react';
 import { ThemeToggle } from '@/components/ThemeToggle';
@@ -42,6 +43,7 @@ const NAV: NavRow[] = [
   { href: '/pos', label: 'Point of sale', Icon: ScanLine },
   { section: 'Settings' },
   { href: '/settings/custom-fields', label: 'Custom fields', Icon: SlidersHorizontal },
+  { href: '/settings/webhooks', label: 'Webhooks', Icon: Webhook },
 ];
 
 export function Sidebar() {
