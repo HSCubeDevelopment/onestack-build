@@ -13,6 +13,7 @@ import {
   LifeBuoy,
   Layers3,
   ListChecks,
+  Boxes,
   type LucideIcon,
 } from 'lucide-react';
 import { ThemeToggle } from '@/components/ThemeToggle';
@@ -32,6 +33,7 @@ const NAV: NavRow[] = [
   { href: '/customers', label: 'Customers', Icon: Users },
   { href: '/leads', label: 'Leads', Icon: Mail, alert: true },
   { href: '/price-book', label: 'Price book', Icon: Tags },
+  { href: '/inventory', label: 'Inventory', Icon: Boxes },
   { section: 'Settings' },
   { href: '/settings/custom-fields', label: 'Custom fields', Icon: SlidersHorizontal },
 ];

@@ -230,6 +230,18 @@ export interface Resource {
   name: string;
 }
 
+export interface InventoryItem {
+  id: string;
+  name: string;
+  sku: string | null;
+  unit: string | null;
+  quantityOnHand: number;
+  reorderLevel: number;
+  unitCostCents: number | null;
+  active: boolean;
+  lowStock: boolean;
+}
+
 export interface Shift {
   id: string;
   staffUserId: string | null;
