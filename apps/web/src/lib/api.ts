@@ -230,6 +230,17 @@ export interface Resource {
   name: string;
 }
 
+export interface Referral {
+  id: string;
+  referrerContactId: string;
+  referredName: string;
+  referredPhone: string | null;
+  referredContactId: string | null;
+  status: 'pending' | 'converted' | 'rewarded';
+  rewardNote: string | null;
+  createdAt: string;
+}
+
 export interface GiftCard {
   id: string;
   code: string;
