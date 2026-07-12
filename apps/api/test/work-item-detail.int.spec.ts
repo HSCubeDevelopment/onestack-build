@@ -173,6 +173,20 @@ describe.skipIf(!hasDb)('Work item detail — assign, notes, photos (card #21)',
     ).toHaveLength(0);
   });
 
+  it('accepts a large photo upload (base64 > 100kb — regression for the body-size limit)', async () => {
+    // ~1.5 MB of base64 (a real camera photo) — would 413 under the default 100kb JSON limit.
+    const bigBase64 = 'A'.repeat(1_500_000);
+    const created = (
+      await http()
+        .post(`/api/v1/work-items/${jobId}/attachments`)
+        .set(auth(a))
+        .send({ fileName: 'big.jpg', contentType: 'image/jpeg', dataBase64: bigBase64 })
+        .expect(201)
+    ).body;
+    expect(created.sizeBytes).toBeGreaterThan(1_000_000);
+    await http().delete(`/api/v1/work-items/${jobId}/attachments/${created.id}`).set(auth(a)).expect(204);
+  });
+
   it("is tenant-isolated: shop B cannot read shop A's notes, photos, or assign to its job", async () => {
     await http()
       .post(`/api/v1/work-items/${jobId}/notes`)
