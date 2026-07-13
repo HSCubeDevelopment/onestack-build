@@ -528,3 +528,40 @@ export interface OcrScanResult {
 
 export const money = (cents: number): string =>
   `$${(cents / 100).toLocaleString('en-AU', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+
+// ---- Time clock ----
+
+export interface TimeEntry {
+  id: string;
+  userId: string;
+  clockInAt: string;
+  clockOutAt: string | null;
+  minutes: number | null;
+}
+
+export interface ClockStatus {
+  onClock: boolean;
+  entry: TimeEntry | null;
+}
+
+export interface StaffTotal {
+  userId: string;
+  role: 'OWNER' | 'STAFF' | null;
+  totalMinutes: number;
+  sessions: number;
+  onClock: boolean;
+  lastClockInAt: string | null;
+}
+
+export interface DirectoryEntry {
+  userId: string;
+  email: string | null;
+  role: 'OWNER' | 'STAFF';
+}
+
+/** Minutes → "3h 20m" / "45m". */
+export const hoursLabel = (minutes: number): string => {
+  const h = Math.floor(minutes / 60);
+  const m = minutes % 60;
+  return h ? `${h}h ${m}m` : `${m}m`;
+};

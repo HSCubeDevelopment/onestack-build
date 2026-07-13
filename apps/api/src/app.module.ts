@@ -10,6 +10,7 @@ import { InsightsModule } from './insights/insights.module';
 import { OnboardingModule } from './onboarding/onboarding.module';
 import { WaitlistModule } from './waitlist/waitlist.module';
 import { RosterModule } from './roster/roster.module';
+import { TimeClockModule } from './time-clock/time-clock.module';
 import { InventoryModule } from './inventory/inventory.module';
 import { LoyaltyModule } from './loyalty/loyalty.module';
 import { ReferralsModule } from './referrals/referrals.module';
@@ -97,6 +98,7 @@ import { WorkItemModule } from './work-items/work-item.module';
     OnboardingModule,
     WaitlistModule,
     RosterModule,
+    TimeClockModule,
     InventoryModule,
     LoyaltyModule,
     ReferralsModule,

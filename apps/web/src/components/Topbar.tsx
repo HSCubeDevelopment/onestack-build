@@ -1,7 +1,32 @@
 'use client';
-import { Search, MessageSquare, Bell, ChevronDown } from 'lucide-react';
+import { useEffect, useState } from 'react';
+import { useRouter } from 'next/navigation';
+import { Search, MessageSquare, Bell, LogIn, LogOut } from 'lucide-react';
+
+interface Me {
+  userId: string;
+  role: 'OWNER' | 'STAFF';
+  signedIn: boolean;
+}
 
 export function Topbar() {
+  const router = useRouter();
+  const [me, setMe] = useState<Me | null>(null);
+
+  useEffect(() => {
+    fetch('/api/me')
+      .then((r) => r.json())
+      .then(setMe)
+      .catch(() => setMe(null));
+  }, []);
+
+  const signOut = async () => {
+    await fetch('/api/auth/logout', { method: 'POST' });
+    window.location.assign('/login');
+  };
+
+  const role = me?.role ?? 'OWNER';
+
   return (
     <header className="topbar">
       <div className="search">
@@ -18,12 +43,20 @@ export function Topbar() {
         <span className="badge-dot" />
       </button>
       <div className="user">
-        <div className="avatar">CP</div>
+        <div className="avatar">{me?.signedIn ? role.slice(0, 2).toUpperCase() : 'DE'}</div>
         <div>
-          <div className="u-name">Chirag Patel</div>
-          <div className="u-role">Owner</div>
+          <div className="u-name">{me?.signedIn ? 'Signed in' : 'Demo (owner)'}</div>
+          <div className="u-role">{role === 'OWNER' ? 'Owner' : 'Staff'}</div>
         </div>
-        <ChevronDown size={14} color="var(--text-faint)" />
+        {me?.signedIn ? (
+          <button className="icon-btn" title="Sign out" onClick={signOut}>
+            <LogOut size={16} />
+          </button>
+        ) : (
+          <button className="icon-btn" title="Sign in" onClick={() => router.push('/login')}>
+            <LogIn size={16} />
+          </button>
+        )}
       </div>
     </header>
   );

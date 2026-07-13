@@ -18,3 +18,19 @@ export function mintDevToken(): string {
 }
 
 export const apiBase = (): string => process.env.ONESTACK_API_BASE ?? 'http://localhost:3001/api/v1';
+
+/** httpOnly cookie holding the real Supabase-Auth-backed session token (set by /api/auth/login). */
+export const SESSION_COOKIE = 'onestack_session';
+
+/** Read the (unverified) claims out of a JWT for display/routing. The API still verifies the signature. */
+export function decodeToken(
+  token: string,
+): { userId?: string; tenantId?: string; role?: string } | null {
+  try {
+    const payload = token.split('.')[1];
+    const json = JSON.parse(Buffer.from(payload, 'base64url').toString('utf8'));
+    return { userId: json.sub, tenantId: json.tenant_id, role: json.role };
+  } catch {
+    return null;
+  }
+}

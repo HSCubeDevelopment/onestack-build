@@ -12,6 +12,7 @@
     "prisma:generate": "prisma generate",
     "migrate:deploy": "prisma migrate deploy",
     "db:setup": "echo 'Run scripts/supabase-setup.sql once in the Supabase SQL editor (creates app_user + token hook).'",
+    "seed:auth": "tsx scripts/seed-auth-users.ts",
     "check:rls": "tsx scripts/check-rls.ts",
     "check:migrations": "tsx scripts/check-destructive-migrations.ts",
     "audit:ci": "audit-ci --config .audit-ci.jsonc",
