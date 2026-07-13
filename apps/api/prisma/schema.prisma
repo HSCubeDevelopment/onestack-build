@@ -71,6 +71,7 @@ model Tenant {
   brand               Brand?
   waitlist            WaitlistEntry[]
   shifts              Shift[]
+  timeEntries         TimeEntry[]
   inventoryItems      InventoryItem[]
   loyaltyAccounts     LoyaltyAccount[]
   loyaltyTxns         LoyaltyTxn[]
@@ -1055,6 +1056,22 @@ model Shift {
   @@index([tenantId])
   @@index([tenantId, startsAt])
   @@map("onestack_shift")
+}
+
+/// A staff time-clock attendance session (Time clock). Generic core (Scheduling & Ops). clockOutAt is
+/// NULL while the user is on the clock. At most one open session per (tenant, user). Tenant-scoped.
+model TimeEntry {
+  id         String    @id @default(uuid()) @db.Uuid
+  tenantId   String    @db.Uuid
+  userId     String    @db.Uuid
+  clockInAt  DateTime  @default(now())
+  clockOutAt DateTime?
+  createdAt  DateTime  @default(now())
+  tenant     Tenant    @relation(fields: [tenantId], references: [id])
+
+  @@index([tenantId])
+  @@index([tenantId, userId, clockInAt])
+  @@map("onestack_time_entry")
 }
 
 /// An inventory item with on-hand stock (card #220). Generic core (Sales & Money). Tenant-scoped.
