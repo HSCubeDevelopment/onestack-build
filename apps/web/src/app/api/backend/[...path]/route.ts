@@ -1,19 +1,22 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { apiBase, mintDevToken } from '@/lib/session';
+import { apiBase, mintDevToken, SESSION_COOKIE } from '@/lib/session';
 
 export const dynamic = 'force-dynamic';
 
 /**
  * Same-origin proxy to the OneStack API. The browser calls /api/backend/<path>; this handler forwards to
- * <API_BASE>/<path> with a freshly-minted dev JWT attached server-side. Keeps the secret/token out of the
- * browser and sidesteps CORS entirely. Binary responses (e.g. attachment content) pass through untouched.
+ * <API_BASE>/<path> with the auth token attached server-side. If the user has signed in (real Supabase
+ * Auth session cookie) we forward THAT token — so the API sees their real tenant + role. Otherwise we fall
+ * back to a freshly-minted dev OWNER token (skeleton default). Keeps tokens out of the browser + no CORS.
  */
 async function forward(req: NextRequest, path: string[]): Promise<NextResponse> {
   const search = req.nextUrl.search;
   const url = `${apiBase()}/${path.join('/')}${search}`;
   const method = req.method;
 
-  const headers: Record<string, string> = { Authorization: `Bearer ${mintDevToken()}` };
+  const session = req.cookies.get(SESSION_COOKIE)?.value;
+  const token = session || mintDevToken();
+  const headers: Record<string, string> = { Authorization: `Bearer ${token}` };
   const contentType = req.headers.get('content-type');
   if (contentType) headers['content-type'] = contentType;
 
