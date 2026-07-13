@@ -83,12 +83,17 @@ export class LoginController {
   }
 
   /**
-   * DEV-ONLY: the seeded sample credentials, so the sign-in page can display / prefill them for testing.
-   * Hard-gated off in production so real passwords are never exposed there.
+   * The seeded sample credentials, so the sign-in page can display / prefill them.
+   *
+   * By product decision this is available in EVERY environment (including production) — the demo tenant's
+   * sample logins are shown on the public sign-in page. `DEV_LOGIN_ENABLED` is the single on/off switch;
+   * set it to anything but 'true' to hide it. Note: this exposes the demo owner/staff passwords publicly.
+   * That is intentional and contained — those accounts belong to the demo tenant only, and Postgres RLS
+   * keeps them away from any other tenant's data.
    */
   @Get('demo-credentials')
   demoCredentials(): { accounts: { label: string; email: string; password: string; role: AppRole }[] } {
-    if (process.env.NODE_ENV === 'production' || process.env.DEV_LOGIN_ENABLED !== 'true') {
+    if (process.env.DEV_LOGIN_ENABLED !== 'true') {
       throw new ForbiddenException('Demo credentials are not available');
     }
     const owner = process.env.DEMO_OWNER_EMAIL;

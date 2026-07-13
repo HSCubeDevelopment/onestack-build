@@ -11,21 +11,23 @@ import { Injectable, ServiceUnavailableException } from '@nestjs/common';
  */
 @Injectable()
 export class SupabaseAuthService {
-  private cfg(): { url: string; key: string } {
+  private cfg(): { url: string; key: string; anonKey: string } {
     const url = process.env.SUPABASE_URL;
     const key = process.env.SUPABASE_SERVICE_ROLE_KEY;
     if (!url || !key) {
       throw new ServiceUnavailableException('Supabase Auth is not configured');
     }
-    return { url: url.replace(/\/$/, ''), key };
+    // The password grant uses the anon key when available (its intended key); admin calls use the
+    // service-role key. Fall back to the service key for the grant if no anon key is configured.
+    return { url: url.replace(/\/$/, ''), key, anonKey: process.env.SUPABASE_ANON_KEY || key };
   }
 
   /** Verify credentials against Supabase Auth. Returns the auth user id, or null if they don't match. */
   async verifyPassword(email: string, password: string): Promise<{ userId: string } | null> {
-    const { url, key } = this.cfg();
+    const { url, anonKey } = this.cfg();
     const res = await fetch(`${url}/auth/v1/token?grant_type=password`, {
       method: 'POST',
-      headers: { apikey: key, 'Content-Type': 'application/json' },
+      headers: { apikey: anonKey, 'Content-Type': 'application/json' },
       body: JSON.stringify({ email, password }),
     });
     if (res.status === 400 || res.status === 401) return null; // invalid credentials
