@@ -85,6 +85,11 @@ model Tenant {
   webhookEndpoints    WebhookEndpoint[]
   webhookDeliveries   WebhookDelivery[]
   integrations        IntegrationConnection[]
+  fleetVehicles       FleetVehicle[]
+  fleetMovements      FleetMovement[]
+  fleetReturns        FleetReturn[]
+  fleetBookings       FleetBooking[]
+  fleetPhotos         FleetPhoto[]
 
   @@map("onestack_tenant")
 }
@@ -1285,4 +1290,161 @@ model IntegrationConnection {
   @@unique([tenantId, slug])
   @@index([tenantId])
   @@map("onestack_integration_connection")
+}
+
+/// A courtesy/loan car in the shop's own fleet (Fleet & courtesy cars — migrated 1:1 from the "In N Out"
+/// staff app). GENERIC core (Scheduling & Ops). `rego` is normalised (uppercased, no spaces), unique per
+/// tenant. status tracks live availability. Tenant-scoped.
+model FleetVehicle {
+  id           String   @id @default(uuid()) @db.Uuid
+  tenantId     String   @db.Uuid
+  rego         String
+  regoRaw      String   @default("")
+  make         String   @default("")
+  model        String   @default("")
+  vehicleType  String   @default("")
+  status       String   @default("unknown") // 'available' | 'out' | 'booked' | 'repair' | 'unknown'
+  isCompanyCar Boolean  @default(true)
+  notes        String   @default("")
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @default(now())
+  tenant       Tenant   @relation(fields: [tenantId], references: [id])
+  movements    FleetMovement[]
+  returns      FleetReturn[]
+  bookings     FleetBooking[]
+  photos       FleetPhoto[]
+
+  @@unique([tenantId, rego])
+  @@index([tenantId])
+  @@index([tenantId, status])
+  @@map("onestack_fleet_vehicle")
+}
+
+/// One movement: the customer's car comes IN and a fleet car goes OUT (Fleet & courtesy cars). Mirrors the
+/// legacy "Sheet22" workflow. `contactId` links the shared onestack_contact. Tenant-scoped.
+model FleetMovement {
+  id               String    @id @default(uuid()) @db.Uuid
+  tenantId         String    @db.Uuid
+  contactId        String?   @db.Uuid
+  driverName       String    @default("")
+  driverPhone      String    @default("")
+  ownerName        String    @default("")
+  ownerPhone       String    @default("")
+  carsInRego       String    @default("")
+  carsInRegoRaw    String    @default("")
+  carsOutVehicleId String?   @db.Uuid
+  carsOutRego      String    @default("")
+  carsOutRegoRaw   String    @default("")
+  purpose          String    @default("") // RENT | COURTESY | REPAIRS | TOWED | SWAP | PICKUP | RETURN | INTAKE | HANDBACK | OTHER
+  movedAt          DateTime?
+  status           String    @default("active") // 'active' | 'returned' | 'closed'
+  needsReview      Boolean   @default(false)
+  reviewReason     String    @default("")
+  notes            String    @default("")
+  staffName        String    @default("")
+  createdByUserId  String?   @db.Uuid
+  updatedByUserId  String?   @db.Uuid
+  createdAt        DateTime  @default(now())
+  updatedAt        DateTime  @default(now())
+  tenant           Tenant        @relation(fields: [tenantId], references: [id])
+  carsOutVehicle   FleetVehicle? @relation(fields: [carsOutVehicleId], references: [id])
+  returns          FleetReturn[]
+  photos           FleetPhoto[]
+
+  @@index([tenantId])
+  @@index([tenantId, status])
+  @@index([tenantId, carsOutRego])
+  @@index([tenantId, carsInRego])
+  @@index([tenantId, movedAt])
+  @@index([tenantId, needsReview])
+  @@map("onestack_fleet_movement")
+}
+
+/// One return: a fleet car that was out comes back (Fleet & courtesy cars). Mirrors the legacy "Car return
+/// Sheet" workflow. Links + closes the matching active movement and frees the vehicle. Tenant-scoped.
+model FleetReturn {
+  id                String        @id @default(uuid()) @db.Uuid
+  tenantId          String        @db.Uuid
+  movementId        String?       @db.Uuid
+  contactId         String?       @db.Uuid
+  returnedVehicleId String?       @db.Uuid
+  returnedRego      String        @default("")
+  returnedRegoRaw   String        @default("")
+  driverName        String        @default("")
+  mobileNumber      String        @default("")
+  returnedAt        DateTime?
+  bondStatus        String        @default("")
+  notes             String        @default("")
+  staffName         String        @default("")
+  needsReview       Boolean       @default(false)
+  reviewReason      String        @default("")
+  createdByUserId   String?       @db.Uuid
+  updatedByUserId   String?       @db.Uuid
+  createdAt         DateTime      @default(now())
+  updatedAt         DateTime      @default(now())
+  tenant            Tenant        @relation(fields: [tenantId], references: [id])
+  movement          FleetMovement? @relation(fields: [movementId], references: [id])
+  returnedVehicle   FleetVehicle? @relation(fields: [returnedVehicleId], references: [id])
+  photos            FleetPhoto[]
+
+  @@index([tenantId])
+  @@index([tenantId, returnedRego])
+  @@index([tenantId, returnedAt])
+  @@index([tenantId, needsReview])
+  @@map("onestack_fleet_return")
+}
+
+/// A forward booking that reserves a fleet car for a customer (Fleet & courtesy cars). Tenant-scoped.
+model FleetBooking {
+  id               String    @id @default(uuid()) @db.Uuid
+  tenantId         String    @db.Uuid
+  vehicleId        String?   @db.Uuid
+  vehicleRego      String    @default("")
+  contactId        String?   @db.Uuid
+  bookingName      String    @default("")
+  bookingMobile    String    @default("")
+  startAt          DateTime
+  expectedReturnAt DateTime?
+  purpose          String    @default("")
+  status           String    @default("booked") // 'booked' | 'active' | 'completed' | 'cancelled'
+  notes            String    @default("")
+  createdByUserId  String?   @db.Uuid
+  updatedByUserId  String?   @db.Uuid
+  createdAt        DateTime  @default(now())
+  updatedAt        DateTime  @default(now())
+  tenant           Tenant        @relation(fields: [tenantId], references: [id])
+  vehicle          FleetVehicle? @relation(fields: [vehicleId], references: [id])
+  photos           FleetPhoto[]
+
+  @@index([tenantId])
+  @@index([tenantId, vehicleRego, status])
+  @@index([tenantId, startAt])
+  @@map("onestack_fleet_booking")
+}
+
+/// A before/after (or damage/odometer/fuel) photo attached to a fleet vehicle, movement, return or booking
+/// (Fleet & courtesy cars). The bytes live in private Storage under storagePath. Tenant-scoped.
+model FleetPhoto {
+  id               String    @id @default(uuid()) @db.Uuid
+  tenantId         String    @db.Uuid
+  vehicleId        String?   @db.Uuid
+  movementId       String?   @db.Uuid
+  returnId         String?   @db.Uuid
+  bookingId        String?   @db.Uuid
+  photoType        String    @default("other") // 'before_handover' | 'after_return' | 'damage' | 'odometer' | 'fuel' | 'tow_card' | 'other'
+  storagePath      String
+  contentType      String    @default("image/jpeg")
+  notes            String    @default("")
+  uploadedByUserId String?   @db.Uuid
+  uploadedAt       DateTime  @default(now())
+  tenant           Tenant         @relation(fields: [tenantId], references: [id])
+  vehicle          FleetVehicle?  @relation(fields: [vehicleId], references: [id])
+  movement         FleetMovement? @relation(fields: [movementId], references: [id], onDelete: Cascade)
+  return           FleetReturn?   @relation(fields: [returnId], references: [id], onDelete: Cascade)
+  booking          FleetBooking?  @relation(fields: [bookingId], references: [id], onDelete: Cascade)
+
+  @@index([tenantId])
+  @@index([tenantId, movementId])
+  @@index([tenantId, returnId])
+  @@map("onestack_fleet_photo")
 }

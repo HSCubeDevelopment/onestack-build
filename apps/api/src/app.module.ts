@@ -30,6 +30,7 @@ import { CustomFieldsModule } from './custom-fields/custom-fields.module';
 import { DashboardModule } from './dashboard/dashboard.module';
 import { DispatchModule } from './dispatch/dispatch.module';
 import { EventingModule } from './eventing/eventing.module';
+import { FleetModule } from './fleet/fleet.module';
 import { MaterialRequestModule } from './floor-ordering/material-request.module';
 import { HealthController } from './health/health.controller';
 import { JobsModule } from './jobs/jobs.module';
@@ -104,6 +105,7 @@ import { WorkItemModule } from './work-items/work-item.module';
     ReferralsModule,
     PosModule,
     WebhooksModule,
+    FleetModule, // fleet & courtesy cars: loan-car movements/returns/bookings/photos (migrated 1:1 from "In N Out")
     MarketplaceModule, // integration marketplace: catalogue + per-tenant connections (Phase 4; vendor wiring deferred) // public API & webhooks: signed outbound event delivery (Phase 4; partner API keys deferred) // point of sale: walk-in checkout (Phase 4; card payment deferred) // referral engine: codes + trackable referrals/incentives (Phase 4) // loyalty, rewards & gift cards: points + gift-card ledgers (Phase 4) // inventory & stock: levels, usage, reorder signal (Phase 4) // roster & staff management: shifts, availability, time-off (Phase 4) // waitlist & auto-fill: fill cancellations to protect utilisation (Phase 4) // onboarding & data migration: CSV customer import + setup checklist (Phase 3)
   ],
   controllers: [HealthController],

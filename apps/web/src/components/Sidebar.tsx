@@ -20,6 +20,7 @@ import {
   ScanLine,
   Webhook,
   Blocks,
+  Car,
   type LucideIcon,
 } from 'lucide-react';
 import { ThemeToggle } from '@/components/ThemeToggle';
@@ -36,6 +37,9 @@ const NAV: NavRow[] = [
   { href: '/waitlist', label: 'Waitlist', Icon: ListChecks },
   { href: '/roster', label: 'Roster', Icon: CalendarDays },
   { href: '/time-clock', label: 'Time clock', Icon: Clock },
+  { section: 'Fleet & courtesy cars' },
+  { href: '/fleet', label: 'Fleet & cars', Icon: Car },
+  { href: '/fleet/bookings', label: 'Fleet bookings', Icon: CalendarDays },
   { section: 'Customers & sales' },
   { href: '/customers', label: 'Customers', Icon: Users },
   { href: '/leads', label: 'Leads', Icon: Mail, alert: true },
