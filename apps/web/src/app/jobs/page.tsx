@@ -3,6 +3,7 @@ import { useState } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { api, Contact, Vehicle, WorkItem } from '@/lib/api';
+import { useRole } from '@/lib/use-role';
 import {
   EmptyState,
   ErrorBanner,
@@ -14,10 +15,19 @@ import {
 } from '@/components/ui';
 
 export default function JobsPage() {
+  const { role, isStaff } = useRole();
+  // Wait for the role before fetching. /contacts is OWNER-only: requested with a staff token it 403s,
+  // and inside this Promise.all it would reject the whole page — not just the customer column. This is
+  // also the page staff are redirected to, so it has to hold up for them.
   const { data, loading, error, reload } = useAsync(
     () =>
-      Promise.all([api.get<WorkItem[]>('/work-items?type=job'), api.get<Contact[]>('/contacts')]),
-    [],
+      role === undefined
+        ? Promise.resolve(null)
+        : Promise.all([
+            api.get<WorkItem[]>('/work-items?type=job'),
+            isStaff ? Promise.resolve([] as Contact[]) : api.get<Contact[]>('/contacts'),
+          ]),
+    [role, isStaff],
   );
   const [showNew, setShowNew] = useState(false);
 
@@ -28,10 +38,16 @@ export default function JobsPage() {
 
   return (
     <>
-      <PageHead title="Jobs" sub="Every job in the workshop">
-        <button className="btn primary" onClick={() => setShowNew(true)}>
-          + New job
-        </button>
+      <PageHead
+        title="Jobs"
+        sub={isStaff ? 'Jobs assigned to you' : 'Every job in the workshop'}
+      >
+        {/* The new-job modal picks a customer out of the contact list, which an employee can't read. */}
+        {isStaff ? null : (
+          <button className="btn primary" onClick={() => setShowNew(true)}>
+            + New job
+          </button>
+        )}
       </PageHead>
       <ErrorBanner message={error} />
       {loading && <Loading />}
