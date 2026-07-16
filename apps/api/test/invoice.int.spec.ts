@@ -14,7 +14,7 @@ describe.skipIf(!hasDb)('Invoice (card #40)', () => {
   let jobId: string;
 
   const http = () => request(app.getHttpServer());
-  const auth = (t: TestTenant) => ({ Authorization: `Bearer ${t.staffToken}` });
+  const auth = (t: TestTenant) => ({ Authorization: `Bearer ${t.ownerToken}` });
 
   const quoteWithLines = async (): Promise<string> => {
     const quote = (await http().post(`/api/v1/work-items/${jobId}/quotes`).set(auth(a))).body;

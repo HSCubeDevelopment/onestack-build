@@ -21,7 +21,7 @@ describe.skipIf(!hasDb)('AI damage scope — photo-to-quote slice A (Phase 2)', 
   let jobNoPhoto: string;
 
   const http = () => request(app.getHttpServer());
-  const auth = (t: TestTenant) => ({ Authorization: `Bearer ${t.staffToken}` });
+  const auth = (t: TestTenant) => ({ Authorization: `Bearer ${t.ownerToken}` });
 
   const makeJob = async (t: TestTenant): Promise<string> => {
     const customerId = (

@@ -37,7 +37,14 @@ describe.skipIf(!hasDb)('Floor ordering — material requests (Phase 2)', () => 
       await http()
         .post('/api/v1/work-items')
         .set(owner(t))
-        .send({ type: 'job', fields: { customerId }, subjectIds: [vehicleId] })
+        // Dispatched to the technician: a STAFF caller may only raise parts against a job assigned to
+        // them, so the job has to be theirs for the technician flow below to be reachable.
+        .send({
+          type: 'job',
+          fields: { customerId },
+          subjectIds: [vehicleId],
+          assignees: [t.staffUserId],
+        })
     ).body.id;
   };
 

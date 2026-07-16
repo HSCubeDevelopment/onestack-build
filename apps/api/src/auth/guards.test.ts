@@ -65,8 +65,16 @@ describe('RolesGuard', () => {
     return new RolesGuard(reflector);
   };
 
-  it('allows when no roles are required', () => {
-    expect(guardWith(undefined).canActivate(ctxWith({ auth: { role: 'STAFF' } }))).toBe(true);
+  // Deny-by-default is the whole point: an undecorated route is OWNER-only, so a controller added later
+  // is closed to employees until someone decides otherwise. These two cases are the contract.
+  it('defaults an undecorated route to OWNER-only — STAFF is denied', () => {
+    expect(() => guardWith(undefined).canActivate(ctxWith({ auth: { role: 'STAFF' } }))).toThrow();
+    expect(() => guardWith([]).canActivate(ctxWith({ auth: { role: 'STAFF' } }))).toThrow();
+  });
+
+  it('lets OWNER through an undecorated route', () => {
+    expect(guardWith(undefined).canActivate(ctxWith({ auth: { role: 'OWNER' } }))).toBe(true);
+    expect(guardWith([]).canActivate(ctxWith({ auth: { role: 'OWNER' } }))).toBe(true);
   });
 
   it('allows when the user has a required role', () => {
@@ -75,5 +83,14 @@ describe('RolesGuard', () => {
 
   it('forbids when the user lacks the required role', () => {
     expect(() => guardWith(['OWNER']).canActivate(ctxWith({ auth: { role: 'STAFF' } }))).toThrow();
+  });
+
+  it('admits both roles to an @AllowStaff() route', () => {
+    expect(guardWith(['OWNER', 'STAFF']).canActivate(ctxWith({ auth: { role: 'STAFF' } }))).toBe(true);
+    expect(guardWith(['OWNER', 'STAFF']).canActivate(ctxWith({ auth: { role: 'OWNER' } }))).toBe(true);
+  });
+
+  it('forbids a request with no resolved role at all', () => {
+    expect(() => guardWith(undefined).canActivate(ctxWith({}))).toThrow();
   });
 });

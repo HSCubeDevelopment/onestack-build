@@ -2,7 +2,7 @@ import { Controller, Get, HttpCode, Post, Query, UseGuards } from '@nestjs/commo
 import { AuthContext } from '../auth/auth.types';
 import { CurrentUser } from '../auth/current-user.decorator';
 import { JwtAuthGuard } from '../auth/jwt-auth.guard';
-import { Roles } from '../auth/roles.decorator';
+import { AllowStaff, Roles } from '../auth/roles.decorator';
 import { RolesGuard } from '../auth/roles.guard';
 import { ClockStatus, StaffTotal, TimeClockService, TimeEntryView } from './time-clock.service';
 
@@ -15,23 +15,27 @@ import { ClockStatus, StaffTotal, TimeClockService, TimeEntryView } from './time
 export class TimeClockController {
   constructor(private readonly clock: TimeClockService) {}
 
+  @AllowStaff()
   @Post('check-in')
   @HttpCode(200)
   checkIn(@CurrentUser() user: AuthContext): Promise<ClockStatus> {
     return this.clock.checkIn(user.tenantId, user.userId);
   }
 
+  @AllowStaff()
   @Post('check-out')
   @HttpCode(200)
   checkOut(@CurrentUser() user: AuthContext): Promise<ClockStatus> {
     return this.clock.checkOut(user.tenantId, user.userId);
   }
 
+  @AllowStaff()
   @Get('status')
   status(@CurrentUser() user: AuthContext): Promise<ClockStatus> {
     return this.clock.status(user.tenantId, user.userId);
   }
 
+  @AllowStaff()
   @Get('entries')
   myEntries(@CurrentUser() user: AuthContext): Promise<TimeEntryView[]> {
     return this.clock.myEntries(user.tenantId, user.userId);

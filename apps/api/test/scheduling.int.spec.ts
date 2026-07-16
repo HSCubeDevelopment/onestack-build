@@ -19,7 +19,7 @@ describe.skipIf(!hasDb)('Scheduling — calendar & resources (card #23)', () => 
   let jobId: string;
 
   const http = () => request(app.getHttpServer());
-  const auth = (t: TestTenant) => ({ Authorization: `Bearer ${t.staffToken}` });
+  const auth = (t: TestTenant) => ({ Authorization: `Bearer ${t.ownerToken}` });
 
   beforeAll(async () => {
     admin = adminPrisma();

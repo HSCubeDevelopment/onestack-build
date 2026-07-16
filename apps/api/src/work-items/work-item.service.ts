@@ -83,19 +83,35 @@ export class WorkItemService {
     });
   }
 
-  async get(tenantId: string, id: string): Promise<WorkItemView> {
+  /**
+   * `assignedTo` restricts to work items that user is an assignee of. Callers pass it for the employee
+   * (STAFF) role so a worker only ever receives their own jobs — the rows never leave the server, rather
+   * than being filtered in the client. Omit it for OWNER.
+   */
+  async get(tenantId: string, id: string, assignedTo?: string): Promise<WorkItemView> {
     const wi = await this.tenants.runInTenant(tenantId, (tx) =>
-      tx.workItem.findFirst({ where: { id, deletedAt: null } }),
+      tx.workItem.findFirst({
+        where: {
+          id,
+          deletedAt: null,
+          ...(assignedTo ? { assignees: { array_contains: assignedTo } } : {}),
+        },
+      }),
     );
+    // Deliberately 404, not 403: a worker shouldn't be able to probe which job ids exist.
     if (!wi) throw new NotFoundException('Work item not found');
     return toView(wi);
   }
 
   /** List work items, optionally filtered by type (e.g. all "job" work items). This tenant only. */
-  async list(tenantId: string, type?: string): Promise<WorkItemView[]> {
+  async list(tenantId: string, type?: string, assignedTo?: string): Promise<WorkItemView[]> {
     const rows = await this.tenants.runInTenant(tenantId, (tx) =>
       tx.workItem.findMany({
-        where: { deletedAt: null, ...(type ? { type } : {}) },
+        where: {
+          deletedAt: null,
+          ...(type ? { type } : {}),
+          ...(assignedTo ? { assignees: { array_contains: assignedTo } } : {}),
+        },
         orderBy: { createdAt: 'desc' },
       }),
     );

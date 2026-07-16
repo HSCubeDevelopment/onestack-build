@@ -14,7 +14,7 @@ describe.skipIf(!hasDb)('Custom fields + search (card #11)', () => {
   let b: TestTenant;
 
   const http = () => request(app.getHttpServer());
-  const auth = (t: TestTenant) => ({ Authorization: `Bearer ${t.staffToken}` });
+  const auth = (t: TestTenant) => ({ Authorization: `Bearer ${t.ownerToken}` });
 
   beforeAll(async () => {
     admin = adminPrisma();

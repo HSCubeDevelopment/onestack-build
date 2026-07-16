@@ -1,4 +1,5 @@
 import { Module } from '@nestjs/common';
+import { WorkItemModule } from '../work-items/work-item.module';
 import { MaterialRequestController } from './material-request.controller';
 import { MaterialRequestService } from './material-request.service';
 import {
@@ -9,10 +10,15 @@ import {
 
 /**
  * Floor ordering (Phase 2). Technician material requests on a job, a manager (OWNER) approval step, and
- * ordering (emailing a supplier) behind a vendor boundary (no-op by default). Self-contained — reads the
- * job via TenantService directly (its own tables) and gates the manager step at the route with @Roles.
+ * ordering (emailing a supplier) behind a vendor boundary (no-op by default). Owns its own tables; the
+ * manager step is gated at the route with @Roles.
+ *
+ * Imports WorkItemModule for its exported WorkItemService — used only to answer "is this job visible to
+ * this caller?" so a STAFF technician can't raise or read parts against someone else's job. That's the
+ * sanctioned cross-module route (an exported service), not a reach into another module's tables.
  */
 @Module({
+  imports: [WorkItemModule],
   controllers: [MaterialRequestController],
   providers: [
     MaterialRequestService,

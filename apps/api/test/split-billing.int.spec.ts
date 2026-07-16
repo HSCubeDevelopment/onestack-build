@@ -16,7 +16,7 @@ describe.skipIf(!hasDb)('Split billing (card #40.5)', () => {
   let insurerId: string;
 
   const http = () => request(app.getHttpServer());
-  const auth = (t: TestTenant) => ({ Authorization: `Bearer ${t.staffToken}` });
+  const auth = (t: TestTenant) => ({ Authorization: `Bearer ${t.ownerToken}` });
 
   // A $130 ex-GST invoice ⇒ $143 inc GST (14300c). Built from an accepted quote.
   const invoiceWithTotal = async (): Promise<{ id: string; totalCents: number }> => {

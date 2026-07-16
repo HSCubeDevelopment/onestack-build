@@ -38,7 +38,7 @@ describe.skipIf(!hasDb)('Vehicle & Customer (card #10)', () => {
   });
 
   const http = () => request(app.getHttpServer());
-  const auth = (t: TestTenant) => ({ Authorization: `Bearer ${t.staffToken}` });
+  const auth = (t: TestTenant) => ({ Authorization: `Bearer ${t.ownerToken}` });
 
   it('creates a customer (name+phone required), rejects a missing phone', async () => {
     const res = await http()

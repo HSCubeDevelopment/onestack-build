@@ -14,7 +14,7 @@ describe.skipIf(!hasDb)('Owner dashboard (card #52)', () => {
   let b: TestTenant;
 
   const http = () => request(app.getHttpServer());
-  const auth = (t: TestTenant) => ({ Authorization: `Bearer ${t.staffToken}` });
+  const auth = (t: TestTenant) => ({ Authorization: `Bearer ${t.ownerToken}` });
 
   const makeJob = async (t: TestTenant, rego: string): Promise<string> => {
     const customerId = (
