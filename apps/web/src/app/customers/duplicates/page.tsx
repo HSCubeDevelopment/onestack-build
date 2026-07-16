@@ -14,7 +14,10 @@ export default function DuplicatesPage() {
 
   return (
     <>
-      <PageHead title="Duplicate customers" sub="Find and merge records that look like the same person">
+      <PageHead
+        title="Duplicate customers"
+        sub="Find and merge records that look like the same person"
+      >
         <button className="btn" onClick={() => router.push('/customers')}>
           ← Customers
         </button>
@@ -44,7 +47,11 @@ function DuplicateCard({ group, onMerged }: { group: DuplicateGroup; onMerged: (
 
   const merge = async () => {
     if (!primaryId) return;
-    if (!confirm('Merge the other record(s) into the selected one? The others are removed (recoverable).'))
+    if (
+      !confirm(
+        'Merge the other record(s) into the selected one? The others are removed (recoverable).',
+      )
+    )
       return;
     setBusy(true);
     setError(null);
@@ -62,7 +69,10 @@ function DuplicateCard({ group, onMerged }: { group: DuplicateGroup; onMerged: (
 
   return (
     <div className="card">
-      <div className="row" style={{ justifyContent: 'space-between', alignItems: 'center', marginBottom: 10 }}>
+      <div
+        className="row"
+        style={{ justifyContent: 'space-between', alignItems: 'center', marginBottom: 10 }}
+      >
         <strong>Possible duplicate</strong>
         <span className="muted" style={{ fontSize: 13 }}>
           matches on {group.reasons.join(', ')}

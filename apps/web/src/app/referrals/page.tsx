@@ -1,7 +1,15 @@
 'use client';
 import { useState } from 'react';
 import { api, Contact, Referral } from '@/lib/api';
-import { EmptyState, ErrorBanner, Loading, Modal, PageHead, StatusBadge, useAsync } from '@/components/ui';
+import {
+  EmptyState,
+  ErrorBanner,
+  Loading,
+  Modal,
+  PageHead,
+  StatusBadge,
+  useAsync,
+} from '@/components/ui';
 
 export default function ReferralsPage() {
   const { data, loading, error, reload } = useAsync(() => api.get<Referral[]>('/referrals'), []);
@@ -21,9 +29,16 @@ export default function ReferralsPage() {
 
   return (
     <>
-      <PageHead title="Referrals" sub="Turn happy customers into referrers with trackable incentives">
-        <button className="btn" onClick={() => setCodeFor(true)}>Get a code</button>
-        <button className="btn primary" onClick={() => setAdding(true)}>+ Record referral</button>
+      <PageHead
+        title="Referrals"
+        sub="Turn happy customers into referrers with trackable incentives"
+      >
+        <button className="btn" onClick={() => setCodeFor(true)}>
+          Get a code
+        </button>
+        <button className="btn primary" onClick={() => setAdding(true)}>
+          + Record referral
+        </button>
       </PageHead>
 
       <ErrorBanner message={error} />
@@ -32,21 +47,41 @@ export default function ReferralsPage() {
         {loading ? (
           <Loading />
         ) : refs.length === 0 ? (
-          <EmptyState>No referrals yet. Record one, or share a customer's referral code.</EmptyState>
+          <EmptyState>
+            No referrals yet. Record one, or share a customer's referral code.
+          </EmptyState>
         ) : (
           <table className="table">
             <thead>
-              <tr><th>Referred</th><th>Status</th><th>Reward</th><th /></tr>
+              <tr>
+                <th>Referred</th>
+                <th>Status</th>
+                <th>Reward</th>
+                <th />
+              </tr>
             </thead>
             <tbody>
               {refs.map((r) => (
                 <tr key={r.id}>
-                  <td>{r.referredName} {r.referredPhone ? <span className="muted">· {r.referredPhone}</span> : null}</td>
-                  <td><StatusBadge status={r.status} /></td>
+                  <td>
+                    {r.referredName}{' '}
+                    {r.referredPhone ? <span className="muted">· {r.referredPhone}</span> : null}
+                  </td>
+                  <td>
+                    <StatusBadge status={r.status} />
+                  </td>
                   <td className="muted">{r.rewardNote ?? '—'}</td>
                   <td style={{ textAlign: 'right', whiteSpace: 'nowrap' }}>
-                    {r.status === 'pending' ? <button className="btn" onClick={() => convert(r)}>Mark converted</button> : null}
-                    {r.status === 'converted' ? <button className="btn primary" onClick={() => reward(r)}>Reward</button> : null}
+                    {r.status === 'pending' ? (
+                      <button className="btn" onClick={() => convert(r)}>
+                        Mark converted
+                      </button>
+                    ) : null}
+                    {r.status === 'converted' ? (
+                      <button className="btn primary" onClick={() => reward(r)}>
+                        Reward
+                      </button>
+                    ) : null}
                   </td>
                 </tr>
               ))}
@@ -55,7 +90,15 @@ export default function ReferralsPage() {
         )}
       </div>
 
-      {adding ? <RecordModal onClose={() => setAdding(false)} onDone={() => { setAdding(false); reload(); }} /> : null}
+      {adding ? (
+        <RecordModal
+          onClose={() => setAdding(false)}
+          onDone={() => {
+            setAdding(false);
+            reload();
+          }}
+        />
+      ) : null}
       {codeFor ? <CodeModal onClose={() => setCodeFor(false)} /> : null}
     </>
   );
@@ -71,12 +114,27 @@ function CustomerPicker({ onPick }: { onPick: (c: Contact) => void }) {
   return (
     <div>
       <div className="row" style={{ gap: 8 }}>
-        <input className="input" placeholder="Find a customer…" value={q} onChange={(e) => setQ(e.target.value)} onKeyDown={(e) => e.key === 'Enter' && search()} />
-        <button className="btn" onClick={search}>Search</button>
+        <input
+          className="input"
+          placeholder="Find a customer…"
+          value={q}
+          onChange={(e) => setQ(e.target.value)}
+          onKeyDown={(e) => e.key === 'Enter' && search()}
+        />
+        <button className="btn" onClick={search}>
+          Search
+        </button>
       </div>
       <div style={{ marginTop: 8 }}>
         {results.map((c) => (
-          <button key={c.id} className="btn" style={{ marginRight: 6, marginTop: 6 }} onClick={() => onPick(c)}>{c.displayName}</button>
+          <button
+            key={c.id}
+            className="btn"
+            style={{ marginRight: 6, marginTop: 6 }}
+            onClick={() => onPick(c)}
+          >
+            {c.displayName}
+          </button>
         ))}
       </div>
     </div>
@@ -95,7 +153,11 @@ function RecordModal({ onClose, onDone }: { onClose: () => void; onDone: () => v
     setBusy(true);
     setError(null);
     try {
-      await api.post('/referrals', { referrerContactId: referrer.id, referredName, referredPhone: referredPhone || undefined });
+      await api.post('/referrals', {
+        referrerContactId: referrer.id,
+        referredName,
+        referredPhone: referredPhone || undefined,
+      });
       onDone();
     } catch (e) {
       setError(e instanceof Error ? e.message : String(e));
@@ -107,22 +169,42 @@ function RecordModal({ onClose, onDone }: { onClose: () => void; onDone: () => v
     <Modal title="Record a referral" onClose={onClose}>
       <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
         <div>
-          <div className="muted" style={{ fontSize: 13, marginBottom: 4 }}>Referred by</div>
+          <div className="muted" style={{ fontSize: 13, marginBottom: 4 }}>
+            Referred by
+          </div>
           {referrer ? (
             <div className="row" style={{ justifyContent: 'space-between' }}>
               <strong>{referrer.displayName}</strong>
-              <button className="btn" onClick={() => setReferrer(null)}>Change</button>
+              <button className="btn" onClick={() => setReferrer(null)}>
+                Change
+              </button>
             </div>
           ) : (
             <CustomerPicker onPick={setReferrer} />
           )}
         </div>
-        <input className="input" placeholder="New customer's name" value={referredName} onChange={(e) => setReferredName(e.target.value)} />
-        <input className="input" placeholder="Their phone (optional)" value={referredPhone} onChange={(e) => setReferredPhone(e.target.value)} />
+        <input
+          className="input"
+          placeholder="New customer's name"
+          value={referredName}
+          onChange={(e) => setReferredName(e.target.value)}
+        />
+        <input
+          className="input"
+          placeholder="Their phone (optional)"
+          value={referredPhone}
+          onChange={(e) => setReferredPhone(e.target.value)}
+        />
         <ErrorBanner message={error} />
         <div className="row" style={{ justifyContent: 'flex-end', gap: 8 }}>
-          <button className="btn" onClick={onClose}>Cancel</button>
-          <button className="btn primary" onClick={save} disabled={busy || !referrer || !referredName.trim()}>
+          <button className="btn" onClick={onClose}>
+            Cancel
+          </button>
+          <button
+            className="btn primary"
+            onClick={save}
+            disabled={busy || !referrer || !referredName.trim()}
+          >
             {busy ? 'Saving…' : 'Record'}
           </button>
         </div>
@@ -145,8 +227,19 @@ function CodeModal({ onClose }: { onClose: () => void }) {
       ) : (
         <div style={{ textAlign: 'center', padding: '10px 0' }}>
           <div className="muted">{who?.displayName}'s code</div>
-          <div style={{ fontSize: 28, fontWeight: 700, fontFamily: 'var(--font-mono, monospace)', margin: '8px 0' }}>{code}</div>
-          <div className="muted" style={{ fontSize: 13 }}>Share this with them to pass on to friends.</div>
+          <div
+            style={{
+              fontSize: 28,
+              fontWeight: 700,
+              fontFamily: 'var(--font-mono, monospace)',
+              margin: '8px 0',
+            }}
+          >
+            {code}
+          </div>
+          <div className="muted" style={{ fontSize: 13 }}>
+            Share this with them to pass on to friends.
+          </div>
         </div>
       )}
     </Modal>

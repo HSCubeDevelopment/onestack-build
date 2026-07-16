@@ -27,7 +27,10 @@ describe.skipIf(!hasDb)('Time clock', () => {
   afterAll(async () => {
     await app.close();
     for (const t of [a.tenantId, b.tenantId]) {
-      await admin.$executeRawUnsafe(`DELETE FROM "onestack_time_entry" WHERE "tenantId" = $1::uuid`, t);
+      await admin.$executeRawUnsafe(
+        `DELETE FROM "onestack_time_entry" WHERE "tenantId" = $1::uuid`,
+        t,
+      );
     }
     await dropTenant(admin, a.tenantId);
     await dropTenant(admin, b.tenantId);
@@ -35,14 +38,16 @@ describe.skipIf(!hasDb)('Time clock', () => {
   });
 
   it('checks in, reports on-clock, then checks out with minutes', async () => {
-    const inRes = (await http().post('/api/v1/time-clock/check-in').set(asStaff(a)).expect(200)).body;
+    const inRes = (await http().post('/api/v1/time-clock/check-in').set(asStaff(a)).expect(200))
+      .body;
     expect(inRes.onClock).toBe(true);
     expect(inRes.entry.clockOutAt).toBeNull();
 
     const status = (await http().get('/api/v1/time-clock/status').set(asStaff(a)).expect(200)).body;
     expect(status.onClock).toBe(true);
 
-    const outRes = (await http().post('/api/v1/time-clock/check-out').set(asStaff(a)).expect(200)).body;
+    const outRes = (await http().post('/api/v1/time-clock/check-out').set(asStaff(a)).expect(200))
+      .body;
     expect(outRes.onClock).toBe(false);
     expect(outRes.entry.clockOutAt).not.toBeNull();
     expect(typeof outRes.entry.minutes).toBe('number');
@@ -56,7 +61,8 @@ describe.skipIf(!hasDb)('Time clock', () => {
   });
 
   it('OWNER summary shows per-staff totals; STAFF is forbidden', async () => {
-    const summary = (await http().get('/api/v1/time-clock/summary').set(asOwner(a)).expect(200)).body;
+    const summary = (await http().get('/api/v1/time-clock/summary').set(asOwner(a)).expect(200))
+      .body;
     const staffRow = summary.find((r: { userId: string }) => r.userId === a.staffUserId);
     expect(staffRow).toBeDefined();
     expect(staffRow.role).toBe('STAFF');
@@ -66,10 +72,12 @@ describe.skipIf(!hasDb)('Time clock', () => {
   });
 
   it("is tenant-isolated: shop B's summary and entries never include A's sessions", async () => {
-    const summaryB = (await http().get('/api/v1/time-clock/summary').set(asOwner(b)).expect(200)).body;
+    const summaryB = (await http().get('/api/v1/time-clock/summary').set(asOwner(b)).expect(200))
+      .body;
     expect(summaryB.some((r: { userId: string }) => r.userId === a.staffUserId)).toBe(false);
     // B's staff has logged nothing → no closed minutes.
-    const entriesB = (await http().get('/api/v1/time-clock/entries').set(asStaff(b)).expect(200)).body;
+    const entriesB = (await http().get('/api/v1/time-clock/entries').set(asStaff(b)).expect(200))
+      .body;
     expect(entriesB).toHaveLength(0);
   });
 });

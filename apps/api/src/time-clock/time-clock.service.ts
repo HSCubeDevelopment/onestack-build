@@ -121,16 +121,14 @@ export class TimeClockService {
 
       const byUser = new Map<string, StaffTotal>();
       for (const r of rows) {
-        const t =
-          byUser.get(r.userId) ??
-          {
-            userId: r.userId,
-            role: roleByUser.get(r.userId) ?? null,
-            totalMinutes: 0,
-            sessions: 0,
-            onClock: false,
-            lastClockInAt: null,
-          };
+        const t = byUser.get(r.userId) ?? {
+          userId: r.userId,
+          role: roleByUser.get(r.userId) ?? null,
+          totalMinutes: 0,
+          sessions: 0,
+          onClock: false,
+          lastClockInAt: null,
+        };
         t.sessions += 1;
         if (r.clockOutAt) t.totalMinutes += minutesBetween(r.clockInAt, r.clockOutAt);
         else t.onClock = true;

@@ -46,7 +46,13 @@ export default function LoginPage() {
   };
 
   return (
-    <div style={{ display: 'grid', placeItems: 'center', minHeight: 'calc(100vh - var(--topbar-h) - 48px)' }}>
+    <div
+      style={{
+        display: 'grid',
+        placeItems: 'center',
+        minHeight: 'calc(100vh - var(--topbar-h) - 48px)',
+      }}
+    >
       <div className="card" style={{ width: 380, maxWidth: '100%' }}>
         <div style={{ marginBottom: 18 }}>
           <h1 style={{ fontSize: 22, fontWeight: 700, margin: 0 }}>Sign in</h1>
@@ -86,7 +92,15 @@ export default function LoginPage() {
 
         {accounts.length ? (
           <div style={{ marginTop: 20, borderTop: '1px solid var(--border)', paddingTop: 14 }}>
-            <div style={{ fontSize: 12, color: 'var(--text-faint)', textTransform: 'uppercase', letterSpacing: 0.5, marginBottom: 8 }}>
+            <div
+              style={{
+                fontSize: 12,
+                color: 'var(--text-faint)',
+                textTransform: 'uppercase',
+                letterSpacing: 0.5,
+                marginBottom: 8,
+              }}
+            >
               Test accounts
             </div>
             <div style={{ display: 'grid', gap: 8 }}>

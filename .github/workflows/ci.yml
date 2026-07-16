@@ -146,6 +146,17 @@ jobs:
           npx prisma db execute --file prisma/sql/0041_integration.sql --schema prisma/schema.prisma
           npx prisma db execute --file prisma/sql/0042_inventory_par.sql --schema prisma/schema.prisma
           npx prisma db execute --file prisma/sql/0043_time_clock.sql --schema prisma/schema.prisma
+          npx prisma db execute --file prisma/sql/0044_fleet.sql --schema prisma/schema.prisma
+      # Guard the hand-written list above: a migration that exists but is never applied here means the
+      # RLS gate and every integration test run against a schema that isn't the real one. Because this
+      # job only runs when SUPABASE_CONFIGURED is set, such a gap can sit unnoticed indefinitely.
+      - name: Every migration is applied above
+        run: |
+          missing=0
+          for f in $(ls prisma/sql/*.sql | grep -vE '_down|supabase-full' | xargs -n1 basename | sort); do
+            grep -q "$f" ../../.github/workflows/ci.yml || { echo "::error::$f is not applied in ci.yml"; missing=1; }
+          done
+          exit $missing
       - name: RLS gate
         run: npm run check:rls
       - name: Tenant-isolation + integration tests

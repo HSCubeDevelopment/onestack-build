@@ -3,7 +3,9 @@ import { normaliseRow, parseContactsCsv, planImport, summarise } from './import'
 
 describe('parseContactsCsv', () => {
   it('parses a header + rows into keyed objects', () => {
-    const rows = parseContactsCsv('displayName,phone,email\nJane,0400000000,jane@x.com\nSam,0411111111,');
+    const rows = parseContactsCsv(
+      'displayName,phone,email\nJane,0400000000,jane@x.com\nSam,0411111111,',
+    );
     expect(rows).toHaveLength(2);
     expect(rows[0]).toEqual({ displayname: 'Jane', phone: '0400000000', email: 'jane@x.com' });
     expect(rows[1]).toEqual({ displayname: 'Sam', phone: '0411111111', email: '' });

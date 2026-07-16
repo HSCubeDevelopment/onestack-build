@@ -556,17 +556,25 @@ export class FleetService {
     const t24 = endOfToday();
     const now = new Date();
     return this.tenants.runInTenant(tenantId, async (tx) => {
-      const [carsOut, returnedToday, goingOutToday, availableCars, bookedCars, overdue, revM, revR] =
-        await Promise.all([
-          tx.fleetMovement.count({ where: { status: 'active', carsOutRego: { not: '' } } }),
-          tx.fleetReturn.count({ where: { returnedAt: { gte: t0, lte: t24 } } }),
-          tx.fleetBooking.count({ where: { status: 'booked', startAt: { gte: t0, lte: t24 } } }),
-          tx.fleetVehicle.count({ where: { status: 'available', isCompanyCar: true } }),
-          tx.fleetBooking.count({ where: { status: 'booked' } }),
-          tx.fleetBooking.count({ where: { status: 'active', expectedReturnAt: { lt: now } } }),
-          tx.fleetMovement.count({ where: { needsReview: true } }),
-          tx.fleetReturn.count({ where: { needsReview: true } }),
-        ]);
+      const [
+        carsOut,
+        returnedToday,
+        goingOutToday,
+        availableCars,
+        bookedCars,
+        overdue,
+        revM,
+        revR,
+      ] = await Promise.all([
+        tx.fleetMovement.count({ where: { status: 'active', carsOutRego: { not: '' } } }),
+        tx.fleetReturn.count({ where: { returnedAt: { gte: t0, lte: t24 } } }),
+        tx.fleetBooking.count({ where: { status: 'booked', startAt: { gte: t0, lte: t24 } } }),
+        tx.fleetVehicle.count({ where: { status: 'available', isCompanyCar: true } }),
+        tx.fleetBooking.count({ where: { status: 'booked' } }),
+        tx.fleetBooking.count({ where: { status: 'active', expectedReturnAt: { lt: now } } }),
+        tx.fleetMovement.count({ where: { needsReview: true } }),
+        tx.fleetReturn.count({ where: { needsReview: true } }),
+      ]);
       return {
         carsOut,
         returnedToday,
@@ -1037,10 +1045,7 @@ const DAY = 86_400_000;
 const tsOf = (d: Date | null | undefined): number => (d ? d.getTime() : NaN);
 
 /** Pure chain-of-custody pairing — exported for unit tests. Mirrors the legacy app's algorithm. */
-export function pairRentalHistory(
-  movements: MovementRow[],
-  returns: ReturnRow[],
-): RentalPeriod[] {
+export function pairRentalHistory(movements: MovementRow[], returns: ReturnRow[]): RentalPeriod[] {
   const outTs = (m: MovementRow) => tsOf(m.movedAt ?? m.createdAt);
   const backTs = (r: ReturnRow) => tsOf(r.returnedAt ?? r.createdAt);
 

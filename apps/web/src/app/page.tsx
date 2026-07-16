@@ -54,7 +54,13 @@ export default function DashboardPage() {
       <ErrorBanner message={error} />
       {loading && <Loading />}
       {data && (
-        <Overview summary={data[0]} board={data[1]} jobs={data[2]} leads={data[3]} bookings={data[4]} />
+        <Overview
+          summary={data[0]}
+          board={data[1]}
+          jobs={data[2]}
+          leads={data[3]}
+          bookings={data[4]}
+        />
       )}
     </>
   );
@@ -219,7 +225,17 @@ function PipelineChart({ summary }: { summary: DashboardSummary }) {
           const n = summary.jobsByState[s] ?? 0;
           const h = Math.max(6, (n / max) * 175);
           return (
-            <div key={s} style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 8, height: '100%', justifyContent: 'flex-end' }}>
+            <div
+              key={s}
+              style={{
+                display: 'flex',
+                flexDirection: 'column',
+                alignItems: 'center',
+                gap: 8,
+                height: '100%',
+                justifyContent: 'flex-end',
+              }}
+            >
               <div style={{ fontWeight: 700, fontSize: 14, color: 'var(--ink)' }}>{n}</div>
               <div
                 style={{
@@ -234,9 +250,19 @@ function PipelineChart({ summary }: { summary: DashboardSummary }) {
           );
         })}
       </div>
-      <div style={{ display: 'grid', gridTemplateColumns: `repeat(${states.length}, 1fr)`, gap: 14 }}>
+      <div
+        style={{ display: 'grid', gridTemplateColumns: `repeat(${states.length}, 1fr)`, gap: 14 }}
+      >
         {states.map((s) => (
-          <div key={s} style={{ textAlign: 'center', fontSize: 11.5, color: 'var(--text-dim)', fontWeight: 550 }}>
+          <div
+            key={s}
+            style={{
+              textAlign: 'center',
+              fontSize: 11.5,
+              color: 'var(--text-dim)',
+              fontWeight: 550,
+            }}
+          >
             {humanize(s)}
           </div>
         ))}
@@ -298,7 +324,10 @@ function StatusDonut({ summary, totalJobs }: { summary: DashboardSummary; totalJ
                 <span style={{ fontSize: 12.5, fontWeight: 680 }}>{s.n}</span>
               </div>
               <div className="track">
-                <div className="fill" style={{ width: `${(s.n / total) * 100}%`, background: s.color }} />
+                <div
+                  className="fill"
+                  style={{ width: `${(s.n / total) * 100}%`, background: s.color }}
+                />
               </div>
             </div>
           </div>
@@ -320,28 +349,54 @@ function TasksCard({ jobs }: { jobs: WorkItem[] }) {
         </Link>
       </div>
       <div className="stack" style={{ gap: 12 }}>
-        {tasks.length === 0 && <span className="faint" style={{ fontSize: 13 }}>Nothing needs action.</span>}
+        {tasks.length === 0 && (
+          <span className="faint" style={{ fontSize: 13 }}>
+            Nothing needs action.
+          </span>
+        )}
         {tasks.map((j) => {
           const desc = (j.fields as { description?: string }).description ?? 'Repair job';
           return (
             <div key={j.id} className="task">
               <div className="task-head">
-                <span className="list-ico" style={{ background: `${stateColor(j.stateName)}1a`, color: stateColor(j.stateName) }}>
+                <span
+                  className="list-ico"
+                  style={{
+                    background: `${stateColor(j.stateName)}1a`,
+                    color: stateColor(j.stateName),
+                  }}
+                >
                   <StateIcon state={j.stateName} size={16} />
                 </span>
                 <div style={{ flex: 1, minWidth: 0 }}>
                   <div style={{ fontWeight: 640, fontSize: 13.5 }}>{j.reference}</div>
-                  <div className="faint" style={{ fontSize: 12, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                  <div
+                    className="faint"
+                    style={{
+                      fontSize: 12,
+                      overflow: 'hidden',
+                      textOverflow: 'ellipsis',
+                      whiteSpace: 'nowrap',
+                    }}
+                  >
                     {desc}
                   </div>
                 </div>
                 <StatusBadge status={j.stateName} />
               </div>
               <div className="row">
-                <Link href={`/jobs/${j.id}`} className="btn sm" style={{ flex: 1, justifyContent: 'center' }}>
+                <Link
+                  href={`/jobs/${j.id}`}
+                  className="btn sm"
+                  style={{ flex: 1, justifyContent: 'center' }}
+                >
                   Open
                 </Link>
-                <Link href={`/jobs/${j.id}`} className="btn dark sm" style={{ flex: 1, justifyContent: 'center' }}>
+                <Link
+                  href={`/jobs/${j.id}`}
+                  className="btn dark sm"
+                  style={{ flex: 1, justifyContent: 'center' }}
+                >
                   {j.stateName === 'Ready' ? 'Collect' : 'Start work'}
                 </Link>
               </div>
@@ -375,7 +430,11 @@ function ActivityCard({ jobs, leads }: { jobs: WorkItem[]; leads: Lead[] }) {
         <span className="view-all">View all</span>
       </div>
       <div>
-        {items.length === 0 && <span className="faint" style={{ fontSize: 13 }}>No recent activity.</span>}
+        {items.length === 0 && (
+          <span className="faint" style={{ fontSize: 13 }}>
+            No recent activity.
+          </span>
+        )}
         {items.map((it, i) => (
           <div key={i} className="list-row">
             <span
@@ -389,10 +448,20 @@ function ActivityCard({ jobs, leads }: { jobs: WorkItem[]; leads: Lead[] }) {
               {it.kind === 'job' ? <StateIcon state={it.state} size={15} /> : <Mail size={15} />}
             </span>
             <div style={{ flex: 1, minWidth: 0 }}>
-              <div style={{ fontSize: 13, fontWeight: 550, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+              <div
+                style={{
+                  fontSize: 13,
+                  fontWeight: 550,
+                  overflow: 'hidden',
+                  textOverflow: 'ellipsis',
+                  whiteSpace: 'nowrap',
+                }}
+              >
                 {it.title}
               </div>
-              <div className="faint" style={{ fontSize: 11.5 }}>{it.meta}</div>
+              <div className="faint" style={{ fontSize: 11.5 }}>
+                {it.meta}
+              </div>
             </div>
           </div>
         ))}
@@ -402,7 +471,9 @@ function ActivityCard({ jobs, leads }: { jobs: WorkItem[]; leads: Lead[] }) {
 }
 
 function EventsCard({ bookings }: { bookings: Booking[] }) {
-  const sorted = [...bookings].sort((a, b) => +new Date(a.startsAt) - +new Date(b.startsAt)).slice(0, 4);
+  const sorted = [...bookings]
+    .sort((a, b) => +new Date(a.startsAt) - +new Date(b.startsAt))
+    .slice(0, 4);
   return (
     <div className="card">
       <div className="card-head">
@@ -412,14 +483,24 @@ function EventsCard({ bookings }: { bookings: Booking[] }) {
         </Link>
       </div>
       <div>
-        {sorted.length === 0 && <span className="faint" style={{ fontSize: 13 }}>No bookings scheduled.</span>}
+        {sorted.length === 0 && (
+          <span className="faint" style={{ fontSize: 13 }}>
+            No bookings scheduled.
+          </span>
+        )}
         {sorted.map((b) => {
           const d = new Date(b.startsAt);
           return (
             <div key={b.id} className="list-row">
               <span
                 className="list-ico"
-                style={{ background: 'var(--brand-soft)', color: 'var(--brand)', flexDirection: 'column', fontSize: 11, fontWeight: 700 }}
+                style={{
+                  background: 'var(--brand-soft)',
+                  color: 'var(--brand)',
+                  flexDirection: 'column',
+                  fontSize: 11,
+                  fontWeight: 700,
+                }}
               >
                 {d.toLocaleDateString('en-AU', { day: '2-digit' })}
               </span>

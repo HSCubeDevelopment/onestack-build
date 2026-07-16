@@ -36,16 +36,41 @@ describe.skipIf(!hasDb)('Roster & staff management (Phase 4)', () => {
 
   it('adds a shift and time-off, then lists them', async () => {
     shiftId = (
-      await http().post('/api/v1/shifts').set(auth(a)).send({ staffName: 'Alex', startsAt: '2027-03-10T09:00:00.000Z', endsAt: '2027-03-10T17:00:00.000Z' }).expect(201)
+      await http()
+        .post('/api/v1/shifts')
+        .set(auth(a))
+        .send({
+          staffName: 'Alex',
+          startsAt: '2027-03-10T09:00:00.000Z',
+          endsAt: '2027-03-10T17:00:00.000Z',
+        })
+        .expect(201)
     ).body.id;
-    await http().post('/api/v1/shifts').set(auth(a)).send({ staffName: 'Sam', kind: 'time_off', startsAt: '2027-03-11T00:00:00.000Z', endsAt: '2027-03-12T00:00:00.000Z' }).expect(201);
+    await http()
+      .post('/api/v1/shifts')
+      .set(auth(a))
+      .send({
+        staffName: 'Sam',
+        kind: 'time_off',
+        startsAt: '2027-03-11T00:00:00.000Z',
+        endsAt: '2027-03-12T00:00:00.000Z',
+      })
+      .expect(201);
     const list = (await http().get('/api/v1/shifts').set(auth(a)).expect(200)).body;
     expect(list).toHaveLength(2);
     expect(list.some((s: { kind: string }) => s.kind === 'time_off')).toBe(true);
   });
 
   it('rejects a backwards range', async () => {
-    await http().post('/api/v1/shifts').set(auth(a)).send({ staffName: 'Alex', startsAt: '2027-03-10T17:00:00.000Z', endsAt: '2027-03-10T09:00:00.000Z' }).expect(400);
+    await http()
+      .post('/api/v1/shifts')
+      .set(auth(a))
+      .send({
+        staffName: 'Alex',
+        startsAt: '2027-03-10T17:00:00.000Z',
+        endsAt: '2027-03-10T09:00:00.000Z',
+      })
+      .expect(400);
   });
 
   it('removes a shift', async () => {

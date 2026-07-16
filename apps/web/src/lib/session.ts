@@ -14,10 +14,13 @@ export function mintDevToken(): string {
   if (!secret || !tenantId || !userId) {
     throw new Error('Missing SUPABASE_JWT_SECRET / DEMO_TENANT_ID / DEMO_OWNER_USER_ID in env');
   }
-  return jwt.sign({ sub: userId, tenant_id: tenantId, role: 'OWNER' }, secret, { expiresIn: '15m' });
+  return jwt.sign({ sub: userId, tenant_id: tenantId, role: 'OWNER' }, secret, {
+    expiresIn: '15m',
+  });
 }
 
-export const apiBase = (): string => process.env.ONESTACK_API_BASE ?? 'http://localhost:3001/api/v1';
+export const apiBase = (): string =>
+  process.env.ONESTACK_API_BASE ?? 'http://localhost:3001/api/v1';
 
 /** httpOnly cookie holding the real Supabase-Auth-backed session token (set by /api/auth/login). */
 export const SESSION_COOKIE = 'onestack_session';

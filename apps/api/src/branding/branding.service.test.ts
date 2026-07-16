@@ -52,7 +52,9 @@ describe('BrandingService.upsert', () => {
   });
 
   it('requires a business name on first setup', async () => {
-    await expect(make().upsert('t1', { tagline: 'hi' })).rejects.toBeInstanceOf(BadRequestException);
+    await expect(make().upsert('t1', { tagline: 'hi' })).rejects.toBeInstanceOf(
+      BadRequestException,
+    );
   });
 
   it('rejects a non-hex primary colour', async () => {

@@ -88,7 +88,10 @@ describe.skipIf(!hasDb)('auth + RBAC (HTTP)', () => {
         .get('/api/v1/dashboard/summary')
         .set('Authorization', `Bearer ${a.staffToken}`)
         .expect(403);
-      await http().get('/api/v1/contacts').set('Authorization', `Bearer ${a.staffToken}`).expect(403);
+      await http()
+        .get('/api/v1/contacts')
+        .set('Authorization', `Bearer ${a.staffToken}`)
+        .expect(403);
       await http()
         .get('/api/v1/price-book')
         .set('Authorization', `Bearer ${a.staffToken}`)

@@ -49,7 +49,13 @@ describe.skipIf(!hasDb)('Fleet & courtesy cars', () => {
       await http()
         .post('/api/v1/fleet/movements')
         .set(auth(a))
-        .send({ driverName: 'Jane', driverPhone: '0400000000', carsInRego: 'cust01', carsOutRego: 'fleet01', purpose: 'COURTESY' })
+        .send({
+          driverName: 'Jane',
+          driverPhone: '0400000000',
+          carsInRego: 'cust01',
+          carsOutRego: 'fleet01',
+          purpose: 'COURTESY',
+        })
         .expect(201)
     ).body.id;
     const list = (await http().get('/api/v1/fleet/movements').set(auth(a)).expect(200)).body;
@@ -66,7 +72,9 @@ describe.skipIf(!hasDb)('Fleet & courtesy cars', () => {
       .set(auth(a))
       .send({ returnedRego: 'fleet01', driverName: 'Jane' })
       .expect(201);
-    const movement = (await http().get(`/api/v1/fleet/movements/${movementId}`).set(auth(a)).expect(200)).body;
+    const movement = (
+      await http().get(`/api/v1/fleet/movements/${movementId}`).set(auth(a)).expect(200)
+    ).body;
     expect(movement.status).toBe('returned');
     const vehicles = (await http().get('/api/v1/fleet/vehicles').set(auth(a)).expect(200)).body;
     expect(vehicles.find((v: { rego: string }) => v.rego === 'FLEET01').status).toBe('available');
@@ -90,9 +98,13 @@ describe.skipIf(!hasDb)('Fleet & courtesy cars', () => {
     expect(vehicles.find((v: { rego: string }) => v.rego === 'BOOK01').status).toBe('available');
   });
 
-  it('is tenant-isolated: shop B sees none of A\'s fleet data and cannot read A\'s movement', async () => {
-    expect((await http().get('/api/v1/fleet/movements').set(auth(b)).expect(200)).body).toHaveLength(0);
-    expect((await http().get('/api/v1/fleet/vehicles').set(auth(b)).expect(200)).body).toHaveLength(0);
+  it("is tenant-isolated: shop B sees none of A's fleet data and cannot read A's movement", async () => {
+    expect(
+      (await http().get('/api/v1/fleet/movements').set(auth(b)).expect(200)).body,
+    ).toHaveLength(0);
+    expect((await http().get('/api/v1/fleet/vehicles').set(auth(b)).expect(200)).body).toHaveLength(
+      0,
+    );
     const stats = (await http().get('/api/v1/fleet/dashboard').set(auth(b)).expect(200)).body;
     expect(stats.carsOut).toBe(0);
     expect(stats.availableCars).toBe(0);

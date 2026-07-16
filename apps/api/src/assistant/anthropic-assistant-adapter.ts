@@ -23,7 +23,8 @@ export class AnthropicAssistantAdapter implements AssistantAdapter {
   }
 
   async answer(input: AssistantInput): Promise<AssistantAnswer> {
-    const content = (input.context ? `Context: ${input.context}\n\n` : '') + `Question: ${input.question}`;
+    const content =
+      (input.context ? `Context: ${input.context}\n\n` : '') + `Question: ${input.question}`;
     const response = await this.client.messages.create({
       model: this.name,
       max_tokens: 1024,

@@ -91,7 +91,12 @@ export function planImport(
       return;
     }
     if (existingPhones.has(value.phone) || seenPhones.has(value.phone)) {
-      results.push({ row: rowNumber, status: 'duplicate', message: 'A contact with this phone already exists', value });
+      results.push({
+        row: rowNumber,
+        status: 'duplicate',
+        message: 'A contact with this phone already exists',
+        value,
+      });
       return;
     }
     seenPhones.add(value.phone);

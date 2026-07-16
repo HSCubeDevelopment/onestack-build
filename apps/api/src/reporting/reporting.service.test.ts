@@ -58,14 +58,32 @@ describe('ReportingService.overview', () => {
   it('composes revenue, jobs, turnaround and utilisation over the default 30 days', async () => {
     const svc = make({
       jobs: [
-        wi('j1', 'in_progress', new Date(NOW.getTime() - 3 * DAY), new Date(NOW.getTime() - 1 * DAY)),
-        wi('j2', 'collected', new Date(NOW.getTime() - 10 * DAY), new Date(NOW.getTime() - 6 * DAY)), // final → turnaround 4d
-        wi('j3', 'collected', new Date(NOW.getTime() - 60 * DAY), new Date(NOW.getTime() - 58 * DAY)), // final → 2d, created before period
+        wi(
+          'j1',
+          'in_progress',
+          new Date(NOW.getTime() - 3 * DAY),
+          new Date(NOW.getTime() - 1 * DAY),
+        ),
+        wi(
+          'j2',
+          'collected',
+          new Date(NOW.getTime() - 10 * DAY),
+          new Date(NOW.getTime() - 6 * DAY),
+        ), // final → turnaround 4d
+        wi(
+          'j3',
+          'collected',
+          new Date(NOW.getTime() - 60 * DAY),
+          new Date(NOW.getTime() - 58 * DAY),
+        ), // final → 2d, created before period
       ],
       received: 250000,
       outstanding: 90000,
       bookings: [
-        { startsAt: new Date(NOW.getTime() - 2 * DAY), endsAt: new Date(NOW.getTime() - 2 * DAY + 2 * 3600000) },
+        {
+          startsAt: new Date(NOW.getTime() - 2 * DAY),
+          endsAt: new Date(NOW.getTime() - 2 * DAY + 2 * 3600000),
+        },
       ],
       resources: [{ id: 'r1' }, { id: 'r2' }],
       finalStates: ['collected'],

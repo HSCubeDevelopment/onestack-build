@@ -2,14 +2,7 @@
 import { useState } from 'react';
 import { X, AlertTriangle } from 'lucide-react';
 import { api, ApiError, Booking, Resource, WorkItem } from '@/lib/api';
-import {
-  EmptyState,
-  ErrorBanner,
-  Loading,
-  Modal,
-  PageHead,
-  useAsync,
-} from '@/components/ui';
+import { EmptyState, ErrorBanner, Loading, Modal, PageHead, useAsync } from '@/components/ui';
 
 const DAY_START = 7; // 07:00
 const DAY_END = 18; // 18:00
@@ -46,15 +39,20 @@ export default function CalendarPage() {
   const resourcesQ = useAsync(() => api.get<Resource[]>('/resources'), []);
   const range = dayRange(date);
   const bookingsQ = useAsync(
-    () => api.get<Booking[]>(`/bookings?from=${encodeURIComponent(range.from)}&to=${encodeURIComponent(range.to)}`),
+    () =>
+      api.get<Booking[]>(
+        `/bookings?from=${encodeURIComponent(range.from)}&to=${encodeURIComponent(range.to)}`,
+      ),
     [range.from, range.to],
   );
   const jobsQ = useAsync(() => api.get<WorkItem[]>('/work-items?type=job'), []);
 
   const [showResource, setShowResource] = useState(false);
-  const [bookingModal, setBookingModal] = useState<{ open: boolean; resourceId?: string; hour?: number }>(
-    { open: false },
-  );
+  const [bookingModal, setBookingModal] = useState<{
+    open: boolean;
+    resourceId?: string;
+    hour?: number;
+  }>({ open: false });
   const [viewBooking, setViewBooking] = useState<Booking | null>(null);
 
   const resources = resourcesQ.data ?? [];
@@ -218,7 +216,10 @@ function DayGrid({
         {resources.map((r) => {
           const rBookings = bookings.filter((b) => b.resourceId === r.id);
           return (
-            <div key={r.id} style={{ flex: '1 0 160px', minWidth: 160, borderLeft: '1px solid var(--border)' }}>
+            <div
+              key={r.id}
+              style={{ flex: '1 0 160px', minWidth: 160, borderLeft: '1px solid var(--border)' }}
+            >
               <div
                 className="row"
                 style={{ height: 30, justifyContent: 'center', fontWeight: 600, fontSize: 12 }}
@@ -270,7 +271,14 @@ function DayGrid({
                         fontSize: 12,
                       }}
                     >
-                      <div style={{ fontWeight: 600, whiteSpace: 'nowrap', textOverflow: 'ellipsis', overflow: 'hidden' }}>
+                      <div
+                        style={{
+                          fontWeight: 600,
+                          whiteSpace: 'nowrap',
+                          textOverflow: 'ellipsis',
+                          overflow: 'hidden',
+                        }}
+                      >
                         {b.title}
                       </div>
                       <div className="faint" style={{ fontSize: 11 }}>
@@ -313,14 +321,23 @@ function ResourceModal({ onClose, onSaved }: { onClose: () => void; onSaved: () 
         <ErrorBanner message={err} />
         <label className="field">
           Type
-          <select className="select" value={type} onChange={(e) => setType(e.target.value as 'bay' | 'technician')}>
+          <select
+            className="select"
+            value={type}
+            onChange={(e) => setType(e.target.value as 'bay' | 'technician')}
+          >
             <option value="bay">Bay</option>
             <option value="technician">Technician</option>
           </select>
         </label>
         <label className="field">
           Name
-          <input className="input" value={name} onChange={(e) => setName(e.target.value)} placeholder="Bay 1" />
+          <input
+            className="input"
+            value={name}
+            onChange={(e) => setName(e.target.value)}
+            placeholder="Bay 1"
+          />
         </label>
         <div className="row">
           <div className="spacer" />
@@ -415,11 +432,20 @@ function BookingModal({
         )}
         <label className="field">
           Title
-          <input className="input" value={title} onChange={(e) => setTitle(e.target.value)} placeholder="e.g. Front bumper repair" />
+          <input
+            className="input"
+            value={title}
+            onChange={(e) => setTitle(e.target.value)}
+            placeholder="e.g. Front bumper repair"
+          />
         </label>
         <label className="field">
           Resource
-          <select className="select" value={resourceId} onChange={(e) => setResourceId(e.target.value)}>
+          <select
+            className="select"
+            value={resourceId}
+            onChange={(e) => setResourceId(e.target.value)}
+          >
             {resources.map((r) => (
               <option key={r.id} value={r.id}>
                 {r.name} ({r.type})
@@ -449,7 +475,11 @@ function BookingModal({
         </div>
         <label className="field">
           Link to job (optional)
-          <select className="select" value={workItemId} onChange={(e) => setWorkItemId(e.target.value)}>
+          <select
+            className="select"
+            value={workItemId}
+            onChange={(e) => setWorkItemId(e.target.value)}
+          >
             <option value="">— None —</option>
             {jobs.map((j) => (
               <option key={j.id} value={j.id}>

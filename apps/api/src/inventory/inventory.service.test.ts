@@ -7,12 +7,32 @@ function make() {
   const moves: any[] = [];
   const tx = {
     inventoryItem: {
-      create: async ({ data }: any) => { const r = { id: `i${items.length + 1}`, sku: null, unit: null, unitCostCents: null, active: true, ...data }; items.push(r); return r; },
+      create: async ({ data }: any) => {
+        const r = {
+          id: `i${items.length + 1}`,
+          sku: null,
+          unit: null,
+          unitCostCents: null,
+          active: true,
+          ...data,
+        };
+        items.push(r);
+        return r;
+      },
       findMany: async ({ where }: any) => items.filter((i) => i.active === where.active),
       findFirst: async ({ where }: any) => items.find((i) => i.id === where.id) ?? null,
-      update: async ({ where, data }: any) => { const r = items.find((i) => i.id === where.id); Object.assign(r, data); return r; },
+      update: async ({ where, data }: any) => {
+        const r = items.find((i) => i.id === where.id);
+        Object.assign(r, data);
+        return r;
+      },
     },
-    stockMovement: { create: async ({ data }: any) => { moves.push(data); return data; } },
+    stockMovement: {
+      create: async ({ data }: any) => {
+        moves.push(data);
+        return data;
+      },
+    },
   };
   const tenants = { runInTenant: (_t: string, fn: (tx: unknown) => unknown) => fn(tx) };
   return { svc: new InventoryService(tenants as never), moves };
@@ -43,7 +63,9 @@ describe('InventoryService', () => {
     const { svc } = make();
     await expect(svc.createItem('t1', { name: '' })).rejects.toBeInstanceOf(BadRequestException);
     const it = await svc.createItem('t1', { name: 'Bolt' });
-    await expect(svc.adjust('t1', it.id, { delta: 0 }, 'u1')).rejects.toBeInstanceOf(BadRequestException);
+    await expect(svc.adjust('t1', it.id, { delta: 0 }, 'u1')).rejects.toBeInstanceOf(
+      BadRequestException,
+    );
   });
 });
 

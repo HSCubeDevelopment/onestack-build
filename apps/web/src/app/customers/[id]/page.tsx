@@ -3,14 +3,7 @@ import { useState } from 'react';
 import Link from 'next/link';
 import { useParams } from 'next/navigation';
 import { api, Contact, CustomField, Vehicle } from '@/lib/api';
-import {
-  EmptyState,
-  ErrorBanner,
-  Loading,
-  Modal,
-  PageHead,
-  useAsync,
-} from '@/components/ui';
+import { EmptyState, ErrorBanner, Loading, Modal, PageHead, useAsync } from '@/components/ui';
 import { CustomFieldInputs } from '@/components/CustomFieldInputs';
 
 export default function CustomerDetailPage() {
@@ -82,7 +75,10 @@ function CustomerDetail({
 
   return (
     <>
-      <PageHead title={contact.displayName} sub={[contact.phone, contact.email].filter(Boolean).join(' · ') || undefined}>
+      <PageHead
+        title={contact.displayName}
+        sub={[contact.phone, contact.email].filter(Boolean).join(' · ') || undefined}
+      >
         <button className="btn" onClick={() => setEditing(true)}>
           Edit
         </button>
@@ -303,7 +299,12 @@ function AddVehicleModal({
         <div className="grid cols-2">
           <label className="field">
             Rego *
-            <input className="input" required value={rego} onChange={(e) => setRego(e.target.value)} />
+            <input
+              className="input"
+              required
+              value={rego}
+              onChange={(e) => setRego(e.target.value)}
+            />
           </label>
           <label className="field">
             Year *
@@ -319,7 +320,12 @@ function AddVehicleModal({
         <div className="grid cols-2">
           <label className="field">
             Make *
-            <input className="input" required value={make} onChange={(e) => setMake(e.target.value)} />
+            <input
+              className="input"
+              required
+              value={make}
+              onChange={(e) => setMake(e.target.value)}
+            />
           </label>
           <label className="field">
             Model *

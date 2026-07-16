@@ -83,7 +83,12 @@ export class InventoryService {
   }
 
   /** Stocktake (card #260): set the counted on-hand, recording the correction as a movement. */
-  async stocktake(tenantId: string, id: string, countedQuantity: number, userId: string): Promise<InventoryItemView> {
+  async stocktake(
+    tenantId: string,
+    id: string,
+    countedQuantity: number,
+    userId: string,
+  ): Promise<InventoryItemView> {
     if (!Number.isInteger(countedQuantity) || countedQuantity < 0)
       throw new BadRequestException('countedQuantity must be a non-negative integer');
     return this.tenants.runInTenant(tenantId, async (tx) => {
@@ -92,10 +97,20 @@ export class InventoryService {
       const delta = countedQuantity - item.quantityOnHand;
       if (delta !== 0) {
         await tx.stockMovement.create({
-          data: { tenantId, itemId: id, delta, reason: 'adjust', note: 'Stocktake', createdByUserId: userId },
+          data: {
+            tenantId,
+            itemId: id,
+            delta,
+            reason: 'adjust',
+            note: 'Stocktake',
+            createdByUserId: userId,
+          },
         });
       }
-      const row = await tx.inventoryItem.update({ where: { id }, data: { quantityOnHand: countedQuantity } });
+      const row = await tx.inventoryItem.update({
+        where: { id },
+        data: { quantityOnHand: countedQuantity },
+      });
       return toView(row);
     });
   }
@@ -133,7 +148,14 @@ export class InventoryService {
       const item = await tx.inventoryItem.findFirst({ where: { id } });
       if (!item) throw new NotFoundException('Item not found');
       await tx.stockMovement.create({
-        data: { tenantId, itemId: id, delta: input.delta, reason, note: input.note?.trim() || null, createdByUserId: userId },
+        data: {
+          tenantId,
+          itemId: id,
+          delta: input.delta,
+          reason,
+          note: input.note?.trim() || null,
+          createdByUserId: userId,
+        },
       });
       const row = await tx.inventoryItem.update({
         where: { id },

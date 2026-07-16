@@ -16,7 +16,10 @@ export class WebhooksController {
   constructor(private readonly webhooks: WebhooksService) {}
 
   @Post()
-  create(@CurrentUser() user: AuthContext, @Body() dto: CreateWebhookDto): Promise<WebhookEndpointView> {
+  create(
+    @CurrentUser() user: AuthContext,
+    @Body() dto: CreateWebhookDto,
+  ): Promise<WebhookEndpointView> {
     return this.webhooks.create(user.tenantId, dto.url, dto.events);
   }
 

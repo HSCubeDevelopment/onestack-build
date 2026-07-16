@@ -44,8 +44,24 @@ describe('InsightsService.noShowRisk', () => {
   it('ranks upcoming bookings by risk and resolves the customer', async () => {
     const svc = make({
       bookings: [
-        { id: 'bk1', resourceId: 'r', workItemId: 'w1', title: 'New cust', startsAt: new Date(NOW.getTime() + 20 * DAY), endsAt: NOW, notes: null },
-        { id: 'bk2', resourceId: 'r', workItemId: 'w2', title: 'Regular', startsAt: new Date(NOW.getTime() + 3 * DAY), endsAt: NOW, notes: null },
+        {
+          id: 'bk1',
+          resourceId: 'r',
+          workItemId: 'w1',
+          title: 'New cust',
+          startsAt: new Date(NOW.getTime() + 20 * DAY),
+          endsAt: NOW,
+          notes: null,
+        },
+        {
+          id: 'bk2',
+          resourceId: 'r',
+          workItemId: 'w2',
+          title: 'Regular',
+          startsAt: new Date(NOW.getTime() + 3 * DAY),
+          endsAt: NOW,
+          notes: null,
+        },
       ],
       workItems: [
         wi('w1', 'c1', NOW), // c1: only this job → new customer
@@ -53,8 +69,24 @@ describe('InsightsService.noShowRisk', () => {
         wi('w2b', 'c2', new Date(NOW.getTime() - 50 * DAY)), // c2 established
       ],
       contacts: [
-        { id: 'c1', displayName: 'New', email: null, phone: null, fields: {}, customFields: {}, createdAt: NOW }, // unreachable
-        { id: 'c2', displayName: 'Reg', email: 'r@x.com', phone: '040', fields: {}, customFields: {}, createdAt: NOW },
+        {
+          id: 'c1',
+          displayName: 'New',
+          email: null,
+          phone: null,
+          fields: {},
+          customFields: {},
+          createdAt: NOW,
+        }, // unreachable
+        {
+          id: 'c2',
+          displayName: 'Reg',
+          email: 'r@x.com',
+          phone: '040',
+          fields: {},
+          customFields: {},
+          createdAt: NOW,
+        },
       ],
     });
     const risks = await svc.noShowRisk('t1');
@@ -81,8 +113,24 @@ describe('InsightsService.churnRisk', () => {
         wi('w4', 'c2', new Date(NOW.getTime() - 10 * DAY)), // recent → low, omitted
       ],
       contacts: [
-        { id: 'c1', displayName: 'Overdue Sam', email: null, phone: '040', fields: {}, customFields: {}, createdAt: NOW },
-        { id: 'c2', displayName: 'Recent', email: null, phone: '040', fields: {}, customFields: {}, createdAt: NOW },
+        {
+          id: 'c1',
+          displayName: 'Overdue Sam',
+          email: null,
+          phone: '040',
+          fields: {},
+          customFields: {},
+          createdAt: NOW,
+        },
+        {
+          id: 'c2',
+          displayName: 'Recent',
+          email: null,
+          phone: '040',
+          fields: {},
+          customFields: {},
+          createdAt: NOW,
+        },
       ],
     });
     const risks = await svc.churnRisk('t1');
@@ -97,7 +145,17 @@ describe('InsightsService.churnRisk', () => {
 describe('InsightsService.contactSummary', () => {
   it('summarises a customer activity deterministically', async () => {
     const svc = make({
-      contacts: [{ id: 'c1', displayName: 'Sam', email: null, phone: '040', fields: {}, customFields: {}, createdAt: NOW }],
+      contacts: [
+        {
+          id: 'c1',
+          displayName: 'Sam',
+          email: null,
+          phone: '040',
+          fields: {},
+          customFields: {},
+          createdAt: NOW,
+        },
+      ],
       workItems: [
         wi('w1', 'c1', new Date(NOW.getTime() - 5 * DAY), 'open'),
         wi('w2', 'c1', new Date(NOW.getTime() - 40 * DAY), 'closed'),

@@ -30,10 +30,16 @@ export default function CustomFieldsPage() {
     <>
       <PageHead title="Custom fields" sub="Add your own fields to customers & vehicles" />
       <div className="tabs">
-        <div className={`tab ${tab === 'customer' ? 'active' : ''}`} onClick={() => setTab('customer')}>
+        <div
+          className={`tab ${tab === 'customer' ? 'active' : ''}`}
+          onClick={() => setTab('customer')}
+        >
           Customer fields
         </div>
-        <div className={`tab ${tab === 'vehicle' ? 'active' : ''}`} onClick={() => setTab('vehicle')}>
+        <div
+          className={`tab ${tab === 'vehicle' ? 'active' : ''}`}
+          onClick={() => setTab('vehicle')}
+        >
           Vehicle fields
         </div>
       </div>
@@ -104,7 +110,13 @@ function FieldsTab({ appliesTo }: { appliesTo: AppliesTo }) {
                   <td>
                     <span className={`badge ${TYPE_COLORS[f.type] ?? ''}`}>{f.type}</span>
                   </td>
-                  <td>{f.required ? <span className="badge amber">Required</span> : <span className="faint">—</span>}</td>
+                  <td>
+                    {f.required ? (
+                      <span className="badge amber">Required</span>
+                    ) : (
+                      <span className="faint">—</span>
+                    )}
+                  </td>
                   <td>
                     {f.type === 'select' && f.options.length ? (
                       <span className="faint">{f.options.join(', ')}</span>
@@ -233,12 +245,18 @@ function NewFieldModal({
             placeholder="insurance_company"
           />
           {!keyValid && effectiveKey.length > 0 && (
-            <span className="faint">Must start with a letter; lowercase letters, numbers, underscores only.</span>
+            <span className="faint">
+              Must start with a letter; lowercase letters, numbers, underscores only.
+            </span>
           )}
         </label>
         <label className="field">
           Type
-          <select className="select" value={type} onChange={(e) => setType(e.target.value as FieldType)}>
+          <select
+            className="select"
+            value={type}
+            onChange={(e) => setType(e.target.value as FieldType)}
+          >
             <option value="text">Text</option>
             <option value="number">Number</option>
             <option value="date">Date</option>
@@ -258,7 +276,11 @@ function NewFieldModal({
           </label>
         )}
         <label className="row" style={{ gap: 8, cursor: 'pointer' }}>
-          <input type="checkbox" checked={required} onChange={(e) => setRequired(e.target.checked)} />
+          <input
+            type="checkbox"
+            checked={required}
+            onChange={(e) => setRequired(e.target.checked)}
+          />
           <span>Required</span>
         </label>
         <div className="row">
@@ -266,7 +288,11 @@ function NewFieldModal({
           <button className="btn ghost" onClick={onClose}>
             Cancel
           </button>
-          <button className="btn primary" disabled={saving || !label.trim() || !keyValid} onClick={save}>
+          <button
+            className="btn primary"
+            disabled={saving || !label.trim() || !keyValid}
+            onClick={save}
+          >
             Create
           </button>
         </div>
@@ -325,11 +351,19 @@ function EditFieldModal({
         {field.type === 'select' && (
           <label className="field">
             Options (comma-separated)
-            <input className="input" value={optionsRaw} onChange={(e) => setOptionsRaw(e.target.value)} />
+            <input
+              className="input"
+              value={optionsRaw}
+              onChange={(e) => setOptionsRaw(e.target.value)}
+            />
           </label>
         )}
         <label className="row" style={{ gap: 8, cursor: 'pointer' }}>
-          <input type="checkbox" checked={required} onChange={(e) => setRequired(e.target.checked)} />
+          <input
+            type="checkbox"
+            checked={required}
+            onChange={(e) => setRequired(e.target.checked)}
+          />
           <span>Required</span>
         </label>
         <div className="row">

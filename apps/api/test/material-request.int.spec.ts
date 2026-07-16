@@ -34,18 +34,20 @@ describe.skipIf(!hasDb)('Floor ordering — material requests (Phase 2)', () => 
         .send({ rego: 'MR1', make: 'Holden', model: 'Astra', year: 2018 })
     ).body.id;
     return (
-      await http()
-        .post('/api/v1/work-items')
-        .set(owner(t))
-        // Dispatched to the technician: a STAFF caller may only raise parts against a job assigned to
-        // them, so the job has to be theirs for the technician flow below to be reachable.
-        .send({
-          type: 'job',
-          fields: { customerId },
-          subjectIds: [vehicleId],
-          assignees: [t.staffUserId],
-        })
-    ).body.id;
+      (
+        await http()
+          .post('/api/v1/work-items')
+          .set(owner(t))
+          // Dispatched to the technician: a STAFF caller may only raise parts against a job assigned to
+          // them, so the job has to be theirs for the technician flow below to be reachable.
+          .send({
+            type: 'job',
+            fields: { customerId },
+            subjectIds: [vehicleId],
+            assignees: [t.staffUserId],
+          })
+      ).body.id
+    );
   };
 
   beforeAll(async () => {

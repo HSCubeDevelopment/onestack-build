@@ -18,7 +18,8 @@ interface Me {
   signedIn: boolean;
 }
 
-const fmtTime = (iso: string) => new Date(iso).toLocaleString('en-AU', { dateStyle: 'medium', timeStyle: 'short' });
+const fmtTime = (iso: string) =>
+  new Date(iso).toLocaleString('en-AU', { dateStyle: 'medium', timeStyle: 'short' });
 
 export default function TimeClockPage() {
   const [me, setMe] = useState<Me | null>(null);
@@ -29,10 +30,12 @@ export default function TimeClockPage() {
       .catch(() => setMe(null));
   }, []);
 
-  const { data: status, loading, error, reload } = useAsync(
-    () => api.get<ClockStatus>('/time-clock/status'),
-    [],
-  );
+  const {
+    data: status,
+    loading,
+    error,
+    reload,
+  } = useAsync(() => api.get<ClockStatus>('/time-clock/status'), []);
   const { data: entries, reload: reloadEntries } = useAsync(
     () => api.get<TimeEntry[]>('/time-clock/entries'),
     [],
@@ -72,7 +75,10 @@ export default function TimeClockPage() {
       {loading && !status ? (
         <Loading />
       ) : (
-        <div className="card" style={{ display: 'flex', alignItems: 'center', gap: 16, maxWidth: 520 }}>
+        <div
+          className="card"
+          style={{ display: 'flex', alignItems: 'center', gap: 16, maxWidth: 520 }}
+        >
           <span
             style={{
               width: 44,
@@ -89,10 +95,16 @@ export default function TimeClockPage() {
           <div style={{ flex: 1 }}>
             <div style={{ fontWeight: 700 }}>{onClock ? 'On the clock' : 'Not checked in'}</div>
             <div style={{ color: 'var(--text-dim)', fontSize: 13 }}>
-              {onClock && status?.entry ? `Since ${fmtTime(status.entry.clockInAt)}` : 'Press check in to start a session'}
+              {onClock && status?.entry
+                ? `Since ${fmtTime(status.entry.clockInAt)}`
+                : 'Press check in to start a session'}
             </div>
           </div>
-          <button className={`btn ${onClock ? 'dark' : 'primary'}`} disabled={busy} onClick={toggle}>
+          <button
+            className={`btn ${onClock ? 'dark' : 'primary'}`}
+            disabled={busy}
+            onClick={toggle}
+          >
             {onClock ? <LogOut size={16} /> : <LogIn size={16} />}
             {onClock ? 'Check out' : 'Check in'}
           </button>
@@ -114,8 +126,16 @@ export default function TimeClockPage() {
               {entries.map((e) => (
                 <tr key={e.id}>
                   <td>{fmtTime(e.clockInAt)}</td>
-                  <td>{e.clockOutAt ? fmtTime(e.clockOutAt) : <em style={{ color: 'var(--green)' }}>on the clock</em>}</td>
-                  <td style={{ textAlign: 'right' }}>{e.minutes != null ? hoursLabel(e.minutes) : '—'}</td>
+                  <td>
+                    {e.clockOutAt ? (
+                      fmtTime(e.clockOutAt)
+                    ) : (
+                      <em style={{ color: 'var(--green)' }}>on the clock</em>
+                    )}
+                  </td>
+                  <td style={{ textAlign: 'right' }}>
+                    {e.minutes != null ? hoursLabel(e.minutes) : '—'}
+                  </td>
                 </tr>
               ))}
             </tbody>

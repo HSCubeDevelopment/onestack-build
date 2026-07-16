@@ -88,7 +88,10 @@ export class WaitlistService {
 
   async remove(tenantId: string, id: string): Promise<void> {
     await this.tenants.runInTenant(tenantId, (tx) =>
-      tx.waitlistEntry.updateMany({ where: { id, status: 'waiting' }, data: { status: 'removed' } }),
+      tx.waitlistEntry.updateMany({
+        where: { id, status: 'waiting' },
+        data: { status: 'removed' },
+      }),
     );
   }
 

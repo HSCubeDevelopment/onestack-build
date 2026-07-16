@@ -13,10 +13,20 @@ function makeService(opts?: {
   const sigs: Array<Record<string, unknown>> = [];
 
   const tx = {
-    document: { findFirst: async ({ where }: { where: { id: string } }) => docs.find((d) => d.id === where.id) ?? null },
+    document: {
+      findFirst: async ({ where }: { where: { id: string } }) =>
+        docs.find((d) => d.id === where.id) ?? null,
+    },
     documentSignature: {
       create: async ({ data }: { data: Record<string, unknown> }) => {
-        const row = { id: `sig${sigs.length + 1}`, createdAt: new Date('2026-07-08T00:00:00Z'), signedName: null, signedAt: null, signerEmail: null, ...data };
+        const row = {
+          id: `sig${sigs.length + 1}`,
+          createdAt: new Date('2026-07-08T00:00:00Z'),
+          signedName: null,
+          signedAt: null,
+          signerEmail: null,
+          ...data,
+        };
         sigs.push(row);
         return row;
       },
@@ -33,18 +43,28 @@ function makeService(opts?: {
   // Admin prisma resolves a signature by token from the same in-memory store (BYPASSRLS in prod).
   const prisma = {
     documentSignature: {
-      findFirst: async ({ where }: { where: { token: string } }) => sigs.find((s) => s.token === where.token) ?? null,
+      findFirst: async ({ where }: { where: { token: string } }) =>
+        sigs.find((s) => s.token === where.token) ?? null,
     },
   };
   const storage = { put: async () => 'ref1', get: async () => opts?.content ?? 'DOCUMENT BODY' };
   const provider = opts?.provider ?? new NoopESignatureProvider();
-  const service = new SignatureService(tenants as never, prisma as never, storage as never, provider);
+  const service = new SignatureService(
+    tenants as never,
+    prisma as never,
+    storage as never,
+    provider,
+  );
   return { service, sigs };
 }
 
 describe('NoopESignatureProvider', () => {
   it('is a non-certified acknowledgement', async () => {
-    const r = await new NoopESignatureProvider().request({ documentId: 'd', signerName: 'A', token: 't' });
+    const r = await new NoopESignatureProvider().request({
+      documentId: 'd',
+      signerName: 'A',
+      token: 't',
+    });
     expect(r.provider).toBe('noop');
     expect(r.certified).toBe(false);
   });
@@ -68,9 +88,9 @@ describe('SignatureService.request', () => {
 
   it('404s when the document is not the tenant', async () => {
     const { service } = makeService();
-    await expect(service.request('t1', 'nope', { signerName: 'Jane' }, 'u1')).rejects.toBeInstanceOf(
-      NotFoundException,
-    );
+    await expect(
+      service.request('t1', 'nope', { signerName: 'Jane' }, 'u1'),
+    ).rejects.toBeInstanceOf(NotFoundException);
   });
 });
 

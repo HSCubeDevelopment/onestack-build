@@ -39,19 +39,30 @@ describe('turnaround', () => {
 describe('utilisation', () => {
   it('computes booked vs capacity and caps at 100%', () => {
     // 2 resources × 8h × 5 days = 80h capacity; 40h booked → 50%
-    const u = utilisation({ bookedMinutes: 40 * 60, resourceCount: 2, periodDays: 5, hoursPerDay: 8 });
+    const u = utilisation({
+      bookedMinutes: 40 * 60,
+      resourceCount: 2,
+      periodDays: 5,
+      hoursPerDay: 8,
+    });
     expect(u.bookedHours).toBe(40);
     expect(u.capacityHours).toBe(80);
     expect(u.utilisationPct).toBe(50);
 
-    const over = utilisation({ bookedMinutes: 1000 * 60, resourceCount: 1, periodDays: 1, hoursPerDay: 8 });
+    const over = utilisation({
+      bookedMinutes: 1000 * 60,
+      resourceCount: 1,
+      periodDays: 1,
+      hoursPerDay: 8,
+    });
     expect(over.utilisationPct).toBe(100);
   });
 
   it('is 0% when there are no resources', () => {
-    expect(utilisation({ bookedMinutes: 120, resourceCount: 0, periodDays: 5, hoursPerDay: 8 }).utilisationPct).toBe(
-      0,
-    );
+    expect(
+      utilisation({ bookedMinutes: 120, resourceCount: 0, periodDays: 5, hoursPerDay: 8 })
+        .utilisationPct,
+    ).toBe(0);
   });
 });
 

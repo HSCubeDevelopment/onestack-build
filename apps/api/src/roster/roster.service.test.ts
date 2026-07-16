@@ -26,26 +26,51 @@ function make() {
 describe('RosterService', () => {
   it('adds a shift and lists it', async () => {
     const { svc } = make();
-    const s = await svc.add('t1', { staffName: 'Alex', startsAt: '2026-07-11T09:00:00Z', endsAt: '2026-07-11T17:00:00Z' });
+    const s = await svc.add('t1', {
+      staffName: 'Alex',
+      startsAt: '2026-07-11T09:00:00Z',
+      endsAt: '2026-07-11T17:00:00Z',
+    });
     expect(s.kind).toBe('shift');
     expect(await svc.list('t1')).toHaveLength(1);
   });
 
   it('supports time_off', async () => {
     const { svc } = make();
-    const s = await svc.add('t1', { staffName: 'Alex', kind: 'time_off', startsAt: '2026-07-12T00:00:00Z', endsAt: '2026-07-13T00:00:00Z' });
+    const s = await svc.add('t1', {
+      staffName: 'Alex',
+      kind: 'time_off',
+      startsAt: '2026-07-12T00:00:00Z',
+      endsAt: '2026-07-13T00:00:00Z',
+    });
     expect(s.kind).toBe('time_off');
   });
 
   it('rejects a blank name and a non-positive range', async () => {
     const { svc } = make();
-    await expect(svc.add('t1', { staffName: '', startsAt: '2026-07-11T09:00:00Z', endsAt: '2026-07-11T17:00:00Z' })).rejects.toBeInstanceOf(BadRequestException);
-    await expect(svc.add('t1', { staffName: 'Alex', startsAt: '2026-07-11T17:00:00Z', endsAt: '2026-07-11T09:00:00Z' })).rejects.toBeInstanceOf(BadRequestException);
+    await expect(
+      svc.add('t1', {
+        staffName: '',
+        startsAt: '2026-07-11T09:00:00Z',
+        endsAt: '2026-07-11T17:00:00Z',
+      }),
+    ).rejects.toBeInstanceOf(BadRequestException);
+    await expect(
+      svc.add('t1', {
+        staffName: 'Alex',
+        startsAt: '2026-07-11T17:00:00Z',
+        endsAt: '2026-07-11T09:00:00Z',
+      }),
+    ).rejects.toBeInstanceOf(BadRequestException);
   });
 
   it('removes a shift', async () => {
     const { svc } = make();
-    const s = await svc.add('t1', { staffName: 'Alex', startsAt: '2026-07-11T09:00:00Z', endsAt: '2026-07-11T17:00:00Z' });
+    const s = await svc.add('t1', {
+      staffName: 'Alex',
+      startsAt: '2026-07-11T09:00:00Z',
+      endsAt: '2026-07-11T17:00:00Z',
+    });
     await svc.remove('t1', s.id);
     expect(await svc.list('t1')).toHaveLength(0);
   });

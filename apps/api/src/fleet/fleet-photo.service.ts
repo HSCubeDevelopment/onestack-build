@@ -81,10 +81,7 @@ export class FleetPhotoService {
     });
   }
 
-  async getContent(
-    tenantId: string,
-    id: string,
-  ): Promise<{ bytes: Buffer; contentType: string }> {
+  async getContent(tenantId: string, id: string): Promise<{ bytes: Buffer; contentType: string }> {
     const row = await this.tenants.runInTenant(tenantId, (tx) =>
       tx.fleetPhoto.findFirst({ where: { id } }),
     );

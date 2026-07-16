@@ -31,5 +31,9 @@ COPY --from=build /app/apps/api/dist ./apps/api/dist
 COPY --from=build /app/apps/api/package.json ./apps/api/package.json
 COPY --from=build /app/apps/api/prisma ./apps/api/prisma
 WORKDIR /app/apps/api
+# Drop root. Nothing here writes to the image at runtime (Prisma's client is baked in at build, uploads
+# go to Supabase Storage), so the app has no reason to run privileged. `node` is a uid 1000 user that
+# ships with the base image. Cloud Run doesn't require root, and semgrep blocks the build without this.
+USER node
 # Cloud Run injects PORT (8080); main.ts reads process.env.PORT and binds 0.0.0.0.
 CMD ["node", "dist/main.js"]

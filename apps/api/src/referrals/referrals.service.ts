@@ -89,7 +89,9 @@ export class ReferralsService {
         data: {
           status,
           ...(extra.referredContactId ? { referredContactId: extra.referredContactId } : {}),
-          ...(extra.rewardNote !== undefined ? { rewardNote: extra.rewardNote?.trim() || null } : {}),
+          ...(extra.rewardNote !== undefined
+            ? { rewardNote: extra.rewardNote?.trim() || null }
+            : {}),
         },
       });
       return toView(row);

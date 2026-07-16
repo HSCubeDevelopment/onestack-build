@@ -21,12 +21,19 @@ export class MarketplaceController {
   }
 
   @Post(':slug/connect')
-  connect(@CurrentUser() user: AuthContext, @Param('slug') slug: string, @Body() dto: ConnectIntegrationDto): Promise<IntegrationView> {
+  connect(
+    @CurrentUser() user: AuthContext,
+    @Param('slug') slug: string,
+    @Body() dto: ConnectIntegrationDto,
+  ): Promise<IntegrationView> {
     return this.marketplace.connect(user.tenantId, slug, dto.config);
   }
 
   @Post(':slug/disconnect')
-  disconnect(@CurrentUser() user: AuthContext, @Param('slug') slug: string): Promise<IntegrationView> {
+  disconnect(
+    @CurrentUser() user: AuthContext,
+    @Param('slug') slug: string,
+  ): Promise<IntegrationView> {
     return this.marketplace.disconnect(user.tenantId, slug);
   }
 }

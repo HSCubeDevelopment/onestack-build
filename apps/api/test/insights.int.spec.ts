@@ -54,7 +54,11 @@ describe.skipIf(!hasDb)('AI insights & prediction (Phase 3)', () => {
         .expect(201)
     ).body.id;
     const bayId = (
-      await http().post('/api/v1/resources').set(auth(a)).send({ type: 'bay', name: 'Bay 1' }).expect(201)
+      await http()
+        .post('/api/v1/resources')
+        .set(auth(a))
+        .send({ type: 'bay', name: 'Bay 1' })
+        .expect(201)
     ).body.id;
     // A booking well in the future — always "upcoming" relative to the test clock.
     await http()
@@ -122,12 +126,12 @@ describe.skipIf(!hasDb)('AI insights & prediction (Phase 3)', () => {
   });
 
   it("is tenant-isolated: shop B sees no signals and can't read shop A's customer summary", async () => {
-    expect((await http().get('/api/v1/insights/no-show-risk').set(auth(b)).expect(200)).body).toHaveLength(
-      0,
-    );
-    expect((await http().get('/api/v1/insights/churn-risk').set(auth(b)).expect(200)).body).toHaveLength(
-      0,
-    );
+    expect(
+      (await http().get('/api/v1/insights/no-show-risk').set(auth(b)).expect(200)).body,
+    ).toHaveLength(0);
+    expect(
+      (await http().get('/api/v1/insights/churn-risk').set(auth(b)).expect(200)).body,
+    ).toHaveLength(0);
     await http().get(`/api/v1/insights/contacts/${contactId}/summary`).set(auth(b)).expect(404);
   });
 });

@@ -36,14 +36,24 @@ export class MarketplaceService {
     });
   }
 
-  async connect(tenantId: string, slug: string, config?: Record<string, unknown>): Promise<IntegrationView> {
+  async connect(
+    tenantId: string,
+    slug: string,
+    config?: Record<string, unknown>,
+  ): Promise<IntegrationView> {
     const entry = catalogueEntry(slug);
     if (!entry) throw new BadRequestException('Unknown integration');
     await this.tenants.runInTenant(tenantId, async (tx) => {
       const existing = await tx.integrationConnection.findFirst({ where: { slug } });
       if (existing)
-        await tx.integrationConnection.update({ where: { id: existing.id }, data: { status: 'connected', config: (config ?? {}) as object, updatedAt: new Date() } });
-      else await tx.integrationConnection.create({ data: { tenantId, slug, config: (config ?? {}) as object } });
+        await tx.integrationConnection.update({
+          where: { id: existing.id },
+          data: { status: 'connected', config: (config ?? {}) as object, updatedAt: new Date() },
+        });
+      else
+        await tx.integrationConnection.create({
+          data: { tenantId, slug, config: (config ?? {}) as object },
+        });
     });
     return this.one(tenantId, slug);
   }
@@ -51,7 +61,10 @@ export class MarketplaceService {
   async disconnect(tenantId: string, slug: string): Promise<IntegrationView> {
     if (!catalogueEntry(slug)) throw new BadRequestException('Unknown integration');
     await this.tenants.runInTenant(tenantId, (tx) =>
-      tx.integrationConnection.updateMany({ where: { slug }, data: { status: 'disconnected', updatedAt: new Date() } }),
+      tx.integrationConnection.updateMany({
+        where: { slug },
+        data: { status: 'disconnected', updatedAt: new Date() },
+      }),
     );
     return this.one(tenantId, slug);
   }

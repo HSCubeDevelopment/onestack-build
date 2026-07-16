@@ -16,7 +16,10 @@ export class LoyaltyController {
   constructor(private readonly loyalty: LoyaltyService) {}
 
   @Get('loyalty/:contactId')
-  account(@CurrentUser() user: AuthContext, @Param('contactId') contactId: string): Promise<LoyaltyAccountView> {
+  account(
+    @CurrentUser() user: AuthContext,
+    @Param('contactId') contactId: string,
+  ): Promise<LoyaltyAccountView> {
     return this.loyalty.getAccount(user.tenantId, contactId);
   }
 

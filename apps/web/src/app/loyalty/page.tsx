@@ -36,7 +36,9 @@ function GiftCards() {
     }
   };
   const redeem = async (c: GiftCard) => {
-    const dollars = Number(prompt(`Redeem how much from ${c.code}? (balance ${money(c.balanceCents)})`, ''));
+    const dollars = Number(
+      prompt(`Redeem how much from ${c.code}? (balance ${money(c.balanceCents)})`, ''),
+    );
     if (!Number.isFinite(dollars) || dollars <= 0) return;
     await api.post(`/gift-cards/${c.id}/redeem`, { amountCents: Math.round(dollars * 100) });
     reload();
@@ -51,8 +53,17 @@ function GiftCards() {
     <div className="card pad0">
       <div className="row" style={{ padding: '12px 18px', gap: 10, alignItems: 'center' }}>
         <strong style={{ flex: 1 }}>Gift cards</strong>
-        <input className="input" style={{ maxWidth: 140 }} type="number" placeholder="Amount $" value={amount} onChange={(e) => setAmount(e.target.value)} />
-        <button className="btn primary" onClick={issue} disabled={busy || !amount}>Issue</button>
+        <input
+          className="input"
+          style={{ maxWidth: 140 }}
+          type="number"
+          placeholder="Amount $"
+          value={amount}
+          onChange={(e) => setAmount(e.target.value)}
+        />
+        <button className="btn primary" onClick={issue} disabled={busy || !amount}>
+          Issue
+        </button>
       </div>
       <div className="divider" />
       <ErrorBanner message={error} />
@@ -63,19 +74,34 @@ function GiftCards() {
       ) : (
         <table className="table">
           <thead>
-            <tr><th>Code</th><th>Balance</th><th>Status</th><th /></tr>
+            <tr>
+              <th>Code</th>
+              <th>Balance</th>
+              <th>Status</th>
+              <th />
+            </tr>
           </thead>
           <tbody>
             {cards.map((c) => (
               <tr key={c.id}>
                 <td style={{ fontFamily: 'var(--font-mono, monospace)' }}>{c.code}</td>
-                <td>{money(c.balanceCents)} <span className="muted">of {money(c.initialCents)}</span></td>
+                <td>
+                  {money(c.balanceCents)} <span className="muted">of {money(c.initialCents)}</span>
+                </td>
                 <td>{c.status === 'void' ? <span className="muted">void</span> : 'active'}</td>
                 <td style={{ textAlign: 'right', whiteSpace: 'nowrap' }}>
                   {c.status === 'active' ? (
                     <>
-                      <button className="btn" onClick={() => redeem(c)} disabled={c.balanceCents <= 0}>Redeem</button>{' '}
-                      <button className="btn" onClick={() => voidCard(c)}>Void</button>
+                      <button
+                        className="btn"
+                        onClick={() => redeem(c)}
+                        disabled={c.balanceCents <= 0}
+                      >
+                        Redeem
+                      </button>{' '}
+                      <button className="btn" onClick={() => voidCard(c)}>
+                        Void
+                      </button>
                     </>
                   ) : null}
                 </td>
@@ -108,7 +134,12 @@ function Points() {
     if (!selected) return;
     setError(null);
     try {
-      setAcc(await api.post<LoyaltyAccount>(`/loyalty/${selected.id}/adjust`, { delta, reason: delta > 0 ? 'earn' : 'redeem' }));
+      setAcc(
+        await api.post<LoyaltyAccount>(`/loyalty/${selected.id}/adjust`, {
+          delta,
+          reason: delta > 0 ? 'earn' : 'redeem',
+        }),
+      );
     } catch (e) {
       setError(e instanceof Error ? e.message : String(e));
     }
@@ -118,13 +149,29 @@ function Points() {
     <div className="card">
       <strong>Customer points</strong>
       <div className="row" style={{ gap: 8, marginTop: 10 }}>
-        <input className="input" placeholder="Find a customer…" value={q} onChange={(e) => setQ(e.target.value)} onKeyDown={(e) => e.key === 'Enter' && search()} style={{ maxWidth: 300 }} />
-        <button className="btn" onClick={search}>Search</button>
+        <input
+          className="input"
+          placeholder="Find a customer…"
+          value={q}
+          onChange={(e) => setQ(e.target.value)}
+          onKeyDown={(e) => e.key === 'Enter' && search()}
+          style={{ maxWidth: 300 }}
+        />
+        <button className="btn" onClick={search}>
+          Search
+        </button>
       </div>
       {results.length > 0 ? (
         <div style={{ marginTop: 8 }}>
           {results.map((c) => (
-            <button key={c.id} className="btn" style={{ marginRight: 6, marginTop: 6 }} onClick={() => pick(c)}>{c.displayName}</button>
+            <button
+              key={c.id}
+              className="btn"
+              style={{ marginRight: 6, marginTop: 6 }}
+              onClick={() => pick(c)}
+            >
+              {c.displayName}
+            </button>
           ))}
         </div>
       ) : null}
@@ -136,9 +183,15 @@ function Points() {
           </div>
           <ErrorBanner message={error} />
           <div className="row" style={{ gap: 8, marginTop: 10 }}>
-            <button className="btn" onClick={() => adjust(10)}>+10</button>
-            <button className="btn" onClick={() => adjust(50)}>+50</button>
-            <button className="btn" onClick={() => adjust(-50)} disabled={acc.points < 50}>Redeem 50</button>
+            <button className="btn" onClick={() => adjust(10)}>
+              +10
+            </button>
+            <button className="btn" onClick={() => adjust(50)}>
+              +50
+            </button>
+            <button className="btn" onClick={() => adjust(-50)} disabled={acc.points < 50}>
+              Redeem 50
+            </button>
           </div>
         </div>
       ) : null}

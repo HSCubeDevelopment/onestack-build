@@ -3,17 +3,42 @@ import { describe, expect, it } from 'vitest';
 import { ReferralsService } from './referrals.service';
 
 function make() {
-  const codes: any[] = []; const refs: any[] = [];
+  const codes: any[] = [];
+  const refs: any[] = [];
   const tx = {
     referralCode: {
-      findFirst: async ({ where }: any) => codes.find((c) => c.contactId === where.contactId) ?? null,
-      create: async ({ data }: any) => { const r = { id: `rc${codes.length + 1}`, ...data }; codes.push(r); return r; },
+      findFirst: async ({ where }: any) =>
+        codes.find((c) => c.contactId === where.contactId) ?? null,
+      create: async ({ data }: any) => {
+        const r = { id: `rc${codes.length + 1}`, ...data };
+        codes.push(r);
+        return r;
+      },
     },
     referral: {
-      create: async ({ data }: any) => { const r = { id: `r${refs.length + 1}`, referredPhone: null, referredContactId: null, rewardNote: null, createdAt: new Date(), ...data }; refs.push(r); return r; },
+      // The fake stands in for Postgres, so it has to apply the column defaults the service relies on —
+      // `status` is DEFAULT 'pending' in the schema and never written by create(). Without it the row
+      // comes back status: undefined, which the real DB would never do.
+      create: async ({ data }: any) => {
+        const r = {
+          id: `r${refs.length + 1}`,
+          referredPhone: null,
+          referredContactId: null,
+          rewardNote: null,
+          status: 'pending',
+          createdAt: new Date(),
+          ...data,
+        };
+        refs.push(r);
+        return r;
+      },
       findFirst: async ({ where }: any) => refs.find((r) => r.id === where.id) ?? null,
       findMany: async () => refs,
-      update: async ({ where, data }: any) => { const r = refs.find((x) => x.id === where.id); Object.assign(r, data); return r; },
+      update: async ({ where, data }: any) => {
+        const r = refs.find((x) => x.id === where.id);
+        Object.assign(r, data);
+        return r;
+      },
     },
   };
   const tenants = { runInTenant: (_t: string, fn: (tx: unknown) => unknown) => fn(tx) };
@@ -44,7 +69,9 @@ describe('ReferralsService', () => {
 
   it('rejects a blank name and 404s a missing referral', async () => {
     const { svc } = make();
-    await expect(svc.create('t1', { referrerContactId: 'c1', referredName: '' })).rejects.toBeInstanceOf(BadRequestException);
+    await expect(
+      svc.create('t1', { referrerContactId: 'c1', referredName: '' }),
+    ).rejects.toBeInstanceOf(BadRequestException);
     await expect(svc.convert('t1', 'nope')).rejects.toBeInstanceOf(NotFoundException);
   });
 });
