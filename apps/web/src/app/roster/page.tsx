@@ -2,8 +2,10 @@
 import { useMemo, useState } from 'react';
 import { api, Shift } from '@/lib/api';
 import { EmptyState, ErrorBanner, Loading, Modal, PageHead, useAsync } from '@/components/ui';
+import { useRole } from '@/lib/use-role';
 
 export default function RosterPage() {
+  const { isStaff } = useRole();
   const range = useMemo(() => {
     const from = new Date();
     from.setHours(0, 0, 0, 0);
@@ -32,9 +34,13 @@ export default function RosterPage() {
   return (
     <>
       <PageHead title="Roster" sub="Shifts, availability and time-off (next 14 days)">
-        <button className="btn primary" onClick={() => setAdding(true)}>
-          + Add shift
-        </button>
+        {/* Employees read the roster; only an owner writes it. POST/DELETE /shifts are OWNER-only, so
+            these controls would 403 on click — don't offer them. */}
+        {isStaff ? null : (
+          <button className="btn primary" onClick={() => setAdding(true)}>
+            + Add shift
+          </button>
+        )}
       </PageHead>
 
       <ErrorBanner message={error} />
@@ -64,9 +70,11 @@ export default function RosterPage() {
                       </td>
                       <td className="muted">{s.notes ?? ''}</td>
                       <td style={{ textAlign: 'right' }}>
-                        <button className="btn" onClick={() => remove(s.id)}>
-                          Remove
-                        </button>
+                        {isStaff ? null : (
+                          <button className="btn" onClick={() => remove(s.id)}>
+                            Remove
+                          </button>
+                        )}
                       </td>
                     </tr>
                   ))}
