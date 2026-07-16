@@ -54,13 +54,13 @@ describe.skipIf(!hasDb)('feature flags (composition engine)', () => {
     // Tenant B has scheduling OFF → route behaves as if it does not exist.
     await http()
       .get('/api/v1/scheduling/ping')
-      .set('Authorization', `Bearer ${b.staffToken}`)
+      .set('Authorization', `Bearer ${b.ownerToken}`)
       .expect(404);
 
     // Tenant A enabled it above → reachable.
     await http()
       .get('/api/v1/scheduling/ping')
-      .set('Authorization', `Bearer ${a.staffToken}`)
+      .set('Authorization', `Bearer ${a.ownerToken}`)
       .expect(200);
   });
 

@@ -10,6 +10,7 @@ import {
 } from '@nestjs/common';
 import { IsObject } from 'class-validator';
 import { AuthContext } from '../auth/auth.types';
+import { AllowStaff } from '../auth/roles.decorator';
 import { CurrentUser } from '../auth/current-user.decorator';
 import { JwtAuthGuard } from '../auth/jwt-auth.guard';
 import { RolesGuard } from '../auth/roles.guard';
@@ -29,6 +30,7 @@ class SetVehicleCustomFieldsDto {
 export class VehiclesController {
   constructor(private readonly subjects: SubjectService) {}
 
+  @AllowStaff()
   @Get()
   search(
     @CurrentUser() user: AuthContext,

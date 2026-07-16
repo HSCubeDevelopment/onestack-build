@@ -19,7 +19,7 @@ describe.skipIf(!hasDb)('Work item detail — assign, notes, photos (card #21)',
   let jobId: string;
 
   const http = () => request(app.getHttpServer());
-  const auth = (t: TestTenant) => ({ Authorization: `Bearer ${t.staffToken}` });
+  const auth = (t: TestTenant) => ({ Authorization: `Bearer ${t.ownerToken}` });
 
   const makeJob = async (t: TestTenant): Promise<string> => {
     const customerId = (

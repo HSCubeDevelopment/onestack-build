@@ -1,4 +1,5 @@
 import { Body, Controller, Delete, Get, HttpCode, Param, Post, Query, UseGuards } from '@nestjs/common';
+import { AllowStaff } from '../auth/roles.decorator';
 import { AuthContext } from '../auth/auth.types';
 import { CurrentUser } from '../auth/current-user.decorator';
 import { JwtAuthGuard } from '../auth/jwt-auth.guard';
@@ -20,6 +21,7 @@ export class RosterController {
     return this.roster.add(user.tenantId, dto);
   }
 
+  @AllowStaff()
   @Get()
   list(
     @CurrentUser() user: AuthContext,

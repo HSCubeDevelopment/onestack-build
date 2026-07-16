@@ -17,7 +17,7 @@ describe.skipIf(!hasDb)('Excess handling (card #42)', () => {
   let jobId: string;
 
   const http = () => request(app.getHttpServer());
-  const auth = (t: TestTenant) => ({ Authorization: `Bearer ${t.staffToken}` });
+  const auth = (t: TestTenant) => ({ Authorization: `Bearer ${t.ownerToken}` });
 
   // Build a $143 (14300c) invoice on an insured job whose claim carries authorised=12300, excess=2000.
   const insuredInvoice = async (): Promise<{ invoiceId: string; totalCents: number }> => {
