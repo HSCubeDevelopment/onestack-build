@@ -38,10 +38,7 @@ export default function JobsPage() {
 
   return (
     <>
-      <PageHead
-        title="Jobs"
-        sub={isStaff ? 'Jobs assigned to you' : 'Every job in the workshop'}
-      >
+      <PageHead title="Jobs" sub={isStaff ? 'Jobs assigned to you' : 'Every job in the workshop'}>
         {/* The new-job modal picks a customer out of the contact list, which an employee can't read. */}
         {isStaff ? null : (
           <button className="btn primary" onClick={() => setShowNew(true)}>
