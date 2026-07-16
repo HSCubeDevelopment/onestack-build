@@ -50,5 +50,7 @@ export function middleware(req: NextRequest) {
 
 // Skip Next internals, the API proxy (the API does its own role checks) and static assets.
 export const config = {
-  matcher: ['/((?!api|_next/static|_next/image|favicon.ico|.*\\.(?:svg|png|jpg|jpeg|gif|webp)$).*)'],
+  matcher: [
+    '/((?!api|_next/static|_next/image|favicon.ico|.*\\.(?:svg|png|jpg|jpeg|gif|webp)$).*)',
+  ],
 };

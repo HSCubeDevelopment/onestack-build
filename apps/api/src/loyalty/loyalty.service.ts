@@ -50,10 +50,26 @@ export class LoyaltyService {
       const existing = await tx.loyaltyAccount.findFirst({ where: { contactId } });
       const points = (existing?.points ?? 0) + delta;
       if (points < 0) throw new BadRequestException('Not enough points to redeem');
-      if (existing) await tx.loyaltyAccount.update({ where: { id: existing.id }, data: { points, updatedAt: new Date() } });
+      if (existing)
+        await tx.loyaltyAccount.update({
+          where: { id: existing.id },
+          data: { points, updatedAt: new Date() },
+        });
       else await tx.loyaltyAccount.create({ data: { tenantId, contactId, points } });
-      await tx.loyaltyTxn.create({ data: { tenantId, contactId, delta, reason: reason?.trim() || 'adjust', note: note?.trim() || null } });
-      const txns = await tx.loyaltyTxn.findMany({ where: { contactId }, orderBy: { createdAt: 'desc' }, take: 20 });
+      await tx.loyaltyTxn.create({
+        data: {
+          tenantId,
+          contactId,
+          delta,
+          reason: reason?.trim() || 'adjust',
+          note: note?.trim() || null,
+        },
+      });
+      const txns = await tx.loyaltyTxn.findMany({
+        where: { contactId },
+        orderBy: { createdAt: 'desc' },
+        take: 20,
+      });
       return { contactId, points, transactions: txns.map(txnView) };
     });
   }
@@ -61,22 +77,35 @@ export class LoyaltyService {
   async getAccount(tenantId: string, contactId: string): Promise<LoyaltyAccountView> {
     return this.tenants.runInTenant(tenantId, async (tx) => {
       const acc = await tx.loyaltyAccount.findFirst({ where: { contactId } });
-      const txns = await tx.loyaltyTxn.findMany({ where: { contactId }, orderBy: { createdAt: 'desc' }, take: 20 });
+      const txns = await tx.loyaltyTxn.findMany({
+        where: { contactId },
+        orderBy: { createdAt: 'desc' },
+        take: 20,
+      });
       return { contactId, points: acc?.points ?? 0, transactions: txns.map(txnView) };
     });
   }
 
   // ---- Gift cards ----
 
-  async issueGiftCard(tenantId: string, input: { initialCents: number; code?: string; note?: string }): Promise<GiftCardView> {
+  async issueGiftCard(
+    tenantId: string,
+    input: { initialCents: number; code?: string; note?: string },
+  ): Promise<GiftCardView> {
     if (!Number.isInteger(input.initialCents) || input.initialCents < 1)
       throw new BadRequestException('initialCents must be a positive integer');
-    const code = (input.code?.trim() || `GC-${randomUUID().slice(0, 8).toUpperCase()}`);
+    const code = input.code?.trim() || `GC-${randomUUID().slice(0, 8).toUpperCase()}`;
     return this.tenants.runInTenant(tenantId, async (tx) => {
       const existing = await tx.giftCard.findFirst({ where: { code } });
       if (existing) throw new BadRequestException('A gift card with this code already exists');
       const row = await tx.giftCard.create({
-        data: { tenantId, code, initialCents: input.initialCents, balanceCents: input.initialCents, note: input.note?.trim() || null },
+        data: {
+          tenantId,
+          code,
+          initialCents: input.initialCents,
+          balanceCents: input.initialCents,
+          note: input.note?.trim() || null,
+        },
       });
       return cardView(row);
     });
@@ -89,16 +118,27 @@ export class LoyaltyService {
     return rows.map(cardView);
   }
 
-  async redeemGiftCard(tenantId: string, id: string, amountCents: number, note?: string): Promise<GiftCardView> {
+  async redeemGiftCard(
+    tenantId: string,
+    id: string,
+    amountCents: number,
+    note?: string,
+  ): Promise<GiftCardView> {
     if (!Number.isInteger(amountCents) || amountCents < 1)
       throw new BadRequestException('amountCents must be a positive integer');
     return this.tenants.runInTenant(tenantId, async (tx) => {
       const card = await tx.giftCard.findFirst({ where: { id } });
       if (!card) throw new NotFoundException('Gift card not found');
       if (card.status !== 'active') throw new BadRequestException('This gift card is not active');
-      if (amountCents > card.balanceCents) throw new BadRequestException('Amount exceeds the remaining balance');
-      await tx.giftCardTxn.create({ data: { tenantId, giftCardId: id, amountCents: -amountCents, note: note?.trim() || null } });
-      const row = await tx.giftCard.update({ where: { id }, data: { balanceCents: card.balanceCents - amountCents } });
+      if (amountCents > card.balanceCents)
+        throw new BadRequestException('Amount exceeds the remaining balance');
+      await tx.giftCardTxn.create({
+        data: { tenantId, giftCardId: id, amountCents: -amountCents, note: note?.trim() || null },
+      });
+      const row = await tx.giftCard.update({
+        where: { id },
+        data: { balanceCents: card.balanceCents - amountCents },
+      });
       return cardView(row);
     });
   }
@@ -113,14 +153,37 @@ export class LoyaltyService {
   }
 }
 
-function txnView(t: { id: string; delta: number; reason: string; note: string | null; createdAt: Date }): LoyaltyTxnView {
-  return { id: t.id, delta: t.delta, reason: t.reason, note: t.note, createdAt: t.createdAt.toISOString() };
+function txnView(t: {
+  id: string;
+  delta: number;
+  reason: string;
+  note: string | null;
+  createdAt: Date;
+}): LoyaltyTxnView {
+  return {
+    id: t.id,
+    delta: t.delta,
+    reason: t.reason,
+    note: t.note,
+    createdAt: t.createdAt.toISOString(),
+  };
 }
 function cardView(c: {
-  id: string; code: string; initialCents: number; balanceCents: number; status: string; note: string | null; createdAt: Date;
+  id: string;
+  code: string;
+  initialCents: number;
+  balanceCents: number;
+  status: string;
+  note: string | null;
+  createdAt: Date;
 }): GiftCardView {
   return {
-    id: c.id, code: c.code, initialCents: c.initialCents, balanceCents: c.balanceCents,
-    status: c.status as 'active' | 'void', note: c.note, createdAt: c.createdAt.toISOString(),
+    id: c.id,
+    code: c.code,
+    initialCents: c.initialCents,
+    balanceCents: c.balanceCents,
+    status: c.status as 'active' | 'void',
+    note: c.note,
+    createdAt: c.createdAt.toISOString(),
   };
 }

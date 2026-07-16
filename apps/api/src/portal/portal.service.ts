@@ -117,7 +117,12 @@ export class PortalService {
 
     const quotes = perJob
       .flatMap((p) => p.quotes)
-      .map((q) => ({ id: q.id, reference: q.reference, status: q.status, totalCents: q.totalCents }));
+      .map((q) => ({
+        id: q.id,
+        reference: q.reference,
+        status: q.status,
+        totalCents: q.totalCents,
+      }));
 
     const invoices = perJob
       .flatMap((p) => p.invoices)
@@ -139,7 +144,9 @@ export class PortalService {
 
     const page = await this.booking.getConfig(tenantId);
     const bookingUrl =
-      page.exists && page.enabled && page.publicToken ? `/public/booking/${page.publicToken}` : null;
+      page.exists && page.enabled && page.publicToken
+        ? `/public/booking/${page.publicToken}`
+        : null;
 
     return {
       customer: { name: contact.displayName },
@@ -147,7 +154,10 @@ export class PortalService {
       quotes,
       documents,
       invoices,
-      payments: { online: false, note: 'Online payments are coming soon — please pay as arranged with the shop.' },
+      payments: {
+        online: false,
+        note: 'Online payments are coming soon — please pay as arranged with the shop.',
+      },
       bookingUrl,
     };
   }

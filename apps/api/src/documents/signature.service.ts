@@ -143,7 +143,9 @@ export class SignatureService {
     const signedName = input.signedName?.trim();
     if (!signedName) throw new BadRequestException('signedName is required to sign');
     if (signedName.length > MAX_SIGNED_NAME_CHARS)
-      throw new BadRequestException(`signedName must be ${MAX_SIGNED_NAME_CHARS} characters or fewer`);
+      throw new BadRequestException(
+        `signedName must be ${MAX_SIGNED_NAME_CHARS} characters or fewer`,
+      );
 
     await this.tenants.runInTenant(sig.tenantId, (tx) =>
       tx.documentSignature.update({

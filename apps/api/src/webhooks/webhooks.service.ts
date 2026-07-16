@@ -37,7 +37,12 @@ export class WebhooksService {
     const secret = `whsec_${randomUUID().replace(/-/g, '')}`;
     return this.tenants.runInTenant(tenantId, async (tx) => {
       const row = await tx.webhookEndpoint.create({
-        data: { tenantId, url, secret, events: (events && events.length ? events : ['*']) as unknown as object },
+        data: {
+          tenantId,
+          url,
+          secret,
+          events: (events && events.length ? events : ['*']) as unknown as object,
+        },
       });
       return toView(row);
     });
@@ -51,19 +56,27 @@ export class WebhooksService {
   }
 
   async remove(tenantId: string, id: string): Promise<void> {
-    await this.tenants.runInTenant(tenantId, (tx) => tx.webhookEndpoint.deleteMany({ where: { id } }));
+    await this.tenants.runInTenant(tenantId, (tx) =>
+      tx.webhookEndpoint.deleteMany({ where: { id } }),
+    );
   }
 
   async deliveries(tenantId: string, id: string): Promise<DeliveryView[]> {
     const rows = await this.tenants.runInTenant(tenantId, (tx) =>
-      tx.webhookDelivery.findMany({ where: { endpointId: id }, orderBy: { createdAt: 'desc' }, take: 20 }),
+      tx.webhookDelivery.findMany({
+        where: { endpointId: id },
+        orderBy: { createdAt: 'desc' },
+        take: 20,
+      }),
     );
     return rows.map(deliveryView);
   }
 
   /** Send a test event to one endpoint (proves the URL + signature work). */
   async test(tenantId: string, id: string): Promise<DeliveryView> {
-    const ep = await this.tenants.runInTenant(tenantId, (tx) => tx.webhookEndpoint.findFirst({ where: { id } }));
+    const ep = await this.tenants.runInTenant(tenantId, (tx) =>
+      tx.webhookEndpoint.findFirst({ where: { id } }),
+    );
     if (!ep) throw new NotFoundException('Webhook endpoint not found');
     const result = await this.send(ep.url, ep.secret, 'ping', { message: 'OneStack webhook test' });
     return this.log(tenantId, id, 'ping', result);
@@ -107,9 +120,17 @@ export class WebhooksService {
         body,
         signal: controller.signal,
       });
-      return { status: res.ok ? 'success' : 'failed', responseCode: res.status, error: res.ok ? null : `HTTP ${res.status}` };
+      return {
+        status: res.ok ? 'success' : 'failed',
+        responseCode: res.status,
+        error: res.ok ? null : `HTTP ${res.status}`,
+      };
     } catch (e) {
-      return { status: 'failed', responseCode: null, error: e instanceof Error ? e.message : 'delivery failed' };
+      return {
+        status: 'failed',
+        responseCode: null,
+        error: e instanceof Error ? e.message : 'delivery failed',
+      };
     } finally {
       clearTimeout(timer);
     }
@@ -123,23 +144,51 @@ export class WebhooksService {
   ): Promise<DeliveryView> {
     return this.tenants.runInTenant(tenantId, async (tx) => {
       const row = await tx.webhookDelivery.create({
-        data: { tenantId, endpointId, eventType, status: result.status, responseCode: result.responseCode, error: result.error },
+        data: {
+          tenantId,
+          endpointId,
+          eventType,
+          status: result.status,
+          responseCode: result.responseCode,
+          error: result.error,
+        },
       });
       return deliveryView(row);
     });
   }
 }
 
-function toView(r: { id: string; url: string; secret: string; events: unknown; active: boolean; createdAt: Date }): WebhookEndpointView {
+function toView(r: {
+  id: string;
+  url: string;
+  secret: string;
+  events: unknown;
+  active: boolean;
+  createdAt: Date;
+}): WebhookEndpointView {
   return {
-    id: r.id, url: r.url, secret: r.secret,
+    id: r.id,
+    url: r.url,
+    secret: r.secret,
     events: Array.isArray(r.events) ? (r.events as string[]) : ['*'],
-    active: r.active, createdAt: r.createdAt.toISOString(),
+    active: r.active,
+    createdAt: r.createdAt.toISOString(),
   };
 }
-function deliveryView(r: { id: string; eventType: string; status: string; responseCode: number | null; error: string | null; createdAt: Date }): DeliveryView {
+function deliveryView(r: {
+  id: string;
+  eventType: string;
+  status: string;
+  responseCode: number | null;
+  error: string | null;
+  createdAt: Date;
+}): DeliveryView {
   return {
-    id: r.id, eventType: r.eventType, status: r.status as 'success' | 'failed',
-    responseCode: r.responseCode, error: r.error, createdAt: r.createdAt.toISOString(),
+    id: r.id,
+    eventType: r.eventType,
+    status: r.status as 'success' | 'failed',
+    responseCode: r.responseCode,
+    error: r.error,
+    createdAt: r.createdAt.toISOString(),
   };
 }

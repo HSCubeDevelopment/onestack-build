@@ -9,21 +9,54 @@ function make() {
   const ctxns: any[] = [];
   const tx = {
     loyaltyAccount: {
-      findFirst: async ({ where }: any) => accounts.find((a) => a.contactId === where.contactId) ?? null,
-      create: async ({ data }: any) => { const r = { id: `a${accounts.length + 1}`, ...data }; accounts.push(r); return r; },
-      update: async ({ where, data }: any) => { const r = accounts.find((a) => a.id === where.id); Object.assign(r, data); return r; },
+      findFirst: async ({ where }: any) =>
+        accounts.find((a) => a.contactId === where.contactId) ?? null,
+      create: async ({ data }: any) => {
+        const r = { id: `a${accounts.length + 1}`, ...data };
+        accounts.push(r);
+        return r;
+      },
+      update: async ({ where, data }: any) => {
+        const r = accounts.find((a) => a.id === where.id);
+        Object.assign(r, data);
+        return r;
+      },
     },
     loyaltyTxn: {
-      create: async ({ data }: any) => { const r = { id: `lt${ltxns.length + 1}`, createdAt: new Date(), note: null, ...data }; ltxns.push(r); return r; },
+      create: async ({ data }: any) => {
+        const r = { id: `lt${ltxns.length + 1}`, createdAt: new Date(), note: null, ...data };
+        ltxns.push(r);
+        return r;
+      },
       findMany: async ({ where }: any) => ltxns.filter((t) => t.contactId === where.contactId),
     },
     giftCard: {
-      findFirst: async ({ where }: any) => cards.find((c) => (where.id ? c.id === where.id : c.code === where.code)) ?? null,
-      create: async ({ data }: any) => { const r = { id: `gc${cards.length + 1}`, status: 'active', note: null, createdAt: new Date(), ...data }; cards.push(r); return r; },
+      findFirst: async ({ where }: any) =>
+        cards.find((c) => (where.id ? c.id === where.id : c.code === where.code)) ?? null,
+      create: async ({ data }: any) => {
+        const r = {
+          id: `gc${cards.length + 1}`,
+          status: 'active',
+          note: null,
+          createdAt: new Date(),
+          ...data,
+        };
+        cards.push(r);
+        return r;
+      },
       findMany: async () => cards,
-      update: async ({ where, data }: any) => { const r = cards.find((c) => c.id === where.id); Object.assign(r, data); return r; },
+      update: async ({ where, data }: any) => {
+        const r = cards.find((c) => c.id === where.id);
+        Object.assign(r, data);
+        return r;
+      },
     },
-    giftCardTxn: { create: async ({ data }: any) => { ctxns.push(data); return data; } },
+    giftCardTxn: {
+      create: async ({ data }: any) => {
+        ctxns.push(data);
+        return data;
+      },
+    },
   };
   const tenants = { runInTenant: (_t: string, fn: (tx: unknown) => unknown) => fn(tx) };
   return { svc: new LoyaltyService(tenants as never), ctxns };

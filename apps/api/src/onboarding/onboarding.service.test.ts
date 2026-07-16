@@ -60,9 +60,13 @@ describe('OnboardingService.importContacts', () => {
 
   it('rejects an empty import and an over-cap import', async () => {
     const { svc } = make();
-    await expect(svc.importContacts('t1', { rows: [] })).rejects.toBeInstanceOf(BadRequestException);
+    await expect(svc.importContacts('t1', { rows: [] })).rejects.toBeInstanceOf(
+      BadRequestException,
+    );
     const many = Array.from({ length: 1001 }, (_, i) => ({ name: `N${i}`, phone: `${i}` }));
-    await expect(svc.importContacts('t1', { rows: many })).rejects.toBeInstanceOf(BadRequestException);
+    await expect(svc.importContacts('t1', { rows: many })).rejects.toBeInstanceOf(
+      BadRequestException,
+    );
   });
 });
 

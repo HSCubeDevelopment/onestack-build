@@ -1,4 +1,12 @@
-import { IsISO8601, IsIn, IsOptional, IsString, IsUUID, MaxLength, MinLength } from 'class-validator';
+import {
+  IsISO8601,
+  IsIn,
+  IsOptional,
+  IsString,
+  IsUUID,
+  MaxLength,
+  MinLength,
+} from 'class-validator';
 
 export class AddShiftDto {
   @IsString()

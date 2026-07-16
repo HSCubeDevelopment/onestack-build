@@ -65,21 +65,13 @@ describe.skipIf(!hasDb)('Onboarding & data migration (Phase 3)', () => {
   it('imports the valid rows for real and updates the checklist', async () => {
     const csv = 'displayName,phone\nJane,0400000000\nSam,0411111111';
     const res = (
-      await http()
-        .post('/api/v1/onboarding/import/contacts')
-        .set(auth(a))
-        .send({ csv })
-        .expect(201)
+      await http().post('/api/v1/onboarding/import/contacts').set(auth(a)).send({ csv }).expect(201)
     ).body;
     expect(res.created).toBe(2);
 
     // Re-importing the same file → both are duplicates now.
     const again = (
-      await http()
-        .post('/api/v1/onboarding/import/contacts')
-        .set(auth(a))
-        .send({ csv })
-        .expect(201)
+      await http().post('/api/v1/onboarding/import/contacts').set(auth(a)).send({ csv }).expect(201)
     ).body;
     expect(again.summary.duplicate).toBe(2);
     expect(again.created).toBe(0);
@@ -90,7 +82,11 @@ describe.skipIf(!hasDb)('Onboarding & data migration (Phase 3)', () => {
   });
 
   it('rejects an empty import', async () => {
-    await http().post('/api/v1/onboarding/import/contacts').set(auth(a)).send({ rows: [] }).expect(400);
+    await http()
+      .post('/api/v1/onboarding/import/contacts')
+      .set(auth(a))
+      .send({ rows: [] })
+      .expect(400);
   });
 
   it("is tenant-isolated: shop B's import didn't leak; its checklist is empty", async () => {

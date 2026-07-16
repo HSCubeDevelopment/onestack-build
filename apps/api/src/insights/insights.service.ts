@@ -83,7 +83,7 @@ export class InsightsService {
     const contactById = new Map(contacts.map((c) => [c.id, c]));
 
     const out = upcoming.map((b) => {
-      const contactId = b.workItemId ? customerByWorkItem.get(b.workItemId) ?? null : null;
+      const contactId = b.workItemId ? (customerByWorkItem.get(b.workItemId) ?? null) : null;
       const contact = contactId ? contactById.get(contactId) : undefined;
       const signals: NoShowSignals = {
         daysUntil: (b.startsAt.getTime() - now.getTime()) / DAY_MS,
@@ -159,7 +159,14 @@ export class InsightsService {
     const lastActivityAt = lastActivity ? new Date(lastActivity).toISOString() : null;
     const summary = buildSummary(contact.displayName, jobCount, states, lastActivity);
 
-    return { contactId, displayName: contact.displayName, jobCount, lastActivityAt, states, summary };
+    return {
+      contactId,
+      displayName: contact.displayName,
+      jobCount,
+      lastActivityAt,
+      states,
+      summary,
+    };
   }
 }
 

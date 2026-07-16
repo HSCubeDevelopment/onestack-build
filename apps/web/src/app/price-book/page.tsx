@@ -1,14 +1,7 @@
 'use client';
 import { useState } from 'react';
 import { api, PriceBookItem, money } from '@/lib/api';
-import {
-  EmptyState,
-  ErrorBanner,
-  Loading,
-  Modal,
-  PageHead,
-  useAsync,
-} from '@/components/ui';
+import { EmptyState, ErrorBanner, Loading, Modal, PageHead, useAsync } from '@/components/ui';
 
 export default function PriceBookPage() {
   const [q, setQ] = useState('');
@@ -154,9 +147,7 @@ function ItemModal({
   const [name, setName] = useState(item?.name ?? '');
   const [type, setType] = useState(item?.type ?? 'labour');
   const [unit, setUnit] = useState(item?.unit ?? 'hour');
-  const [price, setPrice] = useState(
-    item ? (item.defaultUnitPriceCents / 100).toString() : '',
-  );
+  const [price, setPrice] = useState(item ? (item.defaultUnitPriceCents / 100).toString() : '');
   const [code, setCode] = useState(item?.code ?? '');
   const [description, setDescription] = useState(item?.description ?? '');
   const [saving, setSaving] = useState(false);

@@ -30,7 +30,11 @@ describe.skipIf(!hasDb)('Branded booking pages (Phase 3)', () => {
 
     // A bookable resource + a booking page so the public page resolves.
     const bayId = (
-      await http().post('/api/v1/resources').set(auth(a)).send({ type: 'bay', name: 'Bay 1' }).expect(201)
+      await http()
+        .post('/api/v1/resources')
+        .set(auth(a))
+        .send({ type: 'bay', name: 'Bay 1' })
+        .expect(201)
     ).body.id;
     const page = (
       await http()

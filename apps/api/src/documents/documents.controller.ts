@@ -52,10 +52,7 @@ export class DocumentsController {
   }
 
   @Get(':id/signatures')
-  signatures_(
-    @CurrentUser() user: AuthContext,
-    @Param('id') id: string,
-  ): Promise<SignatureView[]> {
+  signatures_(@CurrentUser() user: AuthContext, @Param('id') id: string): Promise<SignatureView[]> {
     return this.signatures.listForDocument(user.tenantId, id);
   }
 }

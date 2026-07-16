@@ -60,16 +60,14 @@ export class OnboardingService {
 
   /** Import customers from CSV. Dry-run by default-safe usage: preview the per-row plan, then confirm. */
   async importContacts(tenantId: string, input: ImportContactsInput): Promise<ImportResult> {
-    const rawRows = input.csv !== undefined ? parseContactsCsv(input.csv) : input.rows ?? [];
+    const rawRows = input.csv !== undefined ? parseContactsCsv(input.csv) : (input.rows ?? []);
     if (rawRows.length === 0) throw new BadRequestException('No rows to import');
     if (rawRows.length > MAX_IMPORT_ROWS)
       throw new BadRequestException(`Too many rows — import at most ${MAX_IMPORT_ROWS} at a time`);
 
     // De-dupe against phones already on file.
     const existing = await this.contacts.list(tenantId);
-    const existingPhones = new Set(
-      existing.map((c) => c.phone).filter((p): p is string => !!p),
-    );
+    const existingPhones = new Set(existing.map((c) => c.phone).filter((p): p is string => !!p));
 
     const results = planImport(rawRows, existingPhones);
     const summary = summarise(results);
@@ -112,7 +110,11 @@ export class OnboardingService {
     const steps: ChecklistStep[] = [
       { key: 'brand', label: 'Set up your brand', done: brandSet },
       { key: 'customers', label: 'Add your customers', done: contacts.length > 0 },
-      { key: 'resources', label: 'Add a bookable resource (bay or technician)', done: resources.length > 0 },
+      {
+        key: 'resources',
+        label: 'Add a bookable resource (bay or technician)',
+        done: resources.length > 0,
+      },
       {
         key: 'booking_page',
         label: 'Turn on your online booking page',

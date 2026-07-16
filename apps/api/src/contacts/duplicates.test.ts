@@ -68,11 +68,6 @@ describe('findDuplicates', () => {
   });
 
   it('does not group on empty/short values', () => {
-    expect(
-      findDuplicates([
-        c('1', 'A', '', ''),
-        c('2', 'B', null, null),
-      ]),
-    ).toHaveLength(0);
+    expect(findDuplicates([c('1', 'A', '', ''), c('2', 'B', null, null)])).toHaveLength(0);
   });
 });

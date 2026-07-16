@@ -53,7 +53,10 @@ export class LoginController {
   @Post('login')
   @HttpCode(200)
   async login(@Body() dto: LoginDto): Promise<LoginResult> {
-    const verified = await this.supabase.verifyPassword(dto.email.trim().toLowerCase(), dto.password);
+    const verified = await this.supabase.verifyPassword(
+      dto.email.trim().toLowerCase(),
+      dto.password,
+    );
     if (!verified) throw new UnauthorizedException('Invalid email or password');
 
     // Privileged read: at login there is no tenant context yet, so resolve membership on the admin
@@ -70,11 +73,9 @@ export class LoginController {
     const secret = process.env.SUPABASE_JWT_SECRET;
     if (!secret) throw new ForbiddenException('Auth is not configured');
     const role = membership.role as AppRole;
-    const token = jwt.sign(
-      { sub: verified.userId, tenant_id: membership.tenantId, role },
-      secret,
-      { expiresIn: SESSION_SECONDS },
-    );
+    const token = jwt.sign({ sub: verified.userId, tenant_id: membership.tenantId, role }, secret, {
+      expiresIn: SESSION_SECONDS,
+    });
     return {
       token,
       user: { userId: verified.userId, tenantId: membership.tenantId, role },
@@ -92,7 +93,9 @@ export class LoginController {
    * keeps them away from any other tenant's data.
    */
   @Get('demo-credentials')
-  demoCredentials(): { accounts: { label: string; email: string; password: string; role: AppRole }[] } {
+  demoCredentials(): {
+    accounts: { label: string; email: string; password: string; role: AppRole }[];
+  } {
     if (process.env.DEV_LOGIN_ENABLED !== 'true') {
       throw new ForbiddenException('Demo credentials are not available');
     }
@@ -101,8 +104,10 @@ export class LoginController {
     const staff = process.env.DEMO_STAFF_EMAIL;
     const staffPw = process.env.DEMO_STAFF_PASSWORD;
     const accounts: { label: string; email: string; password: string; role: AppRole }[] = [];
-    if (owner && ownerPw) accounts.push({ label: 'Owner', email: owner, password: ownerPw, role: 'OWNER' });
-    if (staff && staffPw) accounts.push({ label: 'Staff', email: staff, password: staffPw, role: 'STAFF' });
+    if (owner && ownerPw)
+      accounts.push({ label: 'Owner', email: owner, password: ownerPw, role: 'OWNER' });
+    if (staff && staffPw)
+      accounts.push({ label: 'Staff', email: staff, password: staffPw, role: 'STAFF' });
     return { accounts };
   }
 

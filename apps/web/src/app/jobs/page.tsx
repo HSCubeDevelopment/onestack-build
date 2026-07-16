@@ -16,10 +16,7 @@ import {
 export default function JobsPage() {
   const { data, loading, error, reload } = useAsync(
     () =>
-      Promise.all([
-        api.get<WorkItem[]>('/work-items?type=job'),
-        api.get<Contact[]>('/contacts'),
-      ]),
+      Promise.all([api.get<WorkItem[]>('/work-items?type=job'), api.get<Contact[]>('/contacts')]),
     [],
   );
   const [showNew, setShowNew] = useState(false);
@@ -62,9 +59,7 @@ export default function JobsPage() {
                       </Link>
                     </td>
                     <td>{contactName(j.fields.customerId)}</td>
-                    <td className="muted">
-                      {(j.fields.description as string) || '—'}
-                    </td>
+                    <td className="muted">{(j.fields.description as string) || '—'}</td>
                     <td>
                       <StatusBadge status={j.stateName} />
                     </td>

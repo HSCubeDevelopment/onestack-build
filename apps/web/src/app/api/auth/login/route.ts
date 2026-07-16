@@ -23,7 +23,10 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
   };
   if (!res.ok || !data.token) {
     const msg = Array.isArray(data.message) ? data.message.join(', ') : data.message;
-    return NextResponse.json({ error: msg || 'Invalid email or password' }, { status: res.status || 401 });
+    return NextResponse.json(
+      { error: msg || 'Invalid email or password' },
+      { status: res.status || 401 },
+    );
   }
   const out = NextResponse.json({ role: data.user?.role ?? 'STAFF' });
   out.cookies.set(SESSION_COOKIE, data.token, {

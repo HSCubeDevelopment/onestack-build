@@ -9,9 +9,26 @@ function make() {
     integrationConnection: {
       findMany: async () => conns,
       findFirst: async ({ where }: any) => conns.find((c) => c.slug === where.slug) ?? null,
-      create: async ({ data }: any) => { const r = { id: `ic${conns.length + 1}`, status: 'connected', connectedAt: new Date(), ...data }; conns.push(r); return r; },
-      update: async ({ where, data }: any) => { const r = conns.find((c) => c.id === where.id); Object.assign(r, data); return r; },
-      updateMany: async ({ where, data }: any) => { const r = conns.find((c) => c.slug === where.slug); if (r) Object.assign(r, data); return { count: r ? 1 : 0 }; },
+      create: async ({ data }: any) => {
+        const r = {
+          id: `ic${conns.length + 1}`,
+          status: 'connected',
+          connectedAt: new Date(),
+          ...data,
+        };
+        conns.push(r);
+        return r;
+      },
+      update: async ({ where, data }: any) => {
+        const r = conns.find((c) => c.id === where.id);
+        Object.assign(r, data);
+        return r;
+      },
+      updateMany: async ({ where, data }: any) => {
+        const r = conns.find((c) => c.slug === where.slug);
+        if (r) Object.assign(r, data);
+        return { count: r ? 1 : 0 };
+      },
     },
   };
   const tenants = { runInTenant: (_t: string, fn: (tx: unknown) => unknown) => fn(tx) };

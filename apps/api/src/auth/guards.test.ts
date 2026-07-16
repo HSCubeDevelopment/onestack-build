@@ -86,8 +86,12 @@ describe('RolesGuard', () => {
   });
 
   it('admits both roles to an @AllowStaff() route', () => {
-    expect(guardWith(['OWNER', 'STAFF']).canActivate(ctxWith({ auth: { role: 'STAFF' } }))).toBe(true);
-    expect(guardWith(['OWNER', 'STAFF']).canActivate(ctxWith({ auth: { role: 'OWNER' } }))).toBe(true);
+    expect(guardWith(['OWNER', 'STAFF']).canActivate(ctxWith({ auth: { role: 'STAFF' } }))).toBe(
+      true,
+    );
+    expect(guardWith(['OWNER', 'STAFF']).canActivate(ctxWith({ auth: { role: 'OWNER' } }))).toBe(
+      true,
+    );
   });
 
   it('forbids a request with no resolved role at all', () => {

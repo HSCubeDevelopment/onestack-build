@@ -5,7 +5,12 @@ import { PortalService } from './portal.service';
 // Fakes — no DB. A shared in-memory token store backs the tenant tx and the admin (token) prisma.
 function make(opts?: {
   contact?: { id: string; displayName: string };
-  jobs?: Array<{ id: string; reference: string; stateName: string; fields: Record<string, unknown> }>;
+  jobs?: Array<{
+    id: string;
+    reference: string;
+    stateName: string;
+    fields: Record<string, unknown>;
+  }>;
   quotes?: unknown[];
   invoices?: unknown[];
   documents?: unknown[];
@@ -50,14 +55,16 @@ function make(opts?: {
   };
   const quotes = {
     listForJob: async () => opts?.quotes ?? [],
-    get: async (_t: string, id: string) => (opts?.quotes ?? []).find((q) => (q as { id: string }).id === id),
+    get: async (_t: string, id: string) =>
+      (opts?.quotes ?? []).find((q) => (q as { id: string }).id === id),
     setStatus: async (_t: string, _id: string, status: string) => ({ status }),
   };
   const invoices = { listForJob: async () => opts?.invoices ?? [] };
   const documents = { list: async () => opts?.documents ?? [] };
   const signatures = { listForDocument: async () => opts?.signatures ?? [] };
   const booking = {
-    getConfig: async () => opts?.bookingPage ?? { exists: false, enabled: false, publicToken: null },
+    getConfig: async () =>
+      opts?.bookingPage ?? { exists: false, enabled: false, publicToken: null },
   };
 
   const svc = new PortalService(
@@ -101,9 +108,7 @@ describe('PortalService.home', () => {
     const { svc } = make({
       jobs: [job('j1', 'JOB-1', 'c1'), job('j2', 'JOB-2', 'cOther')],
       quotes: [{ id: 'q1', reference: 'Q-1', status: 'Sent', totalCents: 11000 }],
-      invoices: [
-        { reference: 'INV-1', status: 'Sent', totalCents: 11000, balanceCents: 11000 },
-      ],
+      invoices: [{ reference: 'INV-1', status: 'Sent', totalCents: 11000, balanceCents: 11000 }],
       documents: [{ id: 'd1', type: 'authority' }],
       signatures: [{ status: 'pending', signUrl: '/public/documents/sign/abc' }],
       bookingPage: { exists: true, enabled: true, publicToken: 'BOOKTOK' },
@@ -115,7 +120,11 @@ describe('PortalService.home', () => {
     expect(home.customer.name).toBe('Jane');
     expect(home.jobs).toEqual([{ reference: 'JOB-1', status: 'InProgress' }]); // j2 excluded
     expect(home.quotes[0]).toMatchObject({ reference: 'Q-1', totalCents: 11000 });
-    expect(home.documents[0]).toEqual({ id: 'd1', type: 'authority', signUrl: '/public/documents/sign/abc' });
+    expect(home.documents[0]).toEqual({
+      id: 'd1',
+      type: 'authority',
+      signUrl: '/public/documents/sign/abc',
+    });
     expect(home.invoices[0]).toMatchObject({ balanceCents: 11000 });
     expect(home.payments.online).toBe(false);
     expect(home.bookingUrl).toBe('/public/booking/BOOKTOK');
@@ -127,7 +136,10 @@ describe('PortalService.home', () => {
   });
 
   it('omits the booking link when the page is not enabled', async () => {
-    const { svc } = make({ jobs: [], bookingPage: { exists: true, enabled: false, publicToken: 'X' } });
+    const { svc } = make({
+      jobs: [],
+      bookingPage: { exists: true, enabled: false, publicToken: 'X' },
+    });
     const link = await svc.issueLink('t1', 'c1', 'u1');
     const token = link.portalUrl.split('/').pop() as string;
     expect((await svc.home(token)).bookingUrl).toBeNull();

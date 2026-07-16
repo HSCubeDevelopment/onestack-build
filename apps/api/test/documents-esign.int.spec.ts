@@ -126,9 +126,13 @@ describe.skipIf(!hasDb)('Documents & e-signature (Phase 3)', () => {
       .set(auth(b))
       .send({ signerName: 'Mallory' })
       .expect(404);
-    await http().get(`/api/v1/documents/${documentId}/signatures`).set(auth(b)).expect(200).expect((r) => {
-      if (r.body.length !== 0) throw new Error('shop B should see no signatures on A document');
-    });
+    await http()
+      .get(`/api/v1/documents/${documentId}/signatures`)
+      .set(auth(b))
+      .expect(200)
+      .expect((r) => {
+        if (r.body.length !== 0) throw new Error('shop B should see no signatures on A document');
+      });
     await http().get(`/api/v1/documents/${documentId}/content`).set(auth(b)).expect(404);
   });
 });

@@ -49,7 +49,8 @@ async function ensureAuthUser(email: string, password: string): Promise<string> 
 }
 
 async function main(): Promise<void> {
-  if (!URL || !KEY) throw new Error('Set SUPABASE_URL and SUPABASE_SERVICE_ROLE_KEY in apps/api/.env');
+  if (!URL || !KEY)
+    throw new Error('Set SUPABASE_URL and SUPABASE_SERVICE_ROLE_KEY in apps/api/.env');
   const db = new PrismaClient();
   try {
     await db.tenant.upsert({

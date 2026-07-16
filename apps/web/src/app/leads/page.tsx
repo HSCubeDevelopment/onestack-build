@@ -345,11 +345,7 @@ function TestSubmitModal({ form, onClose }: { form: LeadForm; onClose: () => voi
               <button className="btn ghost" onClick={onClose}>
                 Cancel
               </button>
-              <button
-                className="btn primary"
-                onClick={submit}
-                disabled={saving || !name || !phone}
-              >
+              <button className="btn primary" onClick={submit} disabled={saving || !name || !phone}>
                 {saving ? 'Submitting…' : 'Submit test lead'}
               </button>
             </div>

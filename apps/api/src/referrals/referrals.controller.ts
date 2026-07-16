@@ -16,7 +16,10 @@ export class ReferralsController {
   constructor(private readonly referrals: ReferralsService) {}
 
   @Post('codes/:contactId')
-  code(@CurrentUser() user: AuthContext, @Param('contactId') contactId: string): Promise<ReferralCodeView> {
+  code(
+    @CurrentUser() user: AuthContext,
+    @Param('contactId') contactId: string,
+  ): Promise<ReferralCodeView> {
     return this.referrals.ensureCode(user.tenantId, contactId);
   }
 

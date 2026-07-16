@@ -1,11 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import {
-  endOfToday,
-  isFleetVehicleStatus,
-  normPhone,
-  normRego,
-  startOfToday,
-} from './fleet.util';
+import { endOfToday, isFleetVehicleStatus, normPhone, normRego, startOfToday } from './fleet.util';
 
 describe('fleet.util', () => {
   it('normRego uppercases and strips non-alphanumerics', () => {

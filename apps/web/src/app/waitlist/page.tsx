@@ -4,7 +4,10 @@ import { api, Resource, WaitlistEntry } from '@/lib/api';
 import { EmptyState, ErrorBanner, Loading, Modal, PageHead, useAsync } from '@/components/ui';
 
 export default function WaitlistPage() {
-  const { data, loading, error, reload } = useAsync(() => api.get<WaitlistEntry[]>('/waitlist'), []);
+  const { data, loading, error, reload } = useAsync(
+    () => api.get<WaitlistEntry[]>('/waitlist'),
+    [],
+  );
   const { data: resources } = useAsync(() => api.get<Resource[]>('/resources').catch(() => []), []);
   const entries = data ?? [];
   const res = resources ?? [];
@@ -54,7 +57,11 @@ export default function WaitlistPage() {
                   <td>{resourceName(e.resourceId) ?? 'Any'}</td>
                   <td className="muted">{e.notes ?? '—'}</td>
                   <td style={{ textAlign: 'right', whiteSpace: 'nowrap' }}>
-                    <button className="btn primary" onClick={() => setFilling(e)} disabled={res.length === 0}>
+                    <button
+                      className="btn primary"
+                      onClick={() => setFilling(e)}
+                      disabled={res.length === 0}
+                    >
                       Fill slot
                     </button>{' '}
                     <button className="btn" onClick={() => remove(e.id)}>
@@ -69,16 +76,39 @@ export default function WaitlistPage() {
       </div>
 
       {adding ? (
-        <AddModal resources={res} onClose={() => setAdding(false)} onDone={() => { setAdding(false); reload(); }} />
+        <AddModal
+          resources={res}
+          onClose={() => setAdding(false)}
+          onDone={() => {
+            setAdding(false);
+            reload();
+          }}
+        />
       ) : null}
       {filling ? (
-        <FillModal entry={filling} resources={res} onClose={() => setFilling(null)} onDone={() => { setFilling(null); reload(); }} />
+        <FillModal
+          entry={filling}
+          resources={res}
+          onClose={() => setFilling(null)}
+          onDone={() => {
+            setFilling(null);
+            reload();
+          }}
+        />
       ) : null}
     </>
   );
 }
 
-function AddModal({ resources, onClose, onDone }: { resources: Resource[]; onClose: () => void; onDone: () => void }) {
+function AddModal({
+  resources,
+  onClose,
+  onDone,
+}: {
+  resources: Resource[];
+  onClose: () => void;
+  onDone: () => void;
+}) {
   const [name, setName] = useState('');
   const [phone, setPhone] = useState('');
   const [resourceId, setResourceId] = useState('');
@@ -90,7 +120,12 @@ function AddModal({ resources, onClose, onDone }: { resources: Resource[]; onClo
     setBusy(true);
     setError(null);
     try {
-      await api.post('/waitlist', { name, phone, notes: notes || undefined, resourceId: resourceId || undefined });
+      await api.post('/waitlist', {
+        name,
+        phone,
+        notes: notes || undefined,
+        resourceId: resourceId || undefined,
+      });
       onDone();
     } catch (e) {
       setError(e instanceof Error ? e.message : String(e));
@@ -101,9 +136,23 @@ function AddModal({ resources, onClose, onDone }: { resources: Resource[]; onClo
   return (
     <Modal title="Add to waitlist" onClose={onClose}>
       <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
-        <input className="input" placeholder="Name" value={name} onChange={(e) => setName(e.target.value)} />
-        <input className="input" placeholder="Phone" value={phone} onChange={(e) => setPhone(e.target.value)} />
-        <select className="input" value={resourceId} onChange={(e) => setResourceId(e.target.value)}>
+        <input
+          className="input"
+          placeholder="Name"
+          value={name}
+          onChange={(e) => setName(e.target.value)}
+        />
+        <input
+          className="input"
+          placeholder="Phone"
+          value={phone}
+          onChange={(e) => setPhone(e.target.value)}
+        />
+        <select
+          className="input"
+          value={resourceId}
+          onChange={(e) => setResourceId(e.target.value)}
+        >
           <option value="">Any resource</option>
           {resources.map((r) => (
             <option key={r.id} value={r.id}>
@@ -111,11 +160,22 @@ function AddModal({ resources, onClose, onDone }: { resources: Resource[]; onClo
             </option>
           ))}
         </select>
-        <input className="input" placeholder="Notes (optional)" value={notes} onChange={(e) => setNotes(e.target.value)} />
+        <input
+          className="input"
+          placeholder="Notes (optional)"
+          value={notes}
+          onChange={(e) => setNotes(e.target.value)}
+        />
         <ErrorBanner message={error} />
         <div className="row" style={{ justifyContent: 'flex-end', gap: 8 }}>
-          <button className="btn" onClick={onClose}>Cancel</button>
-          <button className="btn primary" onClick={save} disabled={busy || !name.trim() || !phone.trim()}>
+          <button className="btn" onClick={onClose}>
+            Cancel
+          </button>
+          <button
+            className="btn primary"
+            onClick={save}
+            disabled={busy || !name.trim() || !phone.trim()}
+          >
             {busy ? 'Saving…' : 'Add'}
           </button>
         </div>
@@ -124,7 +184,17 @@ function AddModal({ resources, onClose, onDone }: { resources: Resource[]; onClo
   );
 }
 
-function FillModal({ entry, resources, onClose, onDone }: { entry: WaitlistEntry; resources: Resource[]; onClose: () => void; onDone: () => void }) {
+function FillModal({
+  entry,
+  resources,
+  onClose,
+  onDone,
+}: {
+  entry: WaitlistEntry;
+  resources: Resource[];
+  onClose: () => void;
+  onDone: () => void;
+}) {
   const [resourceId, setResourceId] = useState(entry.resourceId ?? resources[0]?.id ?? '');
   const [startsAt, setStartsAt] = useState('');
   const [endsAt, setEndsAt] = useState('');
@@ -150,20 +220,48 @@ function FillModal({ entry, resources, onClose, onDone }: { entry: WaitlistEntry
   return (
     <Modal title={`Book ${entry.name} into a slot`} onClose={onClose}>
       <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
-        <label className="muted" style={{ fontSize: 13 }}>Resource</label>
-        <select className="input" value={resourceId} onChange={(e) => setResourceId(e.target.value)}>
+        <label className="muted" style={{ fontSize: 13 }}>
+          Resource
+        </label>
+        <select
+          className="input"
+          value={resourceId}
+          onChange={(e) => setResourceId(e.target.value)}
+        >
           {resources.map((r) => (
-            <option key={r.id} value={r.id}>{r.name}</option>
+            <option key={r.id} value={r.id}>
+              {r.name}
+            </option>
           ))}
         </select>
-        <label className="muted" style={{ fontSize: 13 }}>Start</label>
-        <input className="input" type="datetime-local" value={startsAt} onChange={(e) => setStartsAt(e.target.value)} />
-        <label className="muted" style={{ fontSize: 13 }}>End</label>
-        <input className="input" type="datetime-local" value={endsAt} onChange={(e) => setEndsAt(e.target.value)} />
+        <label className="muted" style={{ fontSize: 13 }}>
+          Start
+        </label>
+        <input
+          className="input"
+          type="datetime-local"
+          value={startsAt}
+          onChange={(e) => setStartsAt(e.target.value)}
+        />
+        <label className="muted" style={{ fontSize: 13 }}>
+          End
+        </label>
+        <input
+          className="input"
+          type="datetime-local"
+          value={endsAt}
+          onChange={(e) => setEndsAt(e.target.value)}
+        />
         <ErrorBanner message={error} />
         <div className="row" style={{ justifyContent: 'flex-end', gap: 8 }}>
-          <button className="btn" onClick={onClose}>Cancel</button>
-          <button className="btn primary" onClick={fill} disabled={busy || !resourceId || !startsAt || !endsAt}>
+          <button className="btn" onClick={onClose}>
+            Cancel
+          </button>
+          <button
+            className="btn primary"
+            onClick={fill}
+            disabled={busy || !resourceId || !startsAt || !endsAt}
+          >
             {busy ? 'Booking…' : 'Confirm booking'}
           </button>
         </div>

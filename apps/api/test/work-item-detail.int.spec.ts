@@ -184,7 +184,10 @@ describe.skipIf(!hasDb)('Work item detail — assign, notes, photos (card #21)',
         .expect(201)
     ).body;
     expect(created.sizeBytes).toBeGreaterThan(1_000_000);
-    await http().delete(`/api/v1/work-items/${jobId}/attachments/${created.id}`).set(auth(a)).expect(204);
+    await http()
+      .delete(`/api/v1/work-items/${jobId}/attachments/${created.id}`)
+      .set(auth(a))
+      .expect(204);
   });
 
   it("is tenant-isolated: shop B cannot read shop A's notes, photos, or assign to its job", async () => {

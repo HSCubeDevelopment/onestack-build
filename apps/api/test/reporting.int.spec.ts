@@ -48,7 +48,11 @@ describe.skipIf(!hasDb)('Reporting & dashboards (Phase 3)', () => {
       .set(auth(a))
       .send({ type: 'job', fields: { customerId: contactId }, subjectIds: [vehicleId] })
       .expect(201);
-    await http().post('/api/v1/resources').set(auth(a)).send({ type: 'bay', name: 'Bay 1' }).expect(201);
+    await http()
+      .post('/api/v1/resources')
+      .set(auth(a))
+      .send({ type: 'bay', name: 'Bay 1' })
+      .expect(201);
   });
 
   afterAll(async () => {

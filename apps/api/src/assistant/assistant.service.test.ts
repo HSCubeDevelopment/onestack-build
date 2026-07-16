@@ -86,9 +86,9 @@ describe('AssistantService.ask', () => {
         throw new Error('not found');
       },
     });
-    await expect(
-      service.ask('t1', { question: 'hi', workItemId: 'w1' }, 'u1'),
-    ).rejects.toThrow('not found');
+    await expect(service.ask('t1', { question: 'hi', workItemId: 'w1' }, 'u1')).rejects.toThrow(
+      'not found',
+    );
   });
 
   it('wraps an adapter failure as a 500 and does not store', async () => {

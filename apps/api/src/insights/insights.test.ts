@@ -1,10 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import {
-  draftReengagementMessage,
-  medianGapDays,
-  scoreChurn,
-  scoreNoShow,
-} from './insights';
+import { draftReengagementMessage, medianGapDays, scoreChurn, scoreNoShow } from './insights';
 
 describe('scoreNoShow', () => {
   it('is low for an established, reachable customer at normal notice', () => {
@@ -21,12 +16,16 @@ describe('scoreNoShow', () => {
   });
 
   it('flags very short notice and long-lead bookings', () => {
-    expect(scoreNoShow({ daysUntil: 0.5, isNewCustomer: false, hasReminderContact: true }).reasons.join(' ')).toMatch(
-      /short notice/i,
-    );
-    expect(scoreNoShow({ daysUntil: 30, isNewCustomer: false, hasReminderContact: true }).reasons.join(' ')).toMatch(
-      /well in advance/i,
-    );
+    expect(
+      scoreNoShow({ daysUntil: 0.5, isNewCustomer: false, hasReminderContact: true }).reasons.join(
+        ' ',
+      ),
+    ).toMatch(/short notice/i);
+    expect(
+      scoreNoShow({ daysUntil: 30, isNewCustomer: false, hasReminderContact: true }).reasons.join(
+        ' ',
+      ),
+    ).toMatch(/well in advance/i);
   });
 
   it('never exceeds 100', () => {
@@ -49,10 +48,12 @@ describe('scoreChurn', () => {
   });
 
   it('uses the fixed gone-quiet threshold when cadence is unknown', () => {
-    expect(scoreChurn({ daysSinceLastJob: 400, jobCount: 1, medianGapDays: 0 }).reasons.join(' ')).toMatch(
-      /gone quiet/i,
+    expect(
+      scoreChurn({ daysSinceLastJob: 400, jobCount: 1, medianGapDays: 0 }).reasons.join(' '),
+    ).toMatch(/gone quiet/i);
+    expect(scoreChurn({ daysSinceLastJob: 200, jobCount: 1, medianGapDays: 0 }).level).not.toBe(
+      'low',
     );
-    expect(scoreChurn({ daysSinceLastJob: 200, jobCount: 1, medianGapDays: 0 }).level).not.toBe('low');
     expect(scoreChurn({ daysSinceLastJob: 30, jobCount: 1, medianGapDays: 0 }).level).toBe('low');
   });
 });

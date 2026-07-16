@@ -50,13 +50,18 @@ describe.skipIf(!hasDb)('Customer portal (Phase 3)', () => {
         .expect(201)
     ).body.id;
     // A Sent quote to approve from the portal.
-    quoteId = (await http().post(`/api/v1/work-items/${jobId}/quotes`).set(auth(a)).expect(201)).body.id;
+    quoteId = (await http().post(`/api/v1/work-items/${jobId}/quotes`).set(auth(a)).expect(201))
+      .body.id;
     await http()
       .post(`/api/v1/quotes/${quoteId}/lines`)
       .set(auth(a))
       .send({ description: 'Repair', type: 'labour', quantity: 1, unitPriceCents: 50000 })
       .expect(201);
-    await http().post(`/api/v1/quotes/${quoteId}/status`).set(auth(a)).send({ status: 'Sent' }).expect(201);
+    await http()
+      .post(`/api/v1/quotes/${quoteId}/status`)
+      .set(auth(a))
+      .send({ status: 'Sent' })
+      .expect(201);
   });
 
   afterAll(async () => {

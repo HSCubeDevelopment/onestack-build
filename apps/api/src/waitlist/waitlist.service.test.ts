@@ -7,11 +7,21 @@ function make(opts?: { bookingCreate?: (t: string, i: unknown) => Promise<{ id: 
   const tx = {
     waitlistEntry: {
       create: async ({ data }: { data: Record<string, unknown> }) => {
-        const row = { id: `w${rows.length + 1}`, status: 'waiting', bookingId: null, notes: null, contactId: null, resourceId: null, createdAt: new Date('2026-07-10T00:00:00Z'), ...data };
+        const row = {
+          id: `w${rows.length + 1}`,
+          status: 'waiting',
+          bookingId: null,
+          notes: null,
+          contactId: null,
+          resourceId: null,
+          createdAt: new Date('2026-07-10T00:00:00Z'),
+          ...data,
+        };
         rows.push(row);
         return row;
       },
-      findFirst: async ({ where }: { where: { id: string } }) => rows.find((r) => r.id === where.id) ?? null,
+      findFirst: async ({ where }: { where: { id: string } }) =>
+        rows.find((r) => r.id === where.id) ?? null,
       findMany: async ({ where }: { where: { status: string; OR?: unknown[] } }) =>
         rows.filter((r) => r.status === where.status),
       update: async ({ where, data }: { where: { id: string }; data: Record<string, unknown> }) => {
@@ -19,8 +29,16 @@ function make(opts?: { bookingCreate?: (t: string, i: unknown) => Promise<{ id: 
         Object.assign(r, data);
         return r;
       },
-      updateMany: async ({ where, data }: { where: { id: string; status?: string }; data: Record<string, unknown> }) => {
-        const r = rows.find((x) => x.id === where.id && (!where.status || x.status === where.status));
+      updateMany: async ({
+        where,
+        data,
+      }: {
+        where: { id: string; status?: string };
+        data: Record<string, unknown>;
+      }) => {
+        const r = rows.find(
+          (x) => x.id === where.id && (!where.status || x.status === where.status),
+        );
         if (r) Object.assign(r, data);
         return { count: r ? 1 : 0 };
       },
@@ -37,12 +55,14 @@ describe('WaitlistService', () => {
     const { svc } = make();
     const e = await svc.add('t1', { name: 'Jane', phone: '0400000000' });
     expect(e.status).toBe('waiting');
-    expect((await svc.list('t1'))).toHaveLength(1);
+    expect(await svc.list('t1')).toHaveLength(1);
   });
 
   it('requires name + phone', async () => {
     const { svc } = make();
-    await expect(svc.add('t1', { name: '', phone: '0400' })).rejects.toBeInstanceOf(BadRequestException);
+    await expect(svc.add('t1', { name: '', phone: '0400' })).rejects.toBeInstanceOf(
+      BadRequestException,
+    );
   });
 
   it('fills a waiting entry into a booking and marks it booked', async () => {
@@ -60,12 +80,24 @@ describe('WaitlistService', () => {
   it('cannot fill a non-waiting entry, or a missing one', async () => {
     const { svc } = make();
     const e = await svc.add('t1', { name: 'Jane', phone: '0400000000' });
-    await svc.fill('t1', e.id, { resourceId: 'r1', startsAt: '2026-07-11T09:00:00Z', endsAt: '2026-07-11T10:00:00Z' });
+    await svc.fill('t1', e.id, {
+      resourceId: 'r1',
+      startsAt: '2026-07-11T09:00:00Z',
+      endsAt: '2026-07-11T10:00:00Z',
+    });
     await expect(
-      svc.fill('t1', e.id, { resourceId: 'r1', startsAt: '2026-07-11T09:00:00Z', endsAt: '2026-07-11T10:00:00Z' }),
+      svc.fill('t1', e.id, {
+        resourceId: 'r1',
+        startsAt: '2026-07-11T09:00:00Z',
+        endsAt: '2026-07-11T10:00:00Z',
+      }),
     ).rejects.toBeInstanceOf(BadRequestException);
     await expect(
-      svc.fill('t1', 'nope', { resourceId: 'r1', startsAt: '2026-07-11T09:00:00Z', endsAt: '2026-07-11T10:00:00Z' }),
+      svc.fill('t1', 'nope', {
+        resourceId: 'r1',
+        startsAt: '2026-07-11T09:00:00Z',
+        endsAt: '2026-07-11T10:00:00Z',
+      }),
     ).rejects.toBeInstanceOf(NotFoundException);
   });
 

@@ -55,9 +55,12 @@ export class ReportingService {
 
   async overview(tenantId: string, fromIso?: string, jobType = 'job'): Promise<ReportOverview> {
     const to = this.now();
-    const from = fromIso ? new Date(fromIso) : new Date(to.getTime() - DEFAULT_PERIOD_DAYS * 86_400_000);
+    const from = fromIso
+      ? new Date(fromIso)
+      : new Date(to.getTime() - DEFAULT_PERIOD_DAYS * 86_400_000);
     if (Number.isNaN(from.getTime())) throw new BadRequestException('from must be an ISO date');
-    if (from.getTime() > to.getTime()) throw new BadRequestException('from must not be in the future');
+    if (from.getTime() > to.getTime())
+      throw new BadRequestException('from must not be in the future');
 
     const [jobs, receivedCents, outstandingCents, bookingList, resourceList] = await Promise.all([
       this.workItems.list(tenantId, jobType),

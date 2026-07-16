@@ -31,17 +31,29 @@ export class PosController {
   }
 
   @Post(':id/lines')
-  addLine(@CurrentUser() user: AuthContext, @Param('id') id: string, @Body() dto: AddSaleLineDto): Promise<SaleView> {
+  addLine(
+    @CurrentUser() user: AuthContext,
+    @Param('id') id: string,
+    @Body() dto: AddSaleLineDto,
+  ): Promise<SaleView> {
     return this.pos.addLine(user.tenantId, id, dto);
   }
 
   @Delete(':id/lines/:lineId')
-  removeLine(@CurrentUser() user: AuthContext, @Param('id') id: string, @Param('lineId') lineId: string): Promise<SaleView> {
+  removeLine(
+    @CurrentUser() user: AuthContext,
+    @Param('id') id: string,
+    @Param('lineId') lineId: string,
+  ): Promise<SaleView> {
     return this.pos.removeLine(user.tenantId, id, lineId);
   }
 
   @Post(':id/complete')
-  complete(@CurrentUser() user: AuthContext, @Param('id') id: string, @Body() dto: CompleteSaleDto): Promise<SaleView> {
+  complete(
+    @CurrentUser() user: AuthContext,
+    @Param('id') id: string,
+    @Body() dto: CompleteSaleDto,
+  ): Promise<SaleView> {
     return this.pos.complete(user.tenantId, id, dto.tenderType);
   }
 

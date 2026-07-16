@@ -14,13 +14,7 @@ import { OnboardingService } from './onboarding.service';
  * WorkItemModule. Owns no tables; tenant isolation comes from the underlying services.
  */
 @Module({
-  imports: [
-    ContactsModule,
-    SchedulingModule,
-    OnlineBookingModule,
-    BrandingModule,
-    WorkItemModule,
-  ],
+  imports: [ContactsModule, SchedulingModule, OnlineBookingModule, BrandingModule, WorkItemModule],
   controllers: [OnboardingController],
   providers: [OnboardingService],
 })

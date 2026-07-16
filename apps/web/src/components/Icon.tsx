@@ -1,12 +1,5 @@
 'use client';
-import {
-  ClipboardList,
-  Wrench,
-  Package,
-  CircleCheck,
-  Flag,
-  type LucideIcon,
-} from 'lucide-react';
+import { ClipboardList, Wrench, Package, CircleCheck, Flag, type LucideIcon } from 'lucide-react';
 
 /** Maps a job workflow state to a lucide icon + brand colour. */
 export const STATE_META: Record<string, { Icon: LucideIcon; color: string }> = {

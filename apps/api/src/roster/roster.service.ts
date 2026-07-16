@@ -38,7 +38,8 @@ export class RosterService {
     const end = new Date(input.endsAt);
     if (Number.isNaN(start.getTime()) || Number.isNaN(end.getTime()))
       throw new BadRequestException('startsAt and endsAt must be valid dates');
-    if (end.getTime() <= start.getTime()) throw new BadRequestException('endsAt must be after startsAt');
+    if (end.getTime() <= start.getTime())
+      throw new BadRequestException('endsAt must be after startsAt');
 
     return this.tenants.runInTenant(tenantId, async (tx) => {
       const row = await tx.shift.create({

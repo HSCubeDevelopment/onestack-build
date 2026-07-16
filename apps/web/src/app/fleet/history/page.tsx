@@ -14,7 +14,10 @@ function HistoryInner() {
 
   return (
     <>
-      <PageHead title={`Chain of custody · ${rego || '—'}`} sub="Every period this fleet car was out to a client" />
+      <PageHead
+        title={`Chain of custody · ${rego || '—'}`}
+        sub="Every period this fleet car was out to a client"
+      />
       <ErrorBanner message={error} />
       <div className="card pad0">
         {loading ? (
@@ -24,7 +27,13 @@ function HistoryInner() {
         ) : (
           <table className="table">
             <thead>
-              <tr><th>Driver</th><th>Out</th><th>Back</th><th>Purpose</th><th>Notes</th></tr>
+              <tr>
+                <th>Driver</th>
+                <th>Out</th>
+                <th>Back</th>
+                <th>Purpose</th>
+                <th>Notes</th>
+              </tr>
             </thead>
             <tbody>
               {(data ?? []).map((p) => (
@@ -35,10 +44,16 @@ function HistoryInner() {
                   </td>
                   <td className="muted">{formatDateTime(p.outAt)}</td>
                   <td className="muted">
-                    {p.ongoing ? <span style={{ color: 'var(--red, #be4152)' }}>Still out</span> : formatDateTime(p.backAt)}
+                    {p.ongoing ? (
+                      <span style={{ color: 'var(--red, #be4152)' }}>Still out</span>
+                    ) : (
+                      formatDateTime(p.backAt)
+                    )}
                   </td>
                   <td>{purposeLabel(p.purpose)}</td>
-                  <td className="muted">{[p.notes, p.returnNotes].filter(Boolean).join(' · ') || '—'}</td>
+                  <td className="muted">
+                    {[p.notes, p.returnNotes].filter(Boolean).join(' · ') || '—'}
+                  </td>
                 </tr>
               ))}
             </tbody>

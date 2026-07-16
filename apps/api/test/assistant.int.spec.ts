@@ -102,9 +102,9 @@ describe.skipIf(!hasDb)('AI assistant (Phase 3)', () => {
   });
 
   it("is tenant-isolated: shop B sees none of A's messages and can't target A's job", async () => {
-    expect((await http().get('/api/v1/ai-assistant/messages').set(auth(b)).expect(200)).body).toHaveLength(
-      0,
-    );
+    expect(
+      (await http().get('/api/v1/ai-assistant/messages').set(auth(b)).expect(200)).body,
+    ).toHaveLength(0);
     // B referencing A's job is a 404 (job not visible to B).
     await http()
       .post('/api/v1/ai-assistant/ask')

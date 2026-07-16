@@ -13,7 +13,10 @@ export default function RosterPage() {
   }, []);
 
   const { data, loading, error, reload } = useAsync(
-    () => api.get<Shift[]>(`/shifts?from=${encodeURIComponent(range.from)}&to=${encodeURIComponent(range.to)}`),
+    () =>
+      api.get<Shift[]>(
+        `/shifts?from=${encodeURIComponent(range.from)}&to=${encodeURIComponent(range.to)}`,
+      ),
     [],
   );
   const [adding, setAdding] = useState(false);
@@ -74,7 +77,15 @@ export default function RosterPage() {
         </div>
       )}
 
-      {adding ? <AddModal onClose={() => setAdding(false)} onDone={() => { setAdding(false); reload(); }} /> : null}
+      {adding ? (
+        <AddModal
+          onClose={() => setAdding(false)}
+          onDone={() => {
+            setAdding(false);
+            reload();
+          }}
+        />
+      ) : null}
     </>
   );
 }
@@ -109,20 +120,54 @@ function AddModal({ onClose, onDone }: { onClose: () => void; onDone: () => void
   return (
     <Modal title="Add to roster" onClose={onClose}>
       <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
-        <input className="input" placeholder="Staff name" value={staffName} onChange={(e) => setStaffName(e.target.value)} />
-        <select className="input" value={kind} onChange={(e) => setKind(e.target.value as 'shift' | 'time_off')}>
+        <input
+          className="input"
+          placeholder="Staff name"
+          value={staffName}
+          onChange={(e) => setStaffName(e.target.value)}
+        />
+        <select
+          className="input"
+          value={kind}
+          onChange={(e) => setKind(e.target.value as 'shift' | 'time_off')}
+        >
           <option value="shift">Shift</option>
           <option value="time_off">Time off</option>
         </select>
-        <label className="muted" style={{ fontSize: 13 }}>Start</label>
-        <input className="input" type="datetime-local" value={startsAt} onChange={(e) => setStartsAt(e.target.value)} />
-        <label className="muted" style={{ fontSize: 13 }}>End</label>
-        <input className="input" type="datetime-local" value={endsAt} onChange={(e) => setEndsAt(e.target.value)} />
-        <input className="input" placeholder="Notes (optional)" value={notes} onChange={(e) => setNotes(e.target.value)} />
+        <label className="muted" style={{ fontSize: 13 }}>
+          Start
+        </label>
+        <input
+          className="input"
+          type="datetime-local"
+          value={startsAt}
+          onChange={(e) => setStartsAt(e.target.value)}
+        />
+        <label className="muted" style={{ fontSize: 13 }}>
+          End
+        </label>
+        <input
+          className="input"
+          type="datetime-local"
+          value={endsAt}
+          onChange={(e) => setEndsAt(e.target.value)}
+        />
+        <input
+          className="input"
+          placeholder="Notes (optional)"
+          value={notes}
+          onChange={(e) => setNotes(e.target.value)}
+        />
         <ErrorBanner message={error} />
         <div className="row" style={{ justifyContent: 'flex-end', gap: 8 }}>
-          <button className="btn" onClick={onClose}>Cancel</button>
-          <button className="btn primary" onClick={save} disabled={busy || !staffName.trim() || !startsAt || !endsAt}>
+          <button className="btn" onClick={onClose}>
+            Cancel
+          </button>
+          <button
+            className="btn primary"
+            onClick={save}
+            disabled={busy || !staffName.trim() || !startsAt || !endsAt}
+          >
             {busy ? 'Saving…' : 'Add'}
           </button>
         </div>
@@ -134,7 +179,11 @@ function AddModal({ onClose, onDone }: { onClose: () => void; onDone: () => void
 function groupByDay(shifts: Shift[]): [string, Shift[]][] {
   const map = new Map<string, Shift[]>();
   for (const s of shifts) {
-    const day = new Date(s.startsAt).toLocaleDateString('en-AU', { weekday: 'long', day: 'numeric', month: 'short' });
+    const day = new Date(s.startsAt).toLocaleDateString('en-AU', {
+      weekday: 'long',
+      day: 'numeric',
+      month: 'short',
+    });
     const arr = map.get(day) ?? [];
     arr.push(s);
     map.set(day, arr);

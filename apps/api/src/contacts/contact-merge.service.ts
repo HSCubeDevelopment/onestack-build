@@ -46,34 +46,78 @@ export class ContactMergeService {
   }
 
   /** Merge `duplicateId` into `primaryId`. Atomic + reversible (soft-delete). See class doc. */
-  async merge(tenantId: string, primaryId: string, duplicateId: string, userId: string): Promise<MergeResult> {
-    if (primaryId === duplicateId) throw new BadRequestException('Cannot merge a contact into itself');
+  async merge(
+    tenantId: string,
+    primaryId: string,
+    duplicateId: string,
+    userId: string,
+  ): Promise<MergeResult> {
+    if (primaryId === duplicateId)
+      throw new BadRequestException('Cannot merge a contact into itself');
 
     return this.tenants.runInTenant(tenantId, async (tx) => {
       const primary = await tx.contact.findFirst({ where: { id: primaryId, deletedAt: null } });
       const dup = await tx.contact.findFirst({ where: { id: duplicateId, deletedAt: null } });
-      if (!primary || !dup) throw new NotFoundException('Both contacts must exist and not be already merged');
+      if (!primary || !dup)
+        throw new NotFoundException('Both contacts must exist and not be already merged');
 
       // 1) Repoint scalar-FK references (no unique conflicts on these).
-      const [vehicles, invoices, invoicePortions, leads, portalAccess, intakeSubmissions, reviews, assistantMessages] =
-        await Promise.all([
-          tx.subject.updateMany({ where: { contactId: duplicateId }, data: { contactId: primaryId } }),
-          tx.invoice.updateMany({ where: { payerContactId: duplicateId }, data: { payerContactId: primaryId } }),
-          tx.invoicePortion.updateMany({ where: { payerContactId: duplicateId }, data: { payerContactId: primaryId } }),
-          tx.lead.updateMany({ where: { convertedContactId: duplicateId }, data: { convertedContactId: primaryId } }),
-          tx.portalAccess.updateMany({ where: { contactId: duplicateId }, data: { contactId: primaryId } }),
-          tx.intakeSubmission.updateMany({ where: { contactId: duplicateId }, data: { contactId: primaryId } }),
-          tx.review.updateMany({ where: { contactId: duplicateId }, data: { contactId: primaryId } }),
-          tx.assistantMessage.updateMany({ where: { contactId: duplicateId }, data: { contactId: primaryId } }),
-        ]);
+      const [
+        vehicles,
+        invoices,
+        invoicePortions,
+        leads,
+        portalAccess,
+        intakeSubmissions,
+        reviews,
+        assistantMessages,
+      ] = await Promise.all([
+        tx.subject.updateMany({
+          where: { contactId: duplicateId },
+          data: { contactId: primaryId },
+        }),
+        tx.invoice.updateMany({
+          where: { payerContactId: duplicateId },
+          data: { payerContactId: primaryId },
+        }),
+        tx.invoicePortion.updateMany({
+          where: { payerContactId: duplicateId },
+          data: { payerContactId: primaryId },
+        }),
+        tx.lead.updateMany({
+          where: { convertedContactId: duplicateId },
+          data: { convertedContactId: primaryId },
+        }),
+        tx.portalAccess.updateMany({
+          where: { contactId: duplicateId },
+          data: { contactId: primaryId },
+        }),
+        tx.intakeSubmission.updateMany({
+          where: { contactId: duplicateId },
+          data: { contactId: primaryId },
+        }),
+        tx.review.updateMany({ where: { contactId: duplicateId }, data: { contactId: primaryId } }),
+        tx.assistantMessage.updateMany({
+          where: { contactId: duplicateId },
+          data: { contactId: primaryId },
+        }),
+      ]);
 
       // 2) Tags carry a unique (tenantId, tagId, contactId): drop the duplicate's tags the primary already
       //    has, then repoint the rest.
-      const primaryTags = await tx.contactTag.findMany({ where: { contactId: primaryId }, select: { tagId: true } });
+      const primaryTags = await tx.contactTag.findMany({
+        where: { contactId: primaryId },
+        select: { tagId: true },
+      });
       const primaryTagIds = primaryTags.map((t) => t.tagId);
       if (primaryTagIds.length)
-        await tx.contactTag.deleteMany({ where: { contactId: duplicateId, tagId: { in: primaryTagIds } } });
-      const tags = await tx.contactTag.updateMany({ where: { contactId: duplicateId }, data: { contactId: primaryId } });
+        await tx.contactTag.deleteMany({
+          where: { contactId: duplicateId, tagId: { in: primaryTagIds } },
+        });
+      const tags = await tx.contactTag.updateMany({
+        where: { contactId: duplicateId },
+        data: { contactId: primaryId },
+      });
 
       // 3) Work items reference the customer by JSON `fields.customerId` (no FK) — repoint each.
       const jobs = await tx.workItem.findMany({
@@ -82,19 +126,30 @@ export class ContactMergeService {
       });
       for (const j of jobs) {
         const fields = { ...(j.fields as Record<string, unknown>), customerId: primaryId };
-        await tx.workItem.update({ where: { id: j.id }, data: { fields: fields as Prisma.InputJsonValue } });
+        await tx.workItem.update({
+          where: { id: j.id },
+          data: { fields: fields as Prisma.InputJsonValue },
+        });
       }
 
       // 4) Fill scalar gaps on the primary from the duplicate (primary always wins where it has a value).
       const patch: Prisma.ContactUpdateManyMutationInput = {};
       if (!primary.email && dup.email) patch.email = dup.email;
       if (!primary.phone && dup.phone) patch.phone = dup.phone;
-      const mergedFields = { ...(dup.fields as Record<string, unknown>), ...(primary.fields as Record<string, unknown>) };
+      const mergedFields = {
+        ...(dup.fields as Record<string, unknown>),
+        ...(primary.fields as Record<string, unknown>),
+      };
       patch.fields = mergedFields as Prisma.InputJsonValue;
-      if (Object.keys(patch).length) await tx.contact.updateMany({ where: { id: primaryId }, data: patch });
+      if (Object.keys(patch).length)
+        await tx.contact.updateMany({ where: { id: primaryId }, data: patch });
 
       // 5) Soft-delete the duplicate with an audit/reversibility marker.
-      const dupFields = { ...(dup.fields as Record<string, unknown>), mergedIntoId: primaryId, mergedByUserId: userId };
+      const dupFields = {
+        ...(dup.fields as Record<string, unknown>),
+        mergedIntoId: primaryId,
+        mergedByUserId: userId,
+      };
       await tx.contact.updateMany({
         where: { id: duplicateId },
         data: { deletedAt: new Date(), fields: dupFields as Prisma.InputJsonValue },

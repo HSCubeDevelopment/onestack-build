@@ -17,7 +17,10 @@ export class AssistantController {
   constructor(private readonly assistant: AssistantService) {}
 
   @Post('ask')
-  ask(@CurrentUser() user: AuthContext, @Body() dto: AskAssistantDto): Promise<AssistantMessageView> {
+  ask(
+    @CurrentUser() user: AuthContext,
+    @Body() dto: AskAssistantDto,
+  ): Promise<AssistantMessageView> {
     return this.assistant.ask(
       user.tenantId,
       {
