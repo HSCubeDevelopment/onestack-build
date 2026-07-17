@@ -46,7 +46,7 @@ const NAV: NavRow[] = [
   { href: '/fleet', label: 'Fleet & cars', Icon: Car },
   { href: '/fleet/bookings', label: 'Fleet bookings', Icon: CalendarDays },
   { section: 'Customers & sales' },
-  { href: '/customers', label: 'Customers', Icon: Users },
+  { href: '/customers', label: 'Customers', Icon: Users, staff: true },
   { href: '/leads', label: 'Leads', Icon: Mail, alert: true },
   { href: '/price-book', label: 'Price book', Icon: Tags },
   { href: '/inventory', label: 'Inventory', Icon: Boxes },

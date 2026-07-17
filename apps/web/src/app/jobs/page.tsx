@@ -15,19 +15,13 @@ import {
 } from '@/components/ui';
 
 export default function JobsPage() {
-  const { role, isStaff } = useRole();
-  // Wait for the role before fetching. /contacts is OWNER-only: requested with a staff token it 403s,
-  // and inside this Promise.all it would reject the whole page — not just the customer column. This is
-  // also the page staff are redirected to, so it has to hold up for them.
+  const { isStaff } = useRole();
+  // Both roles read contacts now (employees have contact CRUD — intake is their job), so this is a
+  // straight fetch again. /work-items is still scoped server-side: staff receive only their own jobs.
   const { data, loading, error, reload } = useAsync(
     () =>
-      role === undefined
-        ? Promise.resolve(null)
-        : Promise.all([
-            api.get<WorkItem[]>('/work-items?type=job'),
-            isStaff ? Promise.resolve([] as Contact[]) : api.get<Contact[]>('/contacts'),
-          ]),
-    [role, isStaff],
+      Promise.all([api.get<WorkItem[]>('/work-items?type=job'), api.get<Contact[]>('/contacts')]),
+    [],
   );
   const [showNew, setShowNew] = useState(false);
 
@@ -39,12 +33,9 @@ export default function JobsPage() {
   return (
     <>
       <PageHead title="Jobs" sub={isStaff ? 'Jobs assigned to you' : 'Every job in the workshop'}>
-        {/* The new-job modal picks a customer out of the contact list, which an employee can't read. */}
-        {isStaff ? null : (
-          <button className="btn primary" onClick={() => setShowNew(true)}>
-            + New job
-          </button>
-        )}
+        <button className="btn primary" onClick={() => setShowNew(true)}>
+          + New job
+        </button>
       </PageHead>
       <ErrorBanner message={error} />
       {loading && <Loading />}
