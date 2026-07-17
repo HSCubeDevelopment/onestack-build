@@ -83,18 +83,30 @@ describe.skipIf(!hasDb)('auth + RBAC (HTTP)', () => {
 
   describe('employee (STAFF) surface', () => {
     it('denies STAFF an undecorated route — the business stays owner-only by default', async () => {
-      // Nothing marks these @AllowStaff(), so the employee must not reach the money or the customer book.
+      // Nothing marks these @AllowStaff(), so the employee must not reach the money.
       await http()
         .get('/api/v1/dashboard/summary')
         .set('Authorization', `Bearer ${a.staffToken}`)
         .expect(403);
       await http()
-        .get('/api/v1/contacts')
-        .set('Authorization', `Bearer ${a.staffToken}`)
-        .expect(403);
-      await http()
         .get('/api/v1/price-book')
         .set('Authorization', `Bearer ${a.staffToken}`)
+        .expect(403);
+      await http().get('/api/v1/sales').set('Authorization', `Bearer ${a.staffToken}`).expect(403);
+    });
+
+    it('lets STAFF READ customers to raise a job, but never write them', async () => {
+      // A worker photographing a car has to say whose it is, so read is open. Everything that mutates
+      // the customer book is not — that split is the point, so assert both halves.
+      await http()
+        .get('/api/v1/contacts')
+        .set('Authorization', `Bearer ${a.staffToken}`)
+        .expect(200);
+
+      await http()
+        .post('/api/v1/contacts')
+        .set('Authorization', `Bearer ${a.staffToken}`)
+        .send({ displayName: 'Sneaky', phone: '0400000001' })
         .expect(403);
     });
 
