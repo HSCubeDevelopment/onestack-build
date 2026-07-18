@@ -2,8 +2,9 @@
 // "Users log into their tenant only" + "roles gate what each user can see/do".
 //
 // Since the employee (STAFF) role landed, RolesGuard is DENY-BY-DEFAULT: an undecorated route is
-// OWNER-only, and the worker surface is an explicit @AllowStaff() allowlist. The contact cases below use
-// the owner token for that reason — browsing the customer book is not part of an employee's surface.
+// OWNER-only, and the worker surface is an explicit @AllowStaff() allowlist. Employees DO have full CRUD
+// over the customer book (intake is their job) — what stays owner-only is the money, the whole-shop
+// board, and admin operations like merging duplicates.
 import type { INestApplication } from '@nestjs/common';
 import { PrismaClient } from '@prisma/client';
 import request from 'supertest';
@@ -83,17 +84,54 @@ describe.skipIf(!hasDb)('auth + RBAC (HTTP)', () => {
 
   describe('employee (STAFF) surface', () => {
     it('denies STAFF an undecorated route — the business stays owner-only by default', async () => {
-      // Nothing marks these @AllowStaff(), so the employee must not reach the money or the customer book.
+      // Nothing marks these @AllowStaff(), so the employee must not reach the money.
       await http()
         .get('/api/v1/dashboard/summary')
         .set('Authorization', `Bearer ${a.staffToken}`)
         .expect(403);
       await http()
-        .get('/api/v1/contacts')
+        .get('/api/v1/price-book')
         .set('Authorization', `Bearer ${a.staffToken}`)
         .expect(403);
+      await http().get('/api/v1/sales').set('Authorization', `Bearer ${a.staffToken}`).expect(403);
+    });
+
+    it('gives STAFF full CRUD over the customer book — intake is their job', async () => {
+      const made = await http()
+        .post('/api/v1/contacts')
+        .set('Authorization', `Bearer ${a.staffToken}`)
+        .send({ displayName: 'Walk-in (staff)', phone: '0400000001' })
+        .expect(201);
+
       await http()
-        .get('/api/v1/price-book')
+        .get('/api/v1/contacts')
+        .set('Authorization', `Bearer ${a.staffToken}`)
+        .expect(200);
+
+      await http()
+        .patch(`/api/v1/contacts/${made.body.id}`)
+        .set('Authorization', `Bearer ${a.staffToken}`)
+        .send({ phone: '0400000002' })
+        .expect(200);
+
+      // Adding the car at intake is part of the same job.
+      await http()
+        .post(`/api/v1/contacts/${made.body.id}/vehicles`)
+        .set('Authorization', `Bearer ${a.staffToken}`)
+        .send({ rego: 'STF001', make: 'Mazda', model: '3', year: 2019 })
+        .expect(201);
+
+      // Soft delete, so a worker's mistake is recoverable rather than destructive.
+      await http()
+        .delete(`/api/v1/contacts/${made.body.id}`)
+        .set('Authorization', `Bearer ${a.staffToken}`)
+        .expect(204);
+    });
+
+    it('still keeps the admin contact operations away from STAFF', async () => {
+      // Merge repoints one customer's records onto another and soft-deletes the loser: admin, not intake.
+      await http()
+        .get('/api/v1/contacts/duplicates')
         .set('Authorization', `Bearer ${a.staffToken}`)
         .expect(403);
     });

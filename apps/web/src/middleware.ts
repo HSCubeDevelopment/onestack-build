@@ -11,7 +11,7 @@ import { SESSION_COOKIE } from '@/lib/session';
  * Allowlist rather than blocklist, mirroring the API's @AllowStaff() routes — a page added later is
  * off-limits to employees until someone decides otherwise, instead of quietly appearing.
  */
-const STAFF_PREFIXES = ['/jobs', '/roster', '/time-clock'];
+const STAFF_PREFIXES = ['/jobs', '/roster', '/time-clock', '/customers'];
 const STAFF_HOME = '/jobs';
 
 /** Decode the JWT payload without verifying — the API verifies the signature; we only need the role. */

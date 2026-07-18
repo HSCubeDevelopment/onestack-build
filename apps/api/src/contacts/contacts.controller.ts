@@ -13,7 +13,7 @@ import {
 import { AuthContext } from '../auth/auth.types';
 import { CurrentUser } from '../auth/current-user.decorator';
 import { JwtAuthGuard } from '../auth/jwt-auth.guard';
-import { Roles } from '../auth/roles.decorator';
+import { AllowStaff, Roles } from '../auth/roles.decorator';
 import { RolesGuard } from '../auth/roles.guard';
 import { SubjectService, SubjectView } from '../subjects/subject.service';
 import { ContactMergeService, MergeResult } from './contact-merge.service';
@@ -27,6 +27,16 @@ import { UpdateContactDto } from './dto/update-contact.dto';
  * Customer (Contact) API for the automotive vertical (card #10). Contact is core; Vehicle is a pack
  * Subject type, added as a sub-resource. The tenant always comes from the verified token — a caller can
  * never act on another tenant (guard + RLS).
+ *
+ * ROLES: employees (STAFF) have full CRUD here — a worker doing intake creates the customer, fixes a
+ * wrong phone number, and adds the car. Delete is a soft delete (sets deletedAt), so a mistake is
+ * recoverable rather than destructive.
+ *
+ * Still OWNER-only, because they are admin operations rather than intake:
+ *   - merge (repoints one customer's records onto another — destructive + PII)
+ *   - duplicates (the merge worklist)
+ * Money and the rest of the business stay OWNER-only elsewhere; this widening is scoped to the customer
+ * book itself.
  */
 @Controller('contacts')
 @UseGuards(JwtAuthGuard, RolesGuard)
@@ -37,11 +47,13 @@ export class ContactsController {
     private readonly merges: ContactMergeService,
   ) {}
 
+  @AllowStaff()
   @Post()
   create(@CurrentUser() user: AuthContext, @Body() dto: CreateContactDto): Promise<ContactView> {
     return this.contacts.create(user.tenantId, dto);
   }
 
+  @AllowStaff()
   @Get()
   list(@CurrentUser() user: AuthContext, @Query('q') q?: string): Promise<ContactView[]> {
     return q ? this.contacts.search(user.tenantId, q) : this.contacts.list(user.tenantId);
@@ -60,6 +72,7 @@ export class ContactsController {
     return this.merges.duplicates(user.tenantId);
   }
 
+  @AllowStaff()
   @Get(':id')
   get(@CurrentUser() user: AuthContext, @Param('id') id: string): Promise<ContactView> {
     return this.contacts.get(user.tenantId, id);
@@ -79,6 +92,7 @@ export class ContactsController {
     return this.merges.merge(user.tenantId, id, duplicateId, user.userId);
   }
 
+  @AllowStaff()
   @Patch(':id')
   update(
     @CurrentUser() user: AuthContext,
@@ -88,12 +102,14 @@ export class ContactsController {
     return this.contacts.update(user.tenantId, id, dto);
   }
 
+  @AllowStaff()
   @Delete(':id')
   @HttpCode(204)
   async remove(@CurrentUser() user: AuthContext, @Param('id') id: string): Promise<void> {
     await this.contacts.softDelete(user.tenantId, id);
   }
 
+  @AllowStaff()
   @Post(':id/vehicles')
   addVehicle(
     @CurrentUser() user: AuthContext,
@@ -109,6 +125,7 @@ export class ContactsController {
     });
   }
 
+  @AllowStaff()
   @Get(':id/vehicles')
   vehicles(@CurrentUser() user: AuthContext, @Param('id') id: string): Promise<SubjectView[]> {
     return this.subjects.listForContact(user.tenantId, id);
