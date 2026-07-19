@@ -116,8 +116,10 @@ export class EmbeddingIndexService {
     const literal = toVectorLiteral(vector);
     const exclude = opts.excludeWorkItemId ?? null;
 
-    const rows = await this.tenants.runInTenant(tenantId, (tx) =>
-      tx.$queryRaw<SimilarRow[]>`
+    const rows = await this.tenants.runInTenant(
+      tenantId,
+      (tx) =>
+        tx.$queryRaw<SimilarRow[]>`
         SELECT "workItemId", "kind", "snippet",
                ("embedding" <=> ${literal}::vector) AS distance
         FROM "onestack_job_embedding"
@@ -137,8 +139,10 @@ export class EmbeddingIndexService {
 
   /** Drop a job's vectors — used when a job is deleted or its content is re-scoped from scratch. */
   async removeWorkItem(tenantId: string, workItemId: string): Promise<void> {
-    await this.tenants.runInTenant(tenantId, (tx) =>
-      tx.$executeRaw`DELETE FROM "onestack_job_embedding" WHERE "workItemId" = ${workItemId}::uuid`,
+    await this.tenants.runInTenant(
+      tenantId,
+      (tx) =>
+        tx.$executeRaw`DELETE FROM "onestack_job_embedding" WHERE "workItemId" = ${workItemId}::uuid`,
     );
   }
 
@@ -149,10 +153,7 @@ export class EmbeddingIndexService {
     return `${piece.kind}:${piece.sourceId ?? 'null'}`;
   }
 
-  private async existingHashes(
-    tx: TenantClient,
-    workItemId: string,
-  ): Promise<Map<string, string>> {
+  private async existingHashes(tx: TenantClient, workItemId: string): Promise<Map<string, string>> {
     const rows = await tx.$queryRaw<
       { kind: EmbeddingKind; sourceId: string | null; contentHash: string }[]
     >`SELECT "kind", "sourceId", "contentHash"
