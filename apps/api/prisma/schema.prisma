@@ -50,6 +50,7 @@ model Tenant {
   customFieldDefs     CustomField[]
   priceBookItems      PriceBookItem[]
   damageScopes        DamageScope[]
+  jobEmbeddings       JobEmbedding[]
   scopeParts          ScopePart[]
   purchaseOrders      PurchaseOrder[]
   purchaseOrderLines  PurchaseOrderLine[]
@@ -623,6 +624,7 @@ model WorkItem {
   subjects        WorkItemSubject[]
   notes           WorkItemNote[]
   attachments     WorkItemAttachment[]
+  jobEmbeddings   JobEmbedding[]
   bookings        Booking[]
   damageScopes    DamageScope[]
   scopeParts      ScopePart[]
@@ -1447,4 +1449,30 @@ model FleetPhoto {
   @@index([tenantId, movementId])
   @@index([tenantId, returnId])
   @@map("onestack_fleet_photo")
+}
+
+/// Card 60.3 — one embedded PIECE of a past job (a photo, or the damage scope's text), so a new job's
+/// photos can be matched against what this shop actually quoted before. `embedding` is pgvector, which
+/// Prisma has no native type for: reads and writes go through $queryRaw in EmbeddingIndexService, and
+/// this model exists so the table is visible to the schema, migrations and the RLS gate.
+model JobEmbedding {
+  id          String   @id @default(uuid()) @db.Uuid
+  tenantId    String   @db.Uuid
+  workItemId  String   @db.Uuid
+  kind        String // 'photo' | 'scope'
+  sourceId    String?  @db.Uuid
+  contentHash String
+  snippet     String   @default("")
+  model       String
+  embedding   Unsupported("vector(1024)")
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+  tenant      Tenant   @relation(fields: [tenantId], references: [id])
+  workItem    WorkItem @relation(fields: [workItemId], references: [id], onDelete: Cascade)
+
+  @@unique([tenantId, workItemId, kind, sourceId])
+  @@index([tenantId])
+  @@index([tenantId, workItemId])
+  @@index([tenantId, kind])
+  @@map("onestack_job_embedding")
 }
