@@ -1,0 +1,886 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no">
+<title>OneStack Auto — Prototype</title>
+<style>
+:root{
+  --navy:#0F2340; --navy2:#16325b; --ink:#111826; --sub:#5b6472; --line:#e7ebf0;
+  --accent:#FF6A2C; --accent2:#ff8a55; --teal:#12A594; --bg:#f4f6fa; --card:#ffffff;
+  --booked:#8b95a5; --prog:#F59E0B; --ready:#10B981; --collected:#3B82F6;
+  --shadow:0 10px 30px rgba(16,35,64,.12);
+}
+*{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+html,body{margin:0;height:100%}
+body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;
+  background:radial-gradient(1200px 800px at 50% -10%,#1b2b47,#0a0f18 60%);
+  display:flex;align-items:flex-start;justify-content:center;min-height:100vh;padding:18px;color:var(--ink)}
+.stage{display:flex;gap:34px;align-items:center;flex-wrap:wrap;justify-content:center}
+.pitch{max-width:300px;color:#cdd6e4}
+.pitch h1{font-size:26px;margin:0 0 8px;color:#fff;letter-spacing:.2px}
+.pitch p{font-size:13.5px;line-height:1.6;color:#9fb0c9}
+.pitch .tag{display:inline-block;background:rgba(255,106,44,.16);color:#ff9c6b;font-size:11px;font-weight:700;padding:5px 10px;border-radius:20px;margin-bottom:14px;letter-spacing:.4px}
+.hintrow{margin-top:16px;font-size:12px;color:#8ea0ba;display:flex;gap:8px;align-items:center}
+/* phone */
+.phone{position:relative;width:390px;height:844px;max-height:calc(100vh - 36px);flex:none;background:#000;border-radius:46px;padding:11px;
+  box-shadow:0 40px 80px rgba(0,0,0,.55),0 0 0 2px #232a36, inset 0 0 0 2px #333}
+.screen{position:relative;width:100%;height:100%;background:var(--bg);border-radius:36px;overflow:hidden;display:flex;flex-direction:column}
+.notch{position:absolute;top:0;left:50%;transform:translateX(-50%);width:150px;height:26px;background:#000;border-radius:0 0 18px 18px;z-index:60}
+/* top bar */
+.topbar{background:linear-gradient(135deg,var(--navy),var(--navy2));color:#fff;padding:34px 16px 12px;display:flex;align-items:center;justify-content:space-between;z-index:20}
+.brand{display:flex;align-items:center;gap:9px}
+.logo{width:30px;height:30px;border-radius:9px;background:linear-gradient(135deg,var(--accent),var(--accent2));display:flex;align-items:center;justify-content:center;font-weight:800;color:#fff;font-size:15px;box-shadow:0 4px 12px rgba(255,106,44,.5)}
+.brand b{font-size:15px;display:block;line-height:1.05}
+.brand span{font-size:10.5px;color:#9db4d6}
+.tbtns{display:flex;align-items:center;gap:8px}
+.role{font-size:10.5px;font-weight:700;background:rgba(255,255,255,.14);padding:6px 9px;border-radius:20px;color:#dfe8f6;border:none;cursor:pointer}
+.apitoggle{display:flex;align-items:center;gap:6px;font-size:10px;font-weight:700;color:#bcd0ee;cursor:pointer;user-select:none}
+.sw{width:34px;height:19px;border-radius:20px;background:rgba(255,255,255,.22);position:relative;transition:.2s}
+.sw::after{content:"";position:absolute;top:2px;left:2px;width:15px;height:15px;border-radius:50%;background:#fff;transition:.2s}
+.apitoggle.on .sw{background:var(--accent)}
+.apitoggle.on .sw::after{left:17px}
+/* body */
+.body{flex:1;overflow-y:auto;overflow-x:hidden;-webkit-overflow-scrolling:touch;padding-bottom:78px}
+.body::-webkit-scrollbar{display:none}
+/* tab bar */
+.tabs{position:absolute;bottom:0;left:0;right:0;height:66px;background:rgba(255,255,255,.92);backdrop-filter:blur(12px);border-top:1px solid var(--line);display:flex;z-index:30}
+.tab{flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:3px;font-size:10px;color:#9aa4b2;cursor:pointer;font-weight:600}
+.tab.active{color:var(--accent)}
+.tab svg{width:22px;height:22px}
+.fab{position:absolute;bottom:78px;right:16px;width:56px;height:56px;border-radius:18px;background:linear-gradient(135deg,var(--accent),var(--accent2));box-shadow:0 12px 26px rgba(255,106,44,.5);display:flex;align-items:center;justify-content:center;color:#fff;z-index:31;cursor:pointer;border:none}
+.fab svg{width:26px;height:26px}
+/* generic */
+.pad{padding:16px}
+.h{font-size:19px;font-weight:800;margin:2px 0 2px}
+.sub{color:var(--sub);font-size:12.5px}
+.card{background:var(--card);border-radius:18px;box-shadow:var(--shadow);padding:14px;margin-bottom:12px}
+.row{display:flex;align-items:center;gap:10px}
+.spread{display:flex;align-items:center;justify-content:space-between}
+.pill{font-size:10px;font-weight:800;padding:4px 9px;border-radius:20px;color:#fff;letter-spacing:.3px}
+.muted{color:var(--sub);font-size:12px}
+.btn{display:inline-flex;align-items:center;justify-content:center;gap:7px;background:var(--accent);color:#fff;border:none;border-radius:13px;padding:13px 16px;font-size:14px;font-weight:700;cursor:pointer;width:100%}
+.btn.ghost{background:#fff;color:var(--navy);border:1.5px solid var(--line)}
+.btn.dark{background:var(--navy)}
+.btn:active{transform:scale(.98)}
+.back{background:none;border:none;color:#cdd9ee;font-size:22px;cursor:pointer;padding:0 4px 0 0}
+.kpi{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.kpi .card{margin:0;padding:13px}
+.kpi .big{font-size:23px;font-weight:800}
+.kpi .lbl{font-size:11px;color:var(--sub);font-weight:600}
+.seg{display:flex;background:#eef1f6;border-radius:12px;padding:3px;margin:2px 0 12px}
+.seg div{flex:1;text-align:center;font-size:12px;font-weight:700;color:var(--sub);padding:8px;border-radius:9px;cursor:pointer}
+.seg div.on{background:#fff;color:var(--navy);box-shadow:0 2px 6px rgba(0,0,0,.08)}
+.list-item{display:flex;align-items:center;gap:12px;padding:12px 0;border-bottom:1px solid var(--line)}
+.avatar{width:42px;height:42px;border-radius:12px;background:linear-gradient(135deg,#e9eef6,#dbe4f2);display:flex;align-items:center;justify-content:center;font-weight:800;color:var(--navy);font-size:15px}
+.rego{font-family:'Courier New',monospace;font-weight:800;background:#111826;color:#ffd23f;padding:2px 7px;border-radius:5px;font-size:12px;letter-spacing:1px}
+/* API chip + inspector */
+.apichip{display:none;align-items:center;gap:5px;font-family:'Courier New',monospace;font-size:9.5px;font-weight:700;color:#0b7a6b;background:#d9f5f0;border:1px dashed #59c9b9;border-radius:6px;padding:2px 6px;margin-top:8px}
+body.apimode .apichip{display:inline-flex}
+.apichip b{color:#e0552c}
+.apibadge{position:absolute;top:30px;right:82px;background:var(--accent);color:#fff;font-size:9px;font-weight:800;min-width:16px;height:16px;border-radius:9px;display:none;align-items:center;justify-content:center;z-index:40}
+body.apimode .apibadge{display:flex}
+.inspector{position:absolute;left:0;right:0;bottom:0;height:62%;background:#0c1622;color:#cbe6df;border-radius:24px 24px 36px 36px;z-index:70;transform:translateY(102%);transition:.32s cubic-bezier(.3,.9,.3,1);display:flex;flex-direction:column}
+.inspector.open{transform:translateY(0)}
+.insp-h{padding:14px 16px;display:flex;align-items:center;justify-content:space-between;border-bottom:1px solid #1e2c3d}
+.insp-h b{color:#fff;font-size:14px}
+.insp-h .x{background:none;border:none;color:#7fa;color:#8fb3ab;font-size:20px;cursor:pointer}
+.insp-log{flex:1;overflow-y:auto;padding:10px 14px;font-family:'Courier New',monospace;font-size:11px}
+.call{border-left:2px solid #2b4a44;padding:7px 0 7px 10px;margin-bottom:9px}
+.call .m{font-weight:800}
+.m.GET{color:#5bd6c0}.m.POST{color:#ffb26b}.m.PATCH{color:#e0a3ff}
+.call .p{color:#eaf6f2}
+.call .meta{color:#6f9188;font-size:10px;margin-top:2px}
+.call pre{white-space:pre-wrap;color:#9fc9bf;margin:5px 0 0;font-size:10px;background:#0a1119;padding:6px 8px;border-radius:6px}
+.empty{color:#5f7d76;text-align:center;padding:30px;font-size:12px}
+/* hero 3D */
+.hero{position:relative;height:190px;border-radius:20px;overflow:hidden;margin-bottom:14px;
+  background:linear-gradient(135deg,#0F2340 0%,#1c3f73 55%,#FF6A2C 190%);box-shadow:var(--shadow);perspective:800px}
+.hero .glow{position:absolute;width:260px;height:260px;border-radius:50%;background:radial-gradient(circle,rgba(255,138,85,.55),transparent 60%);top:-90px;right:-60px;filter:blur(6px)}
+.hero .grid{position:absolute;inset:0;background-image:linear-gradient(rgba(255,255,255,.06) 1px,transparent 1px),linear-gradient(90deg,rgba(255,255,255,.06) 1px,transparent 1px);background-size:26px 26px;transform:rotateX(62deg) translateY(60px) scale(1.6);transform-origin:bottom;opacity:.7}
+.hero .htxt{position:absolute;top:16px;left:18px;color:#fff;z-index:3}
+.hero .htxt .k{font-size:11px;font-weight:700;color:#ffd0b8;letter-spacing:.5px}
+.hero .htxt h2{margin:4px 0 0;font-size:21px;line-height:1.15;max-width:200px}
+.hero .car{position:absolute;bottom:8px;right:8px;width:210px;transform-style:preserve-3d;animation:float 4s ease-in-out infinite;filter:drop-shadow(0 16px 14px rgba(0,0,0,.4))}
+@keyframes float{0%,100%{transform:translateY(0) rotateY(-16deg) rotateX(4deg)}50%{transform:translateY(-9px) rotateY(-12deg) rotateX(4deg)}}
+.chipline{display:flex;gap:7px;flex-wrap:wrap;margin-top:9px}
+.chip{font-size:10.5px;font-weight:700;background:#eef2f8;color:var(--navy);padding:5px 9px;border-radius:20px}
+/* progress steps */
+.steps{display:flex;gap:6px;margin:4px 0 14px}
+.steps div{flex:1;height:5px;border-radius:4px;background:#e2e7ef}
+.steps div.on{background:var(--accent)}
+.photoGrid{display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px;margin:10px 0}
+.ph{height:74px;border-radius:12px;position:relative;overflow:hidden;background:linear-gradient(135deg,#3a4a63,#8393ab);display:flex;align-items:center;justify-content:center}
+.ph small{position:absolute;bottom:4px;left:5px;color:#fff;font-size:9px;background:rgba(0,0,0,.4);padding:1px 5px;border-radius:5px}
+.ailine{display:flex;align-items:center;gap:9px;padding:10px 0;border-bottom:1px dashed var(--line)}
+.dot{width:8px;height:8px;border-radius:50%;flex:none}
+.conf{font-size:10px;font-weight:800;padding:2px 7px;border-radius:20px}
+.conf.hi{background:#dff5ee;color:#0b7a5e}.conf.md{background:#fef1d6;color:#95610a}.conf.lo{background:#fde2dc;color:#c23a1e}
+.qline{display:flex;justify-content:space-between;padding:9px 0;border-bottom:1px solid var(--line);font-size:13px}
+.qline .q{color:var(--sub);font-size:11px}
+.tot{display:flex;justify-content:space-between;font-size:13px;padding:4px 0}
+.tot.big{font-weight:800;font-size:16px;border-top:2px solid var(--ink);margin-top:6px;padding-top:8px}
+.splitcard{background:linear-gradient(135deg,#0f2340,#1c3f73);color:#fff;border-radius:16px;padding:14px;margin-top:6px}
+.splitrow{display:flex;justify-content:space-between;padding:7px 0;font-size:13px;border-bottom:1px solid rgba(255,255,255,.12)}
+.spinner{width:34px;height:34px;border:3px solid #e6ebf2;border-top-color:var(--accent);border-radius:50%;animation:sp 1s linear infinite;margin:0 auto}
+@keyframes sp{to{transform:rotate(360deg)}}
+.center{text-align:center;padding:26px 0}
+.toast{position:absolute;bottom:90px;left:50%;transform:translateX(-50%) translateY(20px);background:var(--navy);color:#fff;padding:11px 16px;border-radius:12px;font-size:13px;font-weight:600;opacity:0;transition:.3s;z-index:50;box-shadow:0 10px 24px rgba(0,0,0,.3)}
+.toast.show{opacity:1;transform:translateX(-50%) translateY(0)}
+.notif{background:#fff4ec;border:1px solid #ffd7bf;border-radius:12px;padding:10px 12px;font-size:12px;color:#9a4a1e;display:flex;gap:8px;align-items:center;margin-bottom:8px}
+.inp{width:100%;border:1.5px solid var(--line);border-radius:11px;padding:11px 12px;font-size:14px;margin-top:5px;font-family:inherit;background:#fbfcfe;color:var(--ink)}
+.inp:focus{outline:none;border-color:var(--accent)}
+.lbl2{font-size:11px;font-weight:800;color:var(--sub);letter-spacing:.3px}
+.fld{margin-bottom:11px}
+.chipline .chip{cursor:pointer}
+.chip.sel{background:var(--accent);color:#fff}
+.hintnote{background:#eef6ff;border:1px solid #cfe4fb;color:#2b5c86;border-radius:10px;padding:9px 11px;font-size:11.5px;margin:2px 0 12px;line-height:1.4}
+.bigstat{display:flex;align-items:center;gap:14px}
+.bigstat .n{font-size:32px;font-weight:800;color:var(--accent)}
+.tiles3{display:grid;grid-template-columns:1fr 1fr 1fr;gap:9px;margin-bottom:12px}
+.tile{background:#fff;border-radius:14px;box-shadow:var(--shadow);padding:12px;text-align:center}
+.tile .tn{font-size:20px;font-weight:800}
+.tile .tl{font-size:10px;color:var(--sub);font-weight:700;margin-top:2px}
+.yopt{display:flex;align-items:center;gap:11px;padding:11px 2px;border-bottom:1px solid var(--line);cursor:pointer}
+.yopt:last-child{border:none}
+.yopt.sel b{color:var(--accent)}
+.radio{width:20px;height:20px;border-radius:50%;border:2px solid #cbd3de;flex:none}
+.radio.on{border-color:var(--accent);background:radial-gradient(circle,var(--accent) 0 5px,#fff 6px)}
+</style>
+</head>
+<body>
+<div class="stage">
+  <div class="pitch">
+    <span class="tag">INTERACTIVE PROTOTYPE</span>
+    <h1>OneStack Auto</h1>
+    <p>A working, tappable model of the panel-beating app — mobile-first, on dummy data. Explore the <b>Photo → Quote</b> flow, jobs, split billing, claims and parts.</p>
+    <p style="margin-top:12px"><b style="color:#ff9c6b">Try this:</b> flip <b>API mode</b> (top-right of the phone) to see exactly which endpoint every feature calls. Switch <b>Owner/Staff</b> to see role-based views. Tap the orange <b>＋</b> to start a photo-to-quote.</p>
+    <div class="hintrow">↓ everything below is clickable</div>
+  </div>
+
+  <div class="phone">
+    <div class="notch"></div>
+    <div class="screen">
+      <div class="topbar">
+        <div class="brand">
+          <div class="logo">A</div>
+          <div><b>Auto Tech</b><span id="roleLabel">Owner view · Melbourne</span></div>
+        </div>
+        <div class="tbtns">
+          <button class="role" id="locBtn" onclick="cycleLoc()" style="display:none;background:rgba(255,106,44,.25);color:#ffcbb0">🏭 All</button>
+          <button class="role" id="roleBtn" onclick="toggleRole()">OWNER</button>
+          <div class="apitoggle" id="apiT" onclick="toggleApi()"><span>API</span><div class="sw"></div></div>
+        </div>
+      </div>
+      <div class="apibadge" id="apiBadge" onclick="openInspector()">0</div>
+      <div class="body" id="body"></div>
+
+      <button class="fab" id="fab" onclick="go('ptq')" title="New photo quote">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><path d="M12 5v14M5 12h14"/></svg>
+      </button>
+
+      <div class="tabs" id="tabs"></div>
+      <div class="toast" id="toast"></div>
+
+      <div class="inspector" id="inspector">
+        <div class="insp-h">
+          <b>API Inspector &nbsp;<span style="color:#5bd6c0;font-size:11px">live calls</span></b>
+          <button class="x" onclick="closeInspector()">✕</button>
+        </div>
+        <div class="insp-log" id="insplog"></div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+/* ---------------- state + dummy data ---------------- */
+const S={role:'owner',screen:'home',api:false,log:[],params:{},stack:[],loc:'All'};
+
+const WORKSHOPS=[
+ {n:'Coburg',cars:4,wip:11200,ready:1,alert:1,status:'busy'},
+ {n:'Preston',cars:3,wip:7200,ready:1,alert:0,status:'ok'},
+];
+const JOBS=[
+ {id:'J-1042',rego:'1XY 4KP',make:'Toyota',model:'Corolla',year:2021,cust:'Amelia Nguyen',state:'prog',insurer:'AAMI',claim:'CL-88213',due:'Fri',total:3120,loc:'Coburg'},
+ {id:'J-1043',rego:'ABC 22D',make:'Mazda',model:'CX-5',year:2019,cust:'David Okafor',state:'booked',insurer:'Suncorp',claim:'CL-90114',due:'Mon',total:0,loc:'Preston'},
+ {id:'J-1039',rego:'ZR 9981',make:'Ford',model:'Ranger',year:2022,cust:'Priya Sharma',state:'ready',insurer:'RACV',claim:'CL-87740',due:'Today',total:5480,loc:'Coburg'},
+ {id:'J-1035',rego:'8KK 210',make:'Hyundai',model:'i30',year:2020,cust:'Liam Brown',state:'collected',insurer:'—',claim:'',due:'—',total:1890,loc:'Coburg'},
+ {id:'J-1044',rego:'5MN 77E',make:'Kia',model:'Sportage',year:2023,cust:'Sofia Rossi',state:'booked',insurer:'GIO',claim:'CL-90210',due:'Wed',total:0,loc:'Preston'},
+];
+function jobsIn(list){return S.loc==='All'?list:list.filter(j=>j.loc===S.loc);}
+function cycleLoc(){const o=['All','Coburg','Preston'];S.loc=o[(o.indexOf(S.loc)+1)%o.length];render();toast(S.loc==='All'?'All workshops':S.loc+' workshop');}
+function pickLoc(n){S.loc=n;render();toast(n+' workshop');}
+const YARDS=['Coburg Yard','Preston Yard','Brunswick Lot','Fawkner Depot','Reservoir Yard','Thomastown Lot','Epping Depot','Campbellfield Yard','Broadmeadows Yard','Somerton Lot'];
+const TOWED=[
+ {rego:'7GH 220',make:'VW Golf',yard:'Fawkner Depot',when:'25 min ago',status:'In yard'},
+ {rego:'QP 4410',make:'Nissan X-Trail',yard:'Reservoir Yard',when:'1h ago',status:'In yard'},
+];
+let ALERTS=[
+ '⚠️ Ranger (ZR 9981) ready — excess $600 not collected',
+ '📦 CX-5 parts back-ordered · ETA Thu',
+ '💬 Amelia replied to "car ready" SMS',
+];
+let yardSel='Fawkner Depot';
+const STATE={booked:['Booked','var(--booked)'],prog:['In progress','var(--prog)'],ready:['Ready','var(--ready)'],collected:['Collected','var(--collected)']};
+const CUST=[
+ {n:'Amelia Nguyen',ph:'0412 004 221',veh:'Toyota Corolla · 1XY 4KP',jobs:3},
+ {n:'David Okafor',ph:'0431 887 100',veh:'Mazda CX-5 · ABC 22D',jobs:1},
+ {n:'Priya Sharma',ph:'0455 220 019',veh:'Ford Ranger · ZR 9981',jobs:2},
+ {n:'Liam Brown',ph:'0402 771 640',veh:'Hyundai i30 · 8KK 210',jobs:5},
+];
+const SIMILAR=[
+ {v:'Toyota Corolla 2020',dmg:'Front bumper + bonnet',parts:4,labour:6.5,total:2980,match:96},
+ {v:'Toyota Corolla 2021',dmg:'Front bumper + L headlight',parts:5,labour:7,total:3240,match:91},
+ {v:'Toyota Auris 2019',dmg:'Front bar + grille',parts:3,labour:5.5,total:2610,match:84},
+];
+const QUOTE=[
+ {d:'Front bumper cover — replace',t:'Part',src:'EPC',price:540,conf:'hi'},
+ {d:'Bonnet — repair & align',t:'Labour',src:'History',price:520,conf:'hi'},
+ {d:'L headlight assembly — replace',t:'Part',src:'PartsCheck',price:410,conf:'md'},
+ {d:'Paint & materials — 2 panels',t:'Paint',src:'Rate card',price:680,conf:'hi'},
+ {d:'Blend adjacent panel',t:'Labour',src:'History',price:240,conf:'md'},
+];
+
+/* ---------------- API simulator ---------------- */
+function api(method,path,body){
+  const call={method,path,body:body||null,ts:new Date().toLocaleTimeString('en-AU',{hour12:false}),ms:60+Math.floor(Math.random()*280)};
+  S.log.unshift(call);
+  document.getElementById('apiBadge').textContent=S.log.length;
+  renderLog();
+  return new Promise(r=>setTimeout(()=>r({ok:true}),S.api?call.ms:0));
+}
+function chip(method,path){return `<span class="apichip"><b>${method}</b> ${path}</span>`;}
+function renderLog(){
+  const el=document.getElementById('insplog');
+  if(!S.log.length){el.innerHTML='<div class="empty">Interact with the app — calls appear here.</div>';return;}
+  el.innerHTML=S.log.map(c=>`<div class="call"><div><span class="m ${c.method}">${c.method}</span> <span class="p">${c.path}</span></div>
+    <div class="meta">${c.ts} · ${c.ms}ms · 200 OK</div>${c.body?`<pre>${JSON.stringify(c.body)}</pre>`:''}</div>`).join('');
+}
+function toggleApi(){S.api=!S.api;document.body.classList.toggle('apimode',S.api);document.getElementById('apiT').classList.toggle('on',S.api);
+  if(S.api){toast('API mode ON — endpoints now visible');} else {closeInspector();}}
+function openInspector(){document.getElementById('inspector').classList.add('open');renderLog();}
+function closeInspector(){document.getElementById('inspector').classList.remove('open');}
+
+/* ---------------- nav ---------------- */
+function go(screen,params){S.stack.push({s:S.screen,p:S.params});S.screen=screen;S.params=params||{};render();document.getElementById('body').scrollTop=0;}
+function back(){const p=S.stack.pop();if(p){S.screen=p.s;S.params=p.p;render();}}
+function tab(screen){S.stack=[];S.screen=screen;S.params={};render();}
+function toggleRole(){const o=['owner','staff','tow'];S.role=o[(o.indexOf(S.role)+1)%o.length];
+  document.getElementById('roleBtn').textContent=S.role==='tow'?'TOW':S.role.toUpperCase();
+  const lbl={owner:'Owner view',staff:'Staff view',tow:'Tow driver'}[S.role];
+  document.getElementById('roleLabel').textContent=lbl+' · Melbourne';
+  tab('home');toast('Switched to '+lbl);}
+function toast(t){const el=document.getElementById('toast');el.textContent=t;el.classList.add('show');clearTimeout(el._t);el._t=setTimeout(()=>el.classList.remove('show'),1900);}
+
+/* ---------------- screens ---------------- */
+function statePill(s){return `<span class="pill" style="background:${STATE[s][1]}">${STATE[s][0]}</span>`;}
+function money(n){return '$'+n.toLocaleString('en-AU');}
+
+function carSVG(){return `<svg class="car" viewBox="0 0 220 96" xmlns="http://www.w3.org/2000/svg">
+  <defs><linearGradient id="cg" x1="0" y1="0" x2="0" y2="1">
+    <stop offset="0" stop-color="#ff9a6a"/><stop offset="1" stop-color="#e0552c"/></linearGradient></defs>
+  <ellipse cx="110" cy="86" rx="95" ry="8" fill="rgba(0,0,0,.25)"/>
+  <path d="M12 66 Q16 46 44 44 L70 26 Q80 18 104 18 L150 18 Q172 18 186 40 L204 46 Q214 50 214 62 L214 68 Q214 72 208 72 L18 72 Q12 72 12 66Z" fill="url(#cg)"/>
+  <path d="M74 30 Q82 24 102 24 L128 24 Q142 24 150 34 L150 44 L74 44Z" fill="#cfe0f5" opacity=".9"/>
+  <path d="M112 24 L112 44" stroke="#0F2340" stroke-width="2" opacity=".5"/>
+  <circle cx="62" cy="72" r="15" fill="#12151b"/><circle cx="62" cy="72" r="6" fill="#3a4150"/>
+  <circle cx="168" cy="72" r="15" fill="#12151b"/><circle cx="168" cy="72" r="6" fill="#3a4150"/>
+  <rect x="196" y="50" width="12" height="7" rx="2" fill="#fff2c9"/>
+</svg>`;}
+
+function homeOwner(){
+ return `<div class="pad">
+   <div class="hero">
+     <div class="glow"></div><div class="grid"></div>
+     <div class="htxt"><div class="k">GOOD MORNING, SIDH</div><h2>7 cars in the shop today</h2></div>
+     ${carSVG()}
+   </div>
+   ${chip('GET','/dashboard/summary')}
+   <div class="kpi">
+     <div class="card"><div class="big">7</div><div class="lbl">Cars in shop</div></div>
+     <div class="card"><div class="big" style="color:#10B981">2</div><div class="lbl">Ready to collect</div></div>
+     <div class="card"><div class="big" style="color:#7c3aed">2</div><div class="lbl">In yards</div></div>
+     <div class="card"><div class="big" style="color:#D85A30">2</div><div class="lbl">Files ready to submit</div></div>
+   </div>
+   <div class="card">
+     <div class="lbl2" style="margin-bottom:8px">CAR LIFECYCLE — tap a stage</div>
+     <div style="display:flex;gap:5px">${PIPELINE.map(s=>`<div onclick="toast('${s[0]}: ${s[1]} cars')" style="flex:1;text-align:center;background:#f4f6fa;border-radius:9px;padding:8px 2px;cursor:pointer"><div style="font-size:16px;font-weight:800;color:${s[2]}">${s[1]}</div><div style="font-size:8px;color:#5b6472;font-weight:700;margin-top:2px">${s[0]}</div></div>`).join('')}</div>
+     ${chip('GET','/pipeline')}
+   </div>
+   <button class="btn ghost" onclick="go('money')" style="justify-content:space-between">💰 Money &amp; payments <span style="font-size:12px">🔒 →</span></button>
+   <div style="height:12px"></div>
+   <div class="spread" style="margin:10px 2px 8px"><b>Your workshops</b><span class="muted">2 sites · tap to filter</span></div>
+   ${chip('GET','/locations/summary')}
+   ${WORKSHOPS.map(w=>`<div class="card" onclick="pickLoc('${w.n}')" style="padding:13px;${S.loc===w.n?'outline:2px solid var(--accent);outline-offset:-1px':''}">
+     <div class="spread"><div class="row" style="gap:8px"><span class="dot" style="width:11px;height:11px;background:${w.status==='busy'?'#F59E0B':'#10B981'}"></span><b style="font-size:15px">${w.n}</b></div><span class="muted">${w.cars} cars in shop</span></div>
+     <div class="row" style="gap:16px;margin-top:9px"><span class="muted">WIP <b style="color:var(--ink)">${money(w.wip)}</b></span><span class="muted">${w.ready} ready</span>${w.alert?`<span style="color:#c23a1e;font-weight:800;font-size:12px">⚠ ${w.alert} alert</span>`:'<span style="color:#10B981;font-weight:700;font-size:12px">✓ clear</span>'}</div>
+   </div>`).join('')}
+   <div class="card">
+     <div class="spread" style="margin-bottom:4px"><b>Awaiting in yards</b><span class="muted">${TOWED.length} cars</span></div>
+     ${chip('GET','/tow/in-yards')}
+     ${TOWED.slice(0,3).map(t=>`<div class="list-item"><div class="avatar">🅿️</div><div style="flex:1"><div class="row" style="gap:7px"><b style="font-size:14px">${t.make}</b><span class="rego">${t.rego}</span></div><div class="muted">📍 ${t.yard} · ${t.when}</div></div><span class="pill" style="background:#7c3aed">${t.status}</span></div>`).join('')}
+   </div>
+   <div class="card">
+     <div class="spread"><b>Alerts</b><span class="muted">${ALERTS.length}</span></div>
+     ${ALERTS.map(a=>`<div class="notif">${a}</div>`).join('')}
+   </div>
+   <div class="card">
+     <div class="spread" style="margin-bottom:6px"><b>${S.loc==='All'?"Today's board":S.loc+' board'}</b><span class="muted" onclick="tab('jobs')" style="color:var(--accent);font-weight:700">See all →</span></div>
+     ${jobsIn(JOBS).slice(0,3).map(j=>jobRow(j)).join('')}
+   </div>
+   <div class="row" style="gap:8px">
+     <button class="btn dark" onclick="go('inout')">🚗 In / Out</button>
+     <button class="btn dark" onclick="go('hours')">🕒 Timesheets</button>
+   </div>
+   <div style="height:9px"></div>
+   <button class="btn" onclick="go('ptq')">📸 New quote from photos</button>
+   <div style="height:9px"></div>
+   <button class="btn ghost" onclick="go('upload')">📥 Import past photos &amp; quotes</button>
+ </div>`;
+}
+function homeStaff(){
+ const mine=JOBS.filter(j=>j.state==='prog'||j.state==='booked');
+ return `<div class="pad">
+   <div class="hero" style="background:linear-gradient(135deg,#0b3b34,#12A594 180%)">
+     <div class="glow" style="background:radial-gradient(circle,rgba(64,255,210,.4),transparent 60%)"></div><div class="grid"></div>
+     <div class="htxt"><div class="k" style="color:#bff5ec">HI, MARCUS</div><h2>You're clocked in · 3h 12m</h2></div>
+     ${carSVG()}
+   </div>
+   <div class="card" onclick="go('clock')">
+     <div class="spread"><div><b>Clocked in · 3h 12m</b><div class="muted">of 8h · 📍 on-site (GPS)</div></div><span style="color:var(--teal);font-weight:800">›</span></div>
+     <div style="height:7px;background:#e6ecf0;border-radius:6px;margin-top:10px;overflow:hidden"><div style="width:40%;height:100%;background:var(--teal)"></div></div>
+     <div class="muted" style="margin-top:8px">Auto check-out at 8h or when you leave the shop. Overtime? Check in again.</div>
+   </div>
+   ${chip('GET','/time-clock/status')}
+   <div class="row" style="gap:8px">
+     <button class="btn dark" onclick="clockOut()">⏱️ Clock out</button>
+     <button class="btn ghost" onclick="go('inout')">🚗 In / Out</button>
+   </div>
+   <div style="height:12px"></div>
+   <div class="card">
+     <div class="spread" style="margin-bottom:4px"><b>My jobs today</b><span class="muted">${mine.length}</span></div>
+     ${chip('GET','/me/jobs')}
+     ${mine.map(j=>jobRow(j)).join('')}
+   </div>
+   <div class="muted" style="text-align:center">Invoices, quotes & pricing are hidden in staff view</div>
+ </div>`;
+}
+function clockOut(){api('POST','/time-clock/out',{staffId:'u-marcus'});toast('Clocked out · 3h 12m logged');}
+
+function jobRow(j){return `<div class="list-item" onclick="go('job',{id:'${j.id}'})">
+   <div class="avatar">${j.make[0]}</div>
+   <div style="flex:1">
+     <div class="row" style="gap:7px"><b style="font-size:14px">${j.make} ${j.model}</b><span class="rego">${j.rego}</span></div>
+     <div class="muted">${j.cust} · ${j.insurer!=='—'?j.insurer:'Private'}</div>
+   </div>
+   <div style="text-align:right">${statePill(j.state)}<div class="muted" style="margin-top:4px">🏭 ${j.loc} · ${j.due}</div></div>
+ </div>`;}
+
+function jobsScreen(){
+ return `<div class="pad">
+   <div class="h">Cars &amp; jobs</div>
+   <input class="inp" id="regoSearch" placeholder="🔍 Search rego, make or customer…" oninput="doSearch(this.value)" autocapitalize="characters" style="margin:2px 0 4px">
+   ${chip('GET','/vehicles/search?rego=')}
+   <div id="searchResults"></div>
+   <div class="seg" id="seg">
+     ${['prog','booked','ready','collected'].map((s,i)=>`<div class="${i===0?'on':''}" onclick="segSel(this,'${s}')">${STATE[s][0]}</div>`).join('')}
+   </div>
+   <div id="joblist">${jobsIn(JOBS).filter(j=>j.state==='prog').map(jobRow).join('')}</div>
+ </div>`;
+}
+function segSel(el,s){[...el.parentNode.children].forEach(c=>c.classList.remove('on'));el.classList.add('on');
+ document.getElementById('joblist').innerHTML=jobsIn(JOBS).filter(j=>j.state===s).map(jobRow).join('')||'<div class="empty" style="color:#9aa">No jobs at this workshop</div>';
+ api('GET','/board?type=job&state='+s);}
+
+function jobScreen(){
+ const j=JOBS.find(x=>x.id===S.params.id)||JOBS[0];
+ return `<div class="pad">
+   <div class="row" style="margin-bottom:10px"><button class="back" onclick="back()">‹</button><b>${j.id}</b></div>
+   <div class="card">
+     <div class="row" style="gap:8px"><b style="font-size:17px">${j.make} ${j.model} ${j.year}</b><span class="rego">${j.rego}</span></div>
+     <div class="muted" style="margin-top:4px">${j.cust}</div>
+     <div style="margin-top:10px">${statePill(j.state)} &nbsp; <span class="muted">due ${j.due}</span></div>
+     ${chip('GET','/jobs/'+j.id)}
+     <div class="row" style="gap:8px;margin-top:12px">
+       <button class="btn ghost" onclick="transition('${j.id}')">Move stage ›</button>
+       <button class="btn ghost" onclick="toast('Assigned to you')">Assign me</button>
+     </div>
+   </div>
+   ${j.claim?`<div class="card" onclick="go('claim',{id:'${j.id}'})">
+     <div class="spread"><b>Insurance claim</b><span style="color:var(--accent)">›</span></div>
+     <div class="muted" style="margin-top:4px">${j.insurer} · ${j.claim} · authorised ${money(j.total||3120)}</div>
+     ${chip('GET','/claims/by-job/'+j.id)}
+   </div>`:''}
+   <div class="card">
+     <div class="spread" style="margin-bottom:8px"><b>Photos</b><span class="muted">6</span></div>
+     <div class="photoGrid">${['Front','L side','Bonnet','Bumper','VIN','Interior'].map(l=>`<div class="ph"><small>${l}</small></div>`).join('')}</div>
+     ${chip('GET','/jobs/'+j.id+'/photos')}
+   </div>
+   <div class="card">
+     <div class="spread"><b>Claim file</b><span class="conf hi">80% ready</span></div>
+     <div style="height:8px;background:#e6ecf0;border-radius:6px;margin:9px 0;overflow:hidden"><div style="width:80%;height:100%;background:#D85A30"></div></div>
+     <div class="muted">Assembles automatically as the car moves. Missing: <b>final QC photos · insurer invoice</b>.</div>
+     ${chip('GET','/jobs/'+j.id+'/file')}
+   </div>
+   <div class="card">
+     <div class="spread" style="margin-bottom:6px"><b>Timeline</b><span class="muted">auto-logged</span></div>
+     ${TIMELINE.map(t=>`<div class="ailine"><span class="dot" style="background:#7F77DD"></span><div style="flex:1"><b style="font-size:12.5px">${t[0]}</b></div><span class="muted">${t[1]}</span></div>`).join('')}
+   </div>
+   <div class="row" style="gap:8px;margin-bottom:12px">
+     <button class="btn ghost" onclick="addNote('${j.id}')">💬 Add comment</button>
+     <button class="btn ghost" onclick="toast('Photo added to file')">📷 Add photo</button>
+   </div>
+   ${S.role==='owner'?`<div class="card" onclick="go('quote',{id:'${j.id}'})">
+     <div class="spread"><b>Quote</b><span style="color:var(--accent)">${j.total?money(j.total):'Draft ›'}</span></div>
+     <div class="muted" style="margin-top:3px">${j.total?'Accepted · convert to invoice':'Start photo-to-quote'}</div>
+   </div>
+   <div class="card" onclick="go('parts',{id:'${j.id}'})">
+     <div class="spread"><b>Parts</b><span style="color:var(--accent)">›</span></div>
+     <div class="muted" style="margin-top:3px">3 lines · 1 back-ordered</div>${chip('GET','/jobs/'+j.id+'/parts')}
+   </div>`:`<button class="btn dark" onclick="go('parts',{id:'${j.id}'})">🔧 Request parts</button>`}
+ </div>`;
+}
+function transition(id){api('POST','/jobs/'+id+'/transition',{to:'ready'});toast('Moved to Ready · customer SMS queued');}
+function addNote(id){api('POST','/jobs/'+id+'/comments',{text:'note'});toast('Comment added to timeline');}
+
+/* ---- photo to quote flow ---- */
+function ptqScreen(){
+ const step=S.params.step||0;
+ const bar=`<div class="steps">${[0,1,2,3].map(i=>`<div class="${i<=step?'on':''}"></div>`).join('')}</div>`;
+ let inner='';
+ if(step===0){inner=`
+   <div class="h">Capture</div><div class="sub">Photograph the damage + scan the VIN.</div>
+   <div class="card" style="margin-top:12px">
+     <div class="row" style="gap:8px"><b>Ford Ranger 2022</b><span class="rego">ZR 9981</span></div>
+     <div class="muted" style="margin-top:3px">Priya Sharma · RACV</div>
+     <div class="photoGrid">${['Front','L guard','Bumper','+ Add','',''].slice(0,6).map((l,i)=>`<div class="ph" style="${i>2?'background:#eef1f6;border:2px dashed #c3ccd8':''}">${i>2?'<span style="color:#8a97a8;font-size:22px">＋</span>':`<small>${l}</small>`}</div>`).join('')}</div>
+     ${chip('POST','/jobs/J-1039/photos')}
+   </div>
+   <button class="btn" onclick="ptqAnalyze()">🤖 Analyse damage</button>`;
+ }
+ if(step===1){inner=`<div class="center"><div class="spinner"></div>
+   <p style="color:var(--sub);margin-top:14px">AI reading damage & matching your past jobs…</p>
+   ${chip('POST','/damage/assess')} ${chip('GET','/retrieval/similar')}</div>`;
+ }
+ if(step===2){inner=`
+   <div class="h">AI damage scope <span class="conf hi">draft</span></div>
+   <div class="sub">Editable — a human confirms before it's a quote.</div>
+   <div class="card" style="margin-top:10px">
+     ${[['Front bumper','replace','hi'],['L guard','repair','hi'],['Headlight L','replace','md'],['Hidden: rad support','check','lo']].map(a=>`
+       <div class="ailine"><span class="dot" style="background:${a[2]==='hi'?'#10B981':a[2]==='md'?'#F59E0B':'#EF4444'}"></span>
+       <div style="flex:1"><b style="font-size:13.5px">${a[0]}</b> <span class="muted">— ${a[1]}</span></div>
+       <span class="conf ${a[2]}">${a[2]==='hi'?'high':a[2]==='md'?'med':'low · check'}</span></div>`).join('')}
+     ${chip('POST','/damage/assess')}
+   </div>
+   <div class="card">
+     <div class="spread" style="margin-bottom:6px"><b>Similar past jobs</b><span class="muted">your history</span></div>
+     ${SIMILAR.map(s=>`<div class="ailine"><div style="flex:1"><b style="font-size:12.5px">${s.v}</b><div class="muted">${s.dmg} · ${s.parts} parts · ${s.labour}h</div></div>
+       <div style="text-align:right"><b>${money(s.total)}</b><div class="conf hi">${s.match}% match</div></div></div>`).join('')}
+     ${chip('GET','/retrieval/similar?vehicle=ranger')}
+   </div>
+   <button class="btn" onclick="ptqQuote()">Build draft quote →</button>`;
+ }
+ return `<div class="pad"><div class="row" style="margin-bottom:10px"><button class="back" onclick="back()">‹</button><b>Photo → Quote</b></div>${bar}${inner}</div>`;
+}
+function ptqAnalyze(){api('POST','/damage/assess',{jobId:'J-1039',photos:3});api('GET','/retrieval/similar',{vehicle:'ranger'});
+ S.params={step:1};render();setTimeout(()=>{S.params={step:2};render();},1700);}
+function ptqQuote(){api('POST','/parts/resolve',{vin:'…ZR9981'});api('POST','/quotes',{jobId:'J-1039',grounded:true});go('quote',{id:'J-1039',fresh:1});}
+
+function quoteScreen(){
+ const sub=QUOTE.reduce((a,b)=>a+b.price,0);const gst=Math.round(sub*.1);const tot=sub+gst;
+ return `<div class="pad">
+   <div class="row" style="margin-bottom:8px"><button class="back" onclick="back()">‹</button><b>Quote · Ranger ZR 9981</b></div>
+   ${S.params.fresh?'<div class="notif" style="background:#e6f7f2;border-color:#a9e4d5;color:#0b6b53">✓ Draft generated from your history — grounded, not guessed. Review & adjust.</div>':''}
+   <div class="card">
+     ${QUOTE.map(q=>`<div class="qline"><div><div>${q.d}</div><div class="q">${q.t} · from ${q.src}</div></div>
+       <div style="text-align:right"><b>${money(q.price)}</b> <span class="conf ${q.conf}">${q.conf}</span></div></div>`).join('')}
+     <div style="margin-top:8px"></div>
+     <div class="tot"><span class="muted">Subtotal</span><span>${money(sub)}</span></div>
+     <div class="tot"><span class="muted">GST 10%</span><span>${money(gst)}</span></div>
+     <div class="tot big"><span>Total</span><span>${money(tot)}</span></div>
+     ${chip('GET','/quotes/J-1039')}
+   </div>
+   <div class="splitcard">
+     <div class="spread"><b>Split billing</b><span style="font-size:11px;color:#bcd">insurer + excess</span></div>
+     <div class="splitrow"><span>RACV — authorised</span><b>${money(tot-600)}</b></div>
+     <div class="splitrow" style="border:none"><span>Priya — excess</span><b>$600</b></div>
+     ${chip('POST','/invoices/split')}
+   </div>
+   <div class="row" style="gap:8px;margin-top:12px">
+     <button class="btn ghost" onclick="toast('Draft saved')">Save</button>
+     <button class="btn" onclick="sendQuote()">Send to customer</button>
+   </div>
+ </div>`;
+}
+function sendQuote(){api('POST','/quotes/J-1039/send',{channel:'sms+email'});toast('Quote sent · SMS + email');}
+
+function claimScreen(){
+ return `<div class="pad">
+   <div class="row" style="margin-bottom:10px"><button class="back" onclick="back()">‹</button><b>Insurance claim</b></div>
+   <div class="card">
+     ${[['Insurer','AAMI'],['Claim #','CL-88213'],['Assessor','M. Patel'],['Authorised','$3,120'],['Excess','$695'],['Status','Authorised']].map(r=>`
+       <div class="spread" style="padding:9px 0;border-bottom:1px solid var(--line)"><span class="muted">${r[0]}</span><b>${r[1]}</b></div>`).join('')}
+     ${chip('GET','/claims/CL-88213')}
+   </div>
+   <button class="btn ghost" onclick="toast('Supplementary drafted')">+ Raise supplementary</button>
+   <div style="height:10px"></div>
+   <button class="btn dark" onclick="toast('Excess $695 collected')">💳 Collect excess before release</button>
+   ${chip('POST','/invoices/CL-88213/collect-excess')}
+ </div>`;
+}
+function partsScreen(){
+ const P=[['Front bumper cover','Toyota OEM','ordered',540,320],['L headlight','PartsCheck RFQ','back-order',410,250],['Clips & fasteners','Repco','received',48,22]];
+ return `<div class="pad">
+   <div class="row" style="margin-bottom:10px"><button class="back" onclick="back()">‹</button><b>Parts</b></div>
+   ${P.map(p=>`<div class="card"><div class="spread"><b>${p[0]}</b><span class="conf ${p[2]==='received'?'hi':p[2]==='ordered'?'md':'lo'}">${p[2]}</span></div>
+     <div class="muted" style="margin-top:3px">${p[1]}</div>
+     <div class="spread" style="margin-top:8px"><span class="muted">sell ${money(p[3])} · buy ${money(p[4])}</span><b style="color:var(--teal)">+${money(p[3]-p[4])} margin</b></div></div>`).join('')}
+   ${chip('GET','/jobs/J-1039/parts')}
+   <button class="btn" onclick="orderParts()">Approve & order</button>
+ </div>`;
+}
+function orderParts(){api('POST','/parts/order',{jobId:'J-1039',lines:3});toast('PO sent to suppliers');}
+
+function custScreen(){
+ return `<div class="pad"><div class="h">Customers</div>${chip('GET','/contacts')}
+   <div class="card">${CUST.map(c=>`<div class="list-item" onclick="toast('Open ${c.n}')">
+     <div class="avatar">${c.n.split(' ').map(w=>w[0]).join('')}</div>
+     <div style="flex:1"><b style="font-size:14px">${c.n}</b><div class="muted">${c.veh}</div></div>
+     <div class="muted">${c.jobs} jobs</div></div>`).join('')}</div>
+ </div>`;
+}
+function moreScreen(){
+ const owner=[['Owner dashboard','GET /dashboard'],['Timesheets & pay','GET /timesheets','hours'],['Import past photos & quotes','POST /admin/import','upload'],['Car In / Out (courtesy)','GET /fleet/dashboard','inout'],['Price book','GET /price-book'],['Invoices','GET /invoices'],['Reports & KPIs','GET /reports'],['Settings & roles','GET /settings']];
+ const staff=[['Car In / Out','GET /fleet/dashboard','inout'],['Time clock','GET /time-clock/status','clock'],['My roster','GET /me/roster'],['Job photos','—']];
+ const items=S.role==='owner'?owner:staff;
+ return `<div class="pad"><div class="h">More</div>
+   <div class="card">${items.map(i=>`<div class="list-item" onclick="${i[2]?`go('${i[2]}')`:`toast('${i[0]}')`}"><div style="flex:1"><b style="font-size:14px">${i[0]}</b></div><span class="muted" style="font-family:monospace;font-size:10px">${i[1]}</span></div>`).join('')}</div>
+   ${S.role==='owner'?'<div class="muted" style="text-align:center">Off-wedge (POS, loyalty…) hidden for the automotive pilot</div>':''}
+ </div>`;
+}
+
+/* ---- In / Out (courtesy cars) — Harjaap's "In N Out" ---- */
+const PURPOSES=['COURTESY','RENT','REPAIRS','TOWED','SWAP','PICKUP','OTHER'];
+let movePurpose='COURTESY';
+const MOVES=[
+ {cin:'1XY 4KP',cout:'1PI3XZ',who:'Amelia Nguyen',purpose:'Courtesy',status:'active',loc:'Coburg'},
+ {cin:'ZR 9981',cout:'',who:'Priya Sharma',purpose:'Repairs',status:'active',loc:'Coburg'},
+ {cin:'',cout:'8QT9RC',who:'David Okafor',purpose:'Courtesy',status:'returned',loc:'Preston'},
+ {cin:'5MN 77E',cout:'2LP8KD',who:'Sofia Rossi',purpose:'Courtesy',status:'returned',loc:'Preston'},
+];
+function moveRow(m){
+ const st=m.status==='active'?['Out now','var(--collected)']:['Returned','var(--ready)'];
+ return `<div class="card" onclick="toast('Open movement · ${m.who}')" style="padding:12px;margin-bottom:9px">
+   <div class="spread"><div class="row" style="gap:7px">
+     <span class="rego">${m.cin||'—'}</span><span style="color:var(--sub);font-weight:800">→</span>
+     ${m.cout?`<span class="rego" style="background:#0b3b34;color:#8ff0dd">${m.cout}</span>`:`<span class="chip" style="background:#fef1d6;color:#95610a">no loan car out</span>`}
+   </div><span class="pill" style="background:${st[1]}">${st[0]}</span></div>
+   <div class="muted" style="margin-top:6px">${m.who} · ${m.purpose} · 🏭 ${m.loc}${m.cout?'':' · car in only'}</div>
+ </div>`;
+}
+function inoutScreen(){
+ const active=MOVES.filter(m=>m.status==='active').length;
+ return `<div class="pad">
+   <div class="h">In / Out</div><div class="sub">Courtesy cars · customer car in, loan car out</div>
+   ${chip('GET','/fleet/dashboard')}
+   <div class="card"><div class="bigstat"><div class="n">${active}</div><div><b style="font-size:15px">Cars out</b><div class="muted">loan cars with customers now</div></div></div></div>
+   <div class="tiles3">
+     <div class="tile"><div class="tn" style="color:#10B981">5</div><div class="tl">Available</div></div>
+     <div class="tile"><div class="tn" style="color:#F59E0B">2</div><div class="tl">Booked</div></div>
+     <div class="tile"><div class="tn" style="color:#EF4444">1</div><div class="tl">Overdue</div></div>
+   </div>
+   <button class="btn" onclick="go('movement')">＋ New movement (car in / out)</button>
+   <div style="height:9px"></div>
+   <button class="btn ghost" onclick="go('freturn')">↩ Record return</button>
+   <div class="spread" style="margin:18px 2px 8px"><b>Recent movements</b></div>
+   ${chip('GET','/fleet/movements')}
+   ${MOVES.map(moveRow).join('')}
+ </div>`;
+}
+function movementForm(){movePurpose='COURTESY';return `<div class="pad">
+   <div class="row" style="margin-bottom:6px"><button class="back" onclick="back()">‹</button><b>New movement</b></div>
+   <div class="sub" style="margin-bottom:12px">Customer car in · loan car out</div>
+   <div class="hintnote">💡 Enter <b>either</b> a car in <b>or</b> a loan car out — a car can come in with <b>no replacement</b> going out.</div>
+   <div class="card">
+     <div class="lbl2" style="margin-bottom:4px">CARS</div>
+     <div class="fld"><label class="lbl2">Customer car rego (in)</label><input class="inp" id="mIn" placeholder="e.g. ABC 123" value="ZR 9981"></div>
+     <div class="fld" style="margin:0"><label class="lbl2">Fleet car rego (out)</label><input class="inp" id="mOut" placeholder="e.g. 1PI3XZ"></div>
+   </div>
+   <div class="card">
+     <div class="lbl2" style="margin-bottom:4px">DRIVER</div>
+     <div class="fld"><label class="lbl2">Driver name</label><input class="inp" id="mName" placeholder="Driver name" value="Priya Sharma"></div>
+     <div class="fld" style="margin:0"><label class="lbl2">Driver mobile</label><input class="inp" id="mPhone" placeholder="04…" value="0455 220 019"></div>
+   </div>
+   <div class="card">
+     <div class="lbl2" style="margin-bottom:6px">PURPOSE</div>
+     <div class="chipline" id="purposes">${PURPOSES.map(p=>`<span class="chip ${p==='COURTESY'?'sel':''}" onclick="pickPurpose(this,'${p}')">${p[0]+p.slice(1).toLowerCase()}</span>`).join('')}</div>
+     <div class="fld" style="margin:10px 0 0"><label class="lbl2">Notes</label><input class="inp" id="mNotes" placeholder="Notes"></div>
+   </div>
+   ${chip('POST','/fleet/movements')}
+   <button class="btn" onclick="saveMovement()">Save movement</button>
+   <div style="height:9px"></div><button class="btn ghost" onclick="back()">Cancel</button>
+ </div>`;}
+function pickPurpose(el,p){movePurpose=p;[...el.parentNode.children].forEach(c=>c.classList.remove('sel'));el.classList.add('sel');}
+function saveMovement(){
+ const cin=(document.getElementById('mIn').value||'').trim();const cout=(document.getElementById('mOut').value||'').trim();
+ if(!cin&&!cout){toast('Enter a car in or a loan car out');return;}
+ api('POST','/fleet/movements',{carsInRego:cin||undefined,carsOutRego:cout||undefined,driverName:document.getElementById('mName').value||undefined,purpose:movePurpose});
+ toast(cout?'Movement saved · car in + loan out':'Saved · car in (no loan car)');back();
+}
+function returnForm(){return `<div class="pad">
+   <div class="row" style="margin-bottom:6px"><button class="back" onclick="back()">‹</button><b>Record return</b></div>
+   <div class="sub" style="margin-bottom:12px">A loan car has come back</div>
+   <div class="card"><div class="lbl2" style="margin-bottom:4px">CAR</div>
+     <div class="fld" style="margin:0"><label class="lbl2">Returned fleet car rego</label><input class="inp" id="rRego" placeholder="e.g. 1PI3XZ" value="1PI3XZ"></div></div>
+   <div class="card"><div class="lbl2" style="margin-bottom:4px">DRIVER</div>
+     <div class="fld"><label class="lbl2">Driver name</label><input class="inp" id="rName" placeholder="Driver name" value="Amelia Nguyen"></div>
+     <div class="fld" style="margin:0"><label class="lbl2">Mobile</label><input class="inp" id="rPhone" placeholder="04…"></div></div>
+   <div class="card"><div class="lbl2" style="margin-bottom:4px">BOND &amp; NOTES</div>
+     <div class="fld"><label class="lbl2">Bond status</label><input class="inp" id="rBond" placeholder="e.g. Returned, Held" value="Returned"></div>
+     <div class="fld" style="margin:0"><label class="lbl2">Notes</label><input class="inp" id="rNotes" placeholder="Notes"></div></div>
+   ${chip('POST','/fleet/returns')}
+   <button class="btn" onclick="saveReturn()">Record return</button>
+   <div style="height:9px"></div><button class="btn ghost" onclick="back()">Cancel</button>
+ </div>`;}
+function saveReturn(){const rego=(document.getElementById('rRego').value||'').trim();if(!rego){toast('Enter the returned rego');return;}
+ api('POST','/fleet/returns',{returnedRego:rego,bondStatus:document.getElementById('rBond').value||undefined});toast('Return recorded · '+rego);back();}
+
+/* ---- Timesheets / hours (owner, one-click) ---- */
+const STAFF_HOURS=[
+ {n:'Marcus Bell',reg:38,ot:3.5,rate:38},
+ {n:'Aisha Khan',reg:40,ot:0,rate:36},
+ {n:'Tom Reilly',reg:32,ot:6,rate:40},
+ {n:'Sofia Lin',reg:38.5,ot:1,rate:35},
+];
+let hoursPeriod='weekly';
+function payFor(s,m){return Math.round((s.reg*s.rate + s.ot*s.rate*1.5)*m);}
+function hoursScreen(){
+ const m=hoursPeriod==='weekly'?1:2;
+ const totH=STAFF_HOURS.reduce((a,s)=>a+(s.reg+s.ot)*m,0);
+ const totP=STAFF_HOURS.reduce((a,s)=>a+payFor(s,m),0);
+ return `<div class="pad">
+   <div class="h">Timesheets</div><div class="sub">Hours per employee · ready for pay</div>
+   ${chip('GET','/timesheets?period='+hoursPeriod)}
+   <div class="seg">
+     <div class="${hoursPeriod==='weekly'?'on':''}" onclick="setPeriod('weekly')">This week</div>
+     <div class="${hoursPeriod==='fortnightly'?'on':''}" onclick="setPeriod('fortnightly')">Fortnight</div>
+   </div>
+   <div class="kpi"><div class="card"><div class="big">${totH.toFixed(1)}h</div><div class="lbl">Total hours</div></div>
+     <div class="card"><div class="big">${money(totP)}</div><div class="lbl">Est. gross pay</div></div></div>
+   <div class="card">
+   ${STAFF_HOURS.map(s=>`<div class="list-item"><div class="avatar">${s.n.split(' ').map(w=>w[0]).join('')}</div>
+     <div style="flex:1"><b style="font-size:14px">${s.n}</b><div class="muted">${(s.reg*m).toFixed(1)}h + <span style="color:var(--accent);font-weight:700">${(s.ot*m).toFixed(1)}h OT</span> · $${s.rate}/h</div></div>
+     <div style="text-align:right"><b>${money(payFor(s,m))}</b><div class="muted">${((s.reg+s.ot)*m).toFixed(1)}h</div></div></div>`).join('')}
+   </div>
+   <div class="hintnote">Hours come from check-in/out (GPS + manual). Overtime paid at 1.5×. Review, then generate pay.</div>
+   <button class="btn" onclick="genPay()">Generate pay run</button>
+ </div>`;
+}
+function setPeriod(p){hoursPeriod=p;api('GET','/timesheets?period='+p);render();}
+function genPay(){api('POST','/payroll/run',{period:hoursPeriod,employees:STAFF_HOURS.length});toast('Pay run generated · '+hoursPeriod);}
+
+/* ---- Time clock detail (staff): GPS + manual + 8h auto-checkout + overtime ---- */
+function clockScreen(){
+ return `<div class="pad">
+   <div class="row" style="margin-bottom:8px"><button class="back" onclick="back()">‹</button><b>Time clock</b></div>
+   <div class="card" style="background:linear-gradient(135deg,#0b3b34,#12A594);color:#fff">
+     <div class="spread"><div><div style="font-size:11px;color:#bff5ec;font-weight:800">CLOCKED IN · 3h 12m</div>
+       <div style="font-size:22px;font-weight:800;margin-top:2px">of 8h shift</div></div>
+       <div style="text-align:right;font-size:11px"><div>📍 On-site ✓</div><div style="color:#bff5ec">GPS active</div></div></div>
+     <div style="height:8px;background:rgba(255,255,255,.25);border-radius:6px;margin-top:12px;overflow:hidden"><div style="width:40%;height:100%;background:#fff"></div></div>
+   </div>
+   ${chip('GET','/time-clock/status')}
+   <div class="card">
+     <div class="lbl2" style="margin-bottom:6px">AUTO CHECK-OUT (prevents mistakes)</div>
+     <div class="ailine"><span class="dot" style="background:#10B981"></span><div style="flex:1"><b style="font-size:13px">After 8h shift</b><div class="muted">Auto checkout ~5:00 PM</div></div></div>
+     <div class="ailine"><span class="dot" style="background:#10B981"></span><div style="flex:1"><b style="font-size:13px">On leaving the shop</b><div class="muted">GPS auto checkout when you exit the site</div></div></div>
+     <div class="ailine" style="border:none"><span class="dot" style="background:#F59E0B"></span><div style="flex:1"><b style="font-size:13px">Overtime?</b><div class="muted">Check in again manually, then check out manually</div></div></div>
+   </div>
+   <button class="btn dark" onclick="clockOut()">⏱️ Clock out now (manual)</button>
+   <div style="height:9px"></div>
+   <button class="btn ghost" onclick="otIn()">Start overtime (manual check-in)</button>
+   ${chip('POST','/time-clock/out')}
+   <div class="spread" style="margin:16px 2px 6px"><b>Today</b></div>
+   <div class="card">
+     <div class="qline"><div>Check in <span class="q">GPS · on-site</span></div><b>08:03</b></div>
+     <div class="qline" style="border:none"><div>Auto checkout <span class="q">8h rule / GPS exit</span></div><b class="muted">~17:00</b></div>
+   </div>
+ </div>`;
+}
+function otIn(){api('POST','/time-clock/in',{type:'overtime'});toast('Overtime started · manual check-in');}
+
+/* ---- Tow driver: collect (photo+GPS+comments → notify + auto-create job) & yard drop ---- */
+function homeTow(){
+ return `<div class="pad">
+   <div class="hero" style="background:linear-gradient(135deg,#3a2140,#b5347e 190%)">
+     <div class="glow" style="background:radial-gradient(circle,rgba(255,120,200,.4),transparent 60%)"></div><div class="grid"></div>
+     <div class="htxt"><div class="k" style="color:#ffc8e6">TOW DRIVER · JAY</div><h2>Collect &amp; yard drop</h2></div>
+     ${carSVG()}
+   </div>
+   <button class="btn" onclick="go('towcollect')">🚗 Collect a car (pickup)</button>
+   <div style="height:9px"></div>
+   <button class="btn dark" onclick="go('towyard')">📍 Drop car at yard</button>
+   <div class="spread" style="margin:16px 2px 6px"><b>My collections today</b><span class="muted">${TOWED.length}</span></div>
+   ${chip('GET','/tow/collections?me=1')}
+   ${TOWED.map(t=>`<div class="card" style="padding:12px" onclick="toast('Open ${t.rego}')">
+     <div class="spread"><span class="rego">${t.rego}</span><span class="pill" style="background:#7c3aed">${t.status}</span></div>
+     <div class="muted" style="margin-top:6px">${t.make} · 📍 ${t.yard} · ${t.when}</div></div>`).join('')}
+ </div>`;
+}
+function towCollect(){return `<div class="pad">
+   <div class="row" style="margin-bottom:6px"><button class="back" onclick="back()">‹</button><b>Collect car</b></div>
+   <div class="sub" style="margin-bottom:12px">At pickup — photo, GPS &amp; comments</div>
+   <div class="card"><div class="lbl2" style="margin-bottom:6px">PHOTO</div>
+     <div class="photoGrid">${['Front','Damage','+ Add'].map((l,i)=>`<div class="ph" style="${i>1?'background:#eef1f6;border:2px dashed #c3ccd8':''}">${i>1?'<span style="color:#8a97a8;font-size:22px">＋</span>':`<small>${l}</small>`}</div>`).join('')}</div></div>
+   <div class="card"><div class="lbl2" style="margin-bottom:6px">📍 GPS LOCATION</div>
+     <div class="hintnote" style="margin:0">Captured automatically: <b>-37.741, 144.968</b> · 42 Main St, Coburg North</div></div>
+   <div class="card">
+     <div class="fld"><label class="lbl2">Rego</label><input class="inp" id="tRego" placeholder="e.g. 7GH 220" value="7GH 220"></div>
+     <div class="fld"><label class="lbl2">Customer (optional)</label><input class="inp" id="tCust" placeholder="Name / phone" value="John Miller"></div>
+     <div class="fld" style="margin:0"><label class="lbl2">Comments</label><input class="inp" id="tNote" placeholder="e.g. front-end damage, not driveable"></div>
+   </div>
+   <div class="hintnote">Saving <b>auto-creates the job file</b> and <b>notifies the owner + team</b> the car's been collected. No quote at this stage — that's later, at the yard/workshop.</div>
+   ${chip('POST','/tow/collections')} ${chip('POST','/jobs (auto)')} ${chip('POST','/notifications')}
+   <button class="btn" onclick="saveTow()">Confirm collected</button>
+   <div style="height:9px"></div><button class="btn ghost" onclick="back()">Cancel</button>
+ </div>`;}
+function saveTow(){const rego=(document.getElementById('tRego').value||'').trim();if(!rego){toast('Enter the rego');return;}
+ const jid='J-'+(1050+Math.floor(Math.random()*40));
+ api('POST','/tow/collections',{rego,gps:'-37.741,144.968',photo:true,comments:document.getElementById('tNote').value||undefined});
+ api('POST','/jobs',{rego,state:'towed',source:'tow',autoCreated:true});
+ api('POST','/notifications',{to:['owner','staff'],event:'car_collected',rego,jobId:jid});
+ TOWED.unshift({rego,make:'New tow',yard:'in transit',when:'just now',status:'Collected'});
+ ALERTS.unshift('🚗 '+rego+' collected by tow — '+jid+' auto-created');
+ toast('Collected · owner & team notified · '+jid+' created');back();}
+function towYard(){return `<div class="pad">
+   <div class="row" style="margin-bottom:6px"><button class="back" onclick="back()">‹</button><b>Drop at yard</b></div>
+   <div class="sub" style="margin-bottom:12px">Where the car is parked</div>
+   <div class="card"><div class="lbl2" style="margin-bottom:6px">📍 GPS · NEAREST YARD</div>
+     <div class="hintnote" style="margin:0">GPS <b>-37.712, 144.964</b> — nearest: <b>Fawkner Depot</b></div></div>
+   <div class="card"><div class="lbl2" style="margin-bottom:6px">CAR</div>
+     <div class="fld" style="margin:0"><label class="lbl2">Rego</label><input class="inp" id="yRego" placeholder="e.g. 7GH 220" value="7GH 220"></div></div>
+   <div class="card"><div class="spread" style="margin-bottom:6px"><span class="lbl2">SELECT YARD</span><span class="muted">${YARDS.length} yards</span></div>
+     <div id="yards">${YARDS.map((y,i)=>yardOption(y,i===3)).join('')}</div></div>
+   <div class="card"><div class="lbl2" style="margin-bottom:6px">PHOTO</div>
+     <div class="photoGrid">${['Parked','Rego','+ Add'].map((l,i)=>`<div class="ph" style="${i>1?'background:#eef1f6;border:2px dashed #c3ccd8':''}">${i>1?'<span style="color:#8a97a8;font-size:22px">＋</span>':`<small>${l}</small>`}</div>`).join('')}</div>
+     <div class="fld" style="margin:10px 0 0"><label class="lbl2">Comments</label><input class="inp" id="yNote" placeholder="e.g. bay 4, keys in lockbox"></div></div>
+   ${chip('POST','/tow/yard-drop')} ${chip('POST','/notifications')}
+   <button class="btn" onclick="saveYard()">Confirm parked</button>
+   <div style="height:9px"></div><button class="btn ghost" onclick="back()">Cancel</button>
+ </div>`;}
+function yardOption(y,near){const sel=y===yardSel;
+ return `<div class="yopt ${sel?'sel':''}" onclick="pickYardRow('${y}')"><div class="radio ${sel?'on':''}"></div>
+   <div style="flex:1"><b style="font-size:13.5px">${y}</b>${near?' <span class="chip" style="background:#dff5ee;color:#0b7a5e;font-size:9px;padding:2px 6px">📍 nearest</span>':''}</div></div>`;}
+function pickYardRow(y){yardSel=y;document.getElementById('yards').innerHTML=YARDS.map((yy,i)=>yardOption(yy,i===3)).join('');}
+function saveYard(){const rego=(document.getElementById('yRego').value||'').trim();if(!rego){toast('Enter the rego');return;}
+ api('POST','/tow/yard-drop',{rego,yard:yardSel,gps:'-37.712,144.964',photo:true});
+ api('POST','/notifications',{to:['owner','staff'],event:'car_in_yard',rego,yard:yardSel});
+ ALERTS.unshift('📍 '+rego+' parked at '+yardSel);
+ const ex=TOWED.find(t=>t.rego===rego);if(ex){ex.yard=yardSel;ex.status='In yard';ex.when='just now';}else TOWED.unshift({rego,make:'Tow',yard:yardSel,when:'just now',status:'In yard'});
+ toast('Parked at '+yardSel+' · location logged');back();}
+
+/* ---- Owner: import past photos & quotes (private, feeds RAG) ---- */
+function uploadScreen(){
+ return `<div class="pad">
+   <div class="row" style="margin-bottom:6px"><button class="back" onclick="back()">‹</button><b>Import past photos &amp; quotes</b></div>
+   <div class="sub" style="margin-bottom:10px">Owner only · private · feeds the AI</div>
+   <div class="hintnote">🔒 <b>Owner-only &amp; private</b> — not visible to staff or other shops. These train the AI so new quotes are accurate from day one. PII (plates/faces) is auto-scrubbed on import.</div>
+   <div class="card" onclick="fakeUpload('images')" style="border:2px dashed #c3ccd8;text-align:center;cursor:pointer">
+     <div style="font-size:30px">🖼️</div><b>Upload photos</b><div class="muted">Drag a folder or zip · JPG / PNG</div></div>
+   <div class="card" onclick="fakeUpload('quotes')" style="border:2px dashed #c3ccd8;text-align:center;cursor:pointer">
+     <div style="font-size:30px">📄</div><b>Upload quotes</b><div class="muted">CSV or PDF exports</div></div>
+   <div class="card">
+     <div class="spread"><b>Imported so far</b><span class="muted">this shop</span></div>
+     <div class="kpi" style="margin-top:10px"><div class="card" style="margin:0"><div class="big">2,410</div><div class="lbl">Photos</div></div><div class="card" style="margin:0"><div class="big">1,180</div><div class="lbl">Quotes linked</div></div></div>
+     ${chip('GET','/admin/import/summary')}
+   </div>
+   <div class="card">
+     <div class="lbl2" style="margin-bottom:6px">RECENT IMPORTS</div>
+     <div class="qline"><div>claims_2024_batch.zip <span class="q">1,240 photos</span></div><b class="conf hi">linked</b></div>
+     <div class="qline" style="border:none"><div>quotes_export.csv <span class="q">1,180 rows</span></div><b class="conf hi">linked</b></div>
+   </div>
+   ${chip('POST','/admin/import')}
+   <button class="btn" onclick="toast('Import queued · PII auto-scrubbed · linking to quotes')">Start import</button>
+ </div>`;
+}
+function fakeUpload(t){api('POST','/admin/import',{type:t});toast((t==='images'?'Photos':'Quotes')+' selected · PII scrubbed on ingest');}
+
+/* ---- lifecycle, timeline, rego search, money page ---- */
+const PIPELINE=[['Intake',2,'#7F77DD'],['Yard',2,'#7F77DD'],['Prioritise',1,'#7F77DD'],['Repair',5,'#F59E0B'],['File ready',2,'#D85A30'],['Follow-up',3,'#10B981']];
+const TIMELINE=[
+ ['Tow collected · GPS logged','2d ago'],
+ ['Parked · Fawkner Depot','2d ago'],
+ ['Assessment received · AAMI','1d ago'],
+ ['Quote drafted from photos','1d ago'],
+ ['Parts ordered','6h ago'],
+ ['Moved to In repair','2h ago'],
+];
+function doSearch(q){const t=(q||'').trim().toLowerCase();const el=document.getElementById('searchResults');
+ if(!t){el.innerHTML='';return;}
+ api('GET','/vehicles/search?q='+encodeURIComponent(t));
+ const r=JOBS.filter(j=>j.rego.toLowerCase().includes(t)||j.make.toLowerCase().includes(t)||j.model.toLowerCase().includes(t)||j.cust.toLowerCase().includes(t));
+ el.innerHTML=r.length?'<div class="card" style="padding:2px 14px">'+r.map(jobRow).join('')+'</div>':'<div class="muted" style="padding:6px 2px 12px">No car matches “'+q+'”</div>';}
+function agebar(rows){return `<div style="display:flex;gap:5px;margin-top:5px">${rows.map(a=>`<div style="flex:1;text-align:center;border-radius:8px;padding:6px 2px;font-size:10.5px;font-weight:800;line-height:1.3;background:${a[2]};color:${a[3]}">${a[0]}<br>${a[1]}</div>`).join('')}</div>`;}
+function moneyScreen(){
+ return `<div class="pad">
+   <div class="row" style="margin-bottom:8px"><button class="back" onclick="back()">‹</button><b>Money &amp; Payments</b></div>
+   <div class="hintnote">🔒 <b>Finance access</b> · Owner, Manav &amp; Tully only — hidden from staff &amp; tow.</div>
+   <div class="kpi">
+     <div class="card"><div class="big" style="color:#0F6E56">$42.6k</div><div class="lbl">Owed to me</div></div>
+     <div class="card"><div class="big" style="color:#c23a1e">$8.1k</div><div class="lbl">Overdue</div></div>
+     <div class="card"><div class="big" style="color:#10B981">$21.4k</div><div class="lbl">Banked (30d)</div></div>
+     <div class="card"><div class="big">~$28k</div><div class="lbl">Expected (30d)</div></div>
+   </div>
+   <div class="card">
+     <div class="lbl2" style="margin-bottom:8px">MONEY PIPELINE — earned vs banked</div>
+     <div style="background:#8b95a5;color:#fff;border-radius:7px;padding:6px 10px;font-weight:800;font-size:12px;display:flex;justify-content:space-between;margin-bottom:6px"><span>Authorised · not invoiced</span><span>$12.3k</span></div>
+     <div style="background:#F59E0B;color:#fff;border-radius:7px;padding:6px 10px;font-weight:800;font-size:12px;display:flex;justify-content:space-between;width:92%;margin-bottom:6px"><span>Invoiced · awaiting</span><span>$30.3k</span></div>
+     <div style="background:#10B981;color:#fff;border-radius:7px;padding:6px 10px;font-weight:800;font-size:12px;display:flex;justify-content:space-between;width:66%"><span>Paid this month</span><span>$21.4k</span></div>
+     <div class="muted" style="margin-top:8px">The gap = your insurer lag (money in transit).</div>
+     ${chip('GET','/finance/pipeline')}
+   </div>
+   <div class="card">
+     <div class="lbl2" style="margin-bottom:6px">WHO OWES ME — aged by payer</div>
+     <div class="spread" style="font-size:12.5px;font-weight:700"><span>🏢 Insurers</span><span>$36.8k</span></div>
+     ${agebar([['0–30','$18k','#dff5ee','#0b6b53'],['30–60','$12k','#fef1d6','#95610a'],['60–90','$4.6k','#fde2dc','#c23a1e'],['90+','$2.2k','#f7cfc6','#8a2412']])}
+     <div class="spread" style="font-size:12.5px;font-weight:700;margin-top:12px"><span>👤 Customer excess</span><span>$5.8k</span></div>
+     ${agebar([['0–30','$3.4k','#dff5ee','#0b6b53'],['30–60','$1.9k','#fef1d6','#95610a'],['60–90','$0.5k','#fde2dc','#c23a1e'],['90+','$0','#f1efe8','#888']])}
+   </div>
+   <div class="card">
+     <div class="lbl2" style="margin-bottom:6px">INSURER SCORECARD — who's slow to pay</div>
+     ${[['AAMI','$14.2k','34 days','#F59E0B'],['Suncorp','$9.8k','41 days','#F59E0B'],['RACV','$7.1k','22 days','#10B981'],['GIO','$5.7k','58 days · slow','#c23a1e']].map(s=>`<div class="ailine"><div style="flex:1"><b style="font-size:13px">${s[0]}</b> <span class="muted">owed ${s[1]}</span></div><span class="pill" style="background:${s[3]}">${s[2]}</span></div>`).join('')}
+     ${chip('GET','/finance/insurer-scorecard')}
+   </div>
+   <div class="card">
+     <div class="lbl2" style="margin-bottom:6px">NEEDS CHASING</div>
+     <div class="ailine"><span class="dot" style="background:#c23a1e"></span><div style="flex:1">Overdue insurer invoices</div><span class="pill" style="background:#c23a1e">3 · $6.2k</span></div>
+     <div class="ailine"><span class="dot" style="background:#F59E0B"></span><div style="flex:1">Excess uncollected</div><span class="pill" style="background:#F59E0B">4 · $2.4k</span></div>
+     <div class="ailine" style="border:none"><span class="dot" style="background:#3B82F6"></span><div style="flex:1">Supplementary awaiting insurer</div><span class="pill" style="background:#3B82F6">1 · $1.9k</span></div>
+   </div>
+ </div>`;
+}
+
+/* ---------------- render ---------------- */
+function render(){
+ const b=document.getElementById('body');
+ const R={home:()=>S.role==='owner'?homeOwner():S.role==='tow'?homeTow():homeStaff(),jobs:jobsScreen,job:jobScreen,ptq:ptqScreen,
+   quote:quoteScreen,claim:claimScreen,parts:partsScreen,customers:custScreen,more:moreScreen,
+   inout:inoutScreen,movement:movementForm,freturn:returnForm,hours:hoursScreen,clock:clockScreen,
+   towcollect:towCollect,towyard:towYard,upload:uploadScreen,money:moneyScreen};
+ b.innerHTML=(R[S.screen]||homeOwner)();
+ const lb=document.getElementById('locBtn');if(lb){lb.style.display=S.role==='owner'?'block':'none';lb.textContent='🏭 '+S.loc;}
+ const fb=document.getElementById('fab');if(fb)fb.style.display=S.role==='owner'?'flex':'none';
+ renderTabs();
+}
+function renderTabs(){
+ const T=[['home','Home','M3 11l9-8 9 8M5 10v10h14V10'],['jobs','Jobs','M4 6h16M4 12h16M4 18h10'],
+   ['ptq','Quote','M4 5h16v14H4zM8 9h8M8 13h5'],['customers','People','M16 20v-2a4 4 0 0 0-8 0v2M12 11a3 3 0 1 0 0-6 3 3 0 0 0 0 6'],
+   ['more','More','M5 12h.01M12 12h.01M19 12h.01']];
+ document.getElementById('tabs').innerHTML=T.map(t=>`<div class="tab ${S.screen===t[0]?'active':''}" onclick="tab('${t[0]}')">
+   <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="${t[2]}"/></svg>${t[1]}</div>`).join('');
+}
+render();renderLog();
+</script>
+</body>
+</html>
