@@ -3,11 +3,12 @@ name: Deploy — staging
 # Staging deploys automatically from main, but ONLY after CI is green.
 # Web  → Vercel (syd1) · API + workers → Fly.io (Sydney) · Data → Supabase (Sydney).
 #
-# HUMAN SETUP REQUIRED before this runs for real (Foundation card #1 hand-off):
-#   1. Create the GitHub remote and push this repo.
-#   2. Add repo secrets: VERCEL_TOKEN, VERCEL_ORG_ID, VERCEL_PROJECT_ID, FLY_API_TOKEN.
-#   3. Create the Vercel project (region syd1) and the Fly app (primary_region = syd).
-# Until secrets exist the deploy steps are skipped so the workflow stays green.
+# HUMAN SETUP REQUIRED before this deploys anything:
+#   1. Add repo secrets: VERCEL_TOKEN, VERCEL_ORG_ID, VERCEL_PROJECT_ID, FLY_API_TOKEN.
+#   2. Create the Vercel project (region syd1) and the Fly app (primary_region = syd).
+#
+# Until those exist the deploy steps skip. The status job below says so out loud rather than letting a
+# workflow that shipped nothing report the same green as one that shipped.
 
 on:
   workflow_run:
@@ -22,24 +23,63 @@ jobs:
     # Only deploy when the CI run that triggered us actually passed.
     if: ${{ github.event.workflow_run.conclusion == 'success' }}
     environment: staging
+    # Job-level env so each step's `if` reads it from a scope that is unambiguously in place before the
+    # step is evaluated. (Previously these were step-level `env:` blocks guarding their own step's `if`.)
+    env:
+      FLY_API_TOKEN: ${{ secrets.FLY_API_TOKEN }}
+      VERCEL_TOKEN: ${{ secrets.VERCEL_TOKEN }}
+      VERCEL_ORG_ID: ${{ secrets.VERCEL_ORG_ID }}
+      VERCEL_PROJECT_ID: ${{ secrets.VERCEL_PROJECT_ID }}
+    outputs:
+      api: ${{ steps.fly.outcome }}
+      web: ${{ steps.vercel.outcome }}
     steps:
       - uses: actions/checkout@v4
 
-      - name: Deploy API + workers → Fly.io (Sydney)
+      - uses: actions/setup-node@v4
+        with:
+          node-version-file: .nvmrc
+          cache: npm
+
+      # Official action, pinned to a commit SHA. Installing flyctl by piping fly.io/install.sh into a
+      # shell would hand anyone who compromises that URL arbitrary code execution in a runner holding
+      # our deploy tokens — the repo's own SAST gate blocks that pattern, correctly.
+      - name: Set up flyctl
         if: ${{ env.FLY_API_TOKEN != '' }}
-        env:
-          FLY_API_TOKEN: ${{ secrets.FLY_API_TOKEN }}
-        run: |
-          echo "TODO(card #1 hand-off): flyctl deploy --config apps/api/fly.toml --remote-only"
-          echo "Skipped until FLY_API_TOKEN is set."
+        uses: superfly/flyctl-actions/setup-flyctl@ed8efb33836e8b2096c7fd3ba1c8afe303ebbff1 # 1.6
+
+      - name: Deploy API + workers → Fly.io (Sydney)
+        id: fly
+        if: ${{ env.FLY_API_TOKEN != '' }}
+        run: flyctl deploy --config apps/api/fly.toml --remote-only
 
       - name: Deploy Web → Vercel (syd1)
+        id: vercel
         if: ${{ env.VERCEL_TOKEN != '' }}
-        env:
-          VERCEL_TOKEN: ${{ secrets.VERCEL_TOKEN }}
         run: |
-          echo "TODO(card #1 hand-off): vercel deploy --prebuilt --prod --token=$VERCEL_TOKEN"
-          echo "Skipped until VERCEL_TOKEN is set."
+          npm ci
+          npx vercel pull --yes --environment=production --token="$VERCEL_TOKEN"
+          npx vercel build --prod --token="$VERCEL_TOKEN"
+          npx vercel deploy --prebuilt --prod --token="$VERCEL_TOKEN"
 
-      - name: Note
-        run: echo "Staging deploy pipeline wired. Fill secrets to activate real deploys."
+  # Always runs. A deploy workflow that deployed nothing must not report the same green as one that
+  # did: the Definition of Done requires "deployed to staging & clicked through", and until these
+  # secrets exist that criterion is unmet on every card, however green this page looks.
+  status:
+    name: staging deploy status
+    runs-on: ubuntu-latest
+    needs: deploy
+    if: always()
+    steps:
+      - name: Report
+        run: |
+          api='${{ needs.deploy.outputs.api }}'
+          web='${{ needs.deploy.outputs.web }}'
+          echo "API (Fly.io): ${api:-skipped}"
+          echo "Web (Vercel): ${web:-skipped}"
+          if [ "$api" = 'success' ] && [ "$web" = 'success' ]; then
+            echo "Staging is up to date with main."
+          else
+            echo "::warning title=Staging was NOT deployed::API=${api:-skipped}, Web=${web:-skipped}. Nothing was shipped to staging, so any card claiming 'deployed to staging & clicked through' is unverified. Add the FLY_API_TOKEN / VERCEL_TOKEN / VERCEL_ORG_ID / VERCEL_PROJECT_ID repo secrets to activate."
+            echo "Staging was NOT deployed. See the warning above."
+          fi
