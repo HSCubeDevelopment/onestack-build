@@ -2,7 +2,7 @@
 
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
-import { Briefcase, FileText, Home, MoreHorizontal, Users } from 'lucide-react';
+import { Briefcase, Home, KanbanSquare, MoreHorizontal, Users } from 'lucide-react';
 
 /**
  * Card 303 — the bottom tab bar, shown only on phones.
@@ -14,16 +14,24 @@ import { Briefcase, FileText, Home, MoreHorizontal, Users } from 'lucide-react';
  * Hidden at >=900px, where the sidebar takes over — so the desktop admin is untouched.
  */
 
+/**
+ * The five destinations. These are the app's REAL routes — the prototype's tab labels included a
+ * "Quote" tab, but the web app has no /quotes index (only /quotes/[id]), so pointing a tab at it
+ * gave a dead 404. The board is the screen this shop lives in, so it takes that slot instead.
+ */
 const TABS = [
   { href: '/', label: 'Home', Icon: Home },
+  { href: '/board', label: 'Board', Icon: KanbanSquare },
   { href: '/jobs', label: 'Jobs', Icon: Briefcase },
-  { href: '/quotes', label: 'Quote', Icon: FileText },
   { href: '/customers', label: 'People', Icon: Users },
   { href: '/more', label: 'More', Icon: MoreHorizontal },
 ] as const;
 
-/** An employee has no business on the money tabs, so they get a shorter bar (card #12). */
-const STAFF_TABS = TABS.filter((t) => t.href !== '/quotes');
+/**
+ * An employee sees their own jobs, not the whole-shop board (card #12) — the API returns 403 for it,
+ * so showing the tab would only offer them a door that slams. They keep the other four.
+ */
+const STAFF_TABS = TABS.filter((t) => t.href !== '/board');
 
 export function MobileTabBar({ role }: { role: 'OWNER' | 'STAFF' }) {
   const pathname = usePathname();
