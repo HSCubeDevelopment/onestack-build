@@ -838,6 +838,19 @@ model ScopePart {
   unitPriceCents  Int          @default(0)
   priceBookItemId String?      @db.Uuid
   source          String       @default("ai") // 'ai' | 'manual'
+
+  /// Card 62.1 — procurement. What the shop PAYS. Nullable, not 0: zero would mean "free" and make an
+  /// unpriced part report 100% margin, which is worse than admitting the buy price is unknown.
+  buyPriceCents      Int?
+  grade              String? // 'oem' | 'aftermarket' | 'used' | 'reconditioned'
+  /// Distinct from the PO's status: a PO can be sent while one line is back-ordered and another landed.
+  procurementStatus  String    @default("needed") // needed|ordered|back_order|received|cancelled
+  supplierContactId  String?   @db.Uuid
+  supplierPartNumber String?
+  expectedAt         DateTime?
+  receivedAt         DateTime?
+  /// Partial deliveries are normal (2 of 3 guards arrive), so this is a count, not a boolean.
+  receivedQuantity   Int       @default(0)
   sortOrder       Int          @default(0)
   createdAt       DateTime     @default(now())
   updatedAt       DateTime     @updatedAt
