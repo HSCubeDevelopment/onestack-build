@@ -28,10 +28,31 @@ export interface DamageImage {
   dataBase64: string;
 }
 
+/**
+ * A past job of THIS shop's, retrieved as precedent (card 60.5). The point of grounding is that a
+ * panel shop's own history is better evidence than a general prior: it already encodes how this shop
+ * scopes work. Precedents are context for the draft, never an instruction — the analyzer may ignore
+ * one that doesn't fit the photos, and a human still confirms whatever comes out.
+ */
+export interface DamagePrecedent {
+  /** What that past job turned out to be, as indexed. */
+  summary: string;
+  /** 0..1 — how close it was judged to be. Shown to the model so it can weigh a weak match lightly. */
+  similarity: number;
+}
+
+/** Cost cap: never ground a draft in more than this many past jobs. */
+export const MAX_PRECEDENTS = 3;
+
 export interface DamageAnalysisInput {
   images: DamageImage[];
   /** Optional free-text context from the job (customer description of the damage). */
   description?: string;
+  /**
+   * Similar past jobs to ground the draft in (card 60.5). Omitted or empty means an ungrounded draft —
+   * which is the correct behaviour for a shop with no comparable history yet, not a degraded one.
+   */
+  precedents?: DamagePrecedent[];
 }
 
 /** One proposed line of the scope. Editable by a human before anything is priced. */

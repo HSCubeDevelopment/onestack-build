@@ -2,8 +2,8 @@
 // analyzer, and the parser that turns a Claude reply into a clean, validated scope. These are the
 // error-prone bits — the DB-backed service is covered by the integration test.
 import { describe, expect, it } from 'vitest';
-import { AnthropicDamageAnalyzer, parseScope } from './anthropic-damage-analyzer';
-import { DAMAGE_OPERATIONS, MAX_ANALYSIS_IMAGES } from './damage-analyzer';
+import { AnthropicDamageAnalyzer, parseScope, renderPrecedents } from './anthropic-damage-analyzer';
+import { DAMAGE_OPERATIONS, MAX_ANALYSIS_IMAGES, MAX_PRECEDENTS } from './damage-analyzer';
 import { StubDamageAnalyzer } from './stub-damage-analyzer';
 
 const img = (n: number) =>
@@ -90,5 +90,39 @@ describe('parseScope', () => {
     expect(() => parseScope('no json here')).toThrow();
     expect(() => parseScope('{not valid json}')).toThrow();
     expect(() => parseScope('{"items":[]}')).toThrow(/no usable/i);
+  });
+});
+
+describe('renderPrecedents (card 60.5)', () => {
+  it('renders nothing when there is no history — an ungrounded draft is the normal first case', () => {
+    expect(renderPrecedents(undefined)).toBe('');
+    expect(renderPrecedents([])).toBe('');
+  });
+
+  it('lists each precedent with its similarity, so a weak match can be discounted', () => {
+    const text = renderPrecedents([
+      { summary: 'Front bumper replace, bonnet repair', similarity: 0.91 },
+      { summary: 'Rear door repaint', similarity: 0.64 },
+    ]);
+    expect(text).toContain('(91% similar) Front bumper replace, bonnet repair');
+    expect(text).toContain('(64% similar) Rear door repaint');
+  });
+
+  it('frames precedents as evidence to weigh, not an answer to copy', () => {
+    // The photos are the source of truth. Wording that invited copying would turn a near-miss
+    // precedent into a confidently wrong scope.
+    const text = renderPrecedents([{ summary: 'Front bumper replace', similarity: 0.9 }]);
+    expect(text).toContain('ignore any that do not fit what you can see');
+  });
+
+  it('caps how many precedents reach the prompt', () => {
+    const many = Array.from({ length: 10 }, (_, i) => ({
+      summary: `Job ${i}`,
+      similarity: 0.9,
+    }));
+    const lines = renderPrecedents(many)
+      .split('\n')
+      .filter((l) => l.startsWith('- '));
+    expect(lines).toHaveLength(MAX_PRECEDENTS);
   });
 });

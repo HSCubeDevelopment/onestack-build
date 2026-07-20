@@ -8,9 +8,12 @@ import {
 import { randomUUID } from 'node:crypto';
 import { TenantService } from '../tenancy/tenant.service';
 import { AttachmentService } from '../work-items/attachment.service';
+import { SimilarJobsService } from './similar-jobs.service';
 import {
   DAMAGE_ANALYZER,
   DAMAGE_OPERATIONS,
+  MAX_PRECEDENTS,
+  DamagePrecedent,
   DamageAnalyzer,
   DamageOperation,
   MAX_ANALYSIS_IMAGES,
@@ -68,6 +71,7 @@ export class DamageScopeService {
     private readonly tenants: TenantService,
     private readonly attachments: AttachmentService,
     @Inject(DAMAGE_ANALYZER) private readonly analyzer: DamageAnalyzer,
+    private readonly similarJobs: SimilarJobsService,
   ) {}
 
   /** Run the AI over the job's photos and (re)create its draft scope. */
@@ -97,9 +101,29 @@ export class DamageScopeService {
       }),
     );
 
+    // Card 60.5 — ground the draft in this shop's own comparable jobs. Retrieval failing must never
+    // block a scope: an ungrounded draft is the normal state for a shop with no history yet, so a
+    // broken index degrades to today's behaviour instead of taking the feature down with it.
+    let precedents: DamagePrecedent[] = [];
+    try {
+      const matches = await this.similarJobs.findSimilarByPhotos(
+        tenantId,
+        jobId,
+        used.map((photo, i) => ({
+          attachmentId: photo.id,
+          contentType: images[i]?.contentType ?? photo.contentType,
+          dataBase64: images[i]?.dataBase64 ?? '',
+        })),
+        MAX_PRECEDENTS,
+      );
+      precedents = matches.map((m) => ({ summary: m.bestSnippet, similarity: m.similarity }));
+    } catch {
+      precedents = [];
+    }
+
     let result;
     try {
-      result = await this.analyzer.analyze({ images });
+      result = await this.analyzer.analyze({ images, precedents });
     } catch (err) {
       throw new InternalServerErrorException(
         `AI scope generation failed: ${err instanceof Error ? err.message : 'unknown error'}`,

@@ -5,11 +5,31 @@ import {
   DamageAnalysisResult,
   DamageAnalyzer,
   DamageOperation,
+  DamagePrecedent,
   DamageScopeItem,
+  MAX_PRECEDENTS,
 } from './damage-analyzer';
 
 /** Image types the Claude vision API accepts. HEIC/HEIF phone photos are dropped (unsupported upstream). */
 const VISION_MEDIA_TYPES = new Set(['image/jpeg', 'image/png', 'image/gif', 'image/webp']);
+
+/**
+ * Render retrieved precedents into the prompt (card 60.5). Framed as evidence to weigh, not an answer
+ * to copy: the photos are the source of truth, and a precedent that doesn't match them should be
+ * ignored. Similarity is shown so a weak match can be discounted rather than trusted equally.
+ */
+export function renderPrecedents(precedents: DamagePrecedent[] | undefined): string {
+  if (!precedents?.length) return '';
+  const lines = precedents
+    .slice(0, MAX_PRECEDENTS)
+    .map((p) => `- (${Math.round(p.similarity * 100)}% similar) ${p.summary}`)
+    .join('\n');
+  return (
+    "Similar jobs this shop has done before, most similar first. Use them to match this shop's usual " +
+    'scoping where the photos agree, and ignore any that do not fit what you can see:\n' +
+    `${lines}\n\n`
+  );
+}
 
 const SYSTEM = [
   'You are a panel-beating estimator assistant. From photos of vehicle damage you propose an initial',
@@ -61,6 +81,7 @@ export class AnthropicDamageAnalyzer implements DamageAnalyzer {
       type: 'text',
       text:
         (input.description ? `Customer note: ${input.description}\n\n` : '') +
+        renderPrecedents(input.precedents) +
         'Propose the damage scope for this vehicle. Respond with ONLY a JSON object, no prose, of the ' +
         'form: {"summary": string, "items": [{"panel": string, "operation": "replace"|"repair"|"paint", ' +
         '"note": string, "confidence": number between 0 and 1}]}.',
