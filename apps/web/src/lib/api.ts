@@ -565,3 +565,23 @@ export const hoursLabel = (minutes: number): string => {
   const m = minutes % 60;
   return h ? `${h}h ${m}m` : `${m}m`;
 };
+
+/** Card 52.3 — the operations pipeline. Stages come from the pack's workflow, not a hard-coded list. */
+export interface PipelineStage {
+  name: string;
+  order: number;
+  isFinal: boolean;
+  count: number;
+}
+export interface PipelineItem {
+  id: string;
+  reference: string;
+  stateName: string;
+  hoursInStage: number;
+  stuckReason: string | null;
+}
+export interface PipelineView {
+  stages: PipelineStage[];
+  items: PipelineItem[];
+  stuck: PipelineItem[];
+}
