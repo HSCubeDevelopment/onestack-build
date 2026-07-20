@@ -12,7 +12,17 @@ import {
   Dot,
   type LucideIcon,
 } from 'lucide-react';
-import { api, Board, Booking, DashboardSummary, Lead, WorkItem, money } from '@/lib/api';
+import {
+  api,
+  Board,
+  Booking,
+  DashboardSummary,
+  Lead,
+  PipelineView,
+  WorkItem,
+  money,
+} from '@/lib/api';
+import { Hero, PipelineStrip, QuickActions, TodaysBoard } from '@/components/OwnerHome';
 import { ErrorBanner, humanize, Loading, StatusBadge, useAsync } from '@/components/ui';
 import { StateIcon, stateColor } from '@/components/Icon';
 
@@ -29,6 +39,9 @@ export default function DashboardPage() {
         api.get<WorkItem[]>('/work-items?type=job'),
         api.get<Lead[]>('/leads'),
         api.get<Booking[]>(`/bookings?from=${from}&to=${to}`).catch(() => [] as Booking[]),
+        // Card 52.3. Tolerated as null rather than failing the whole dashboard — the pipeline is one
+        // panel, and losing it should not blank the owner's home screen.
+        api.get<PipelineView>('/pipeline').catch(() => null),
       ]),
     [],
   );
@@ -37,7 +50,6 @@ export default function DashboardPage() {
     <>
       <div className="page-head">
         <div>
-          <h1>Good morning, Chirag</h1>
           <div className="sub">
             {today.toLocaleDateString('en-AU', {
               weekday: 'long',
@@ -53,6 +65,18 @@ export default function DashboardPage() {
       </div>
       <ErrorBanner message={error} />
       {loading && <Loading />}
+      {data && (
+        <>
+          <Hero
+            name="Chirag"
+            carsInShop={data[2].filter((j) => !/collected|cancelled/i.test(j.stateName)).length}
+          />
+          {data[5] && <PipelineStrip pipeline={data[5]} />}
+          <TodaysBoard board={data[1].columns.flatMap((c) => c.cards)} />
+          <QuickActions />
+        </>
+      )}
+
       {data && (
         <Overview
           summary={data[0]}

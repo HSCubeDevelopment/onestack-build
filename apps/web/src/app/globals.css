@@ -1284,3 +1284,178 @@ textarea.input {
     overflow-wrap: anywhere;
   }
 }
+
+/* ============================================================================================
+   Owner home — matched to the prototype's homeOwner(). Card 304.
+   ============================================================================================ */
+
+/* The hero: the one-line answer to "how's today?" before any drilling. Gradient + soft glow from
+   the prototype; the glow is a low-opacity radial rather than an image so it costs nothing. */
+.hero {
+  position: relative;
+  overflow: hidden;
+  border-radius: var(--radius);
+  padding: 20px;
+  margin-bottom: 16px;
+  background: linear-gradient(135deg, #0f2340 0%, #16325b 100%);
+  color: #fff;
+}
+.hero-glow {
+  position: absolute;
+  right: -40px;
+  top: -60px;
+  width: 220px;
+  height: 220px;
+  border-radius: 50%;
+  background: radial-gradient(circle, rgba(255, 106, 44, 0.35) 0%, transparent 70%);
+  pointer-events: none;
+}
+.hero-text {
+  position: relative;
+}
+.hero-kicker {
+  font-size: 11px;
+  font-weight: 800;
+  letter-spacing: 0.4px;
+  color: rgba(255, 255, 255, 0.66);
+}
+/* The global `h2` rule sets a dark ink colour and wins on specificity, which rendered this heading
+   near-black on a navy hero — technically present, practically invisible. Stated explicitly here. */
+.hero .hero-text h2 {
+  margin: 4px 0 0;
+  font-size: 22px;
+  font-weight: 800;
+  line-height: 1.2;
+  color: #fff;
+}
+
+/* The lifecycle strip. Equal columns so the eye compares counts, not widths. Scrolls on a phone
+   rather than squashing — a workflow can have more stages than fit. */
+.pipeline {
+  display: flex;
+  gap: 5px;
+}
+.pipeline-stage {
+  flex: 1 0 auto;
+  min-width: 64px;
+  text-align: center;
+  background: var(--panel-2);
+  border-radius: 9px;
+  padding: 9px 4px;
+  text-decoration: none;
+  color: inherit;
+}
+.pipeline-count {
+  font-size: 17px;
+  font-weight: 800;
+  line-height: 1;
+}
+.pipeline-label {
+  font-size: 9px;
+  font-weight: 700;
+  color: var(--text-dim);
+  margin-top: 3px;
+  white-space: nowrap;
+}
+/* Stuck work is a call to action, so it reads as one — but amber, not red: these are jobs needing
+   a look, not failures. */
+.pipeline-stuck {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  margin-top: 12px;
+  padding: 9px 11px;
+  border-radius: var(--radius-sm);
+  background: var(--amber-soft);
+  color: var(--amber);
+  font-size: 12.5px;
+  font-weight: 650;
+}
+
+/* `.spread` does not exist in this stylesheet — the markup used it and got a plain block, so the
+   title and the "See all" link sat flush against each other ("Today's boardSee all"). Laid out
+   explicitly rather than relying on a class that was never defined. */
+.board-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  margin-bottom: 10px;
+}
+.see-all {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  color: var(--brand);
+  font-weight: 700;
+  font-size: 13px;
+  text-decoration: none;
+}
+
+/* A job row is identified by its PLATE. In a workshop the plate is what people say out loud and
+   what they can see on the car; the job number is an office abstraction. */
+.job-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  padding: 11px 2px;
+  border-top: 1px solid var(--border);
+  text-decoration: none;
+  color: inherit;
+  min-height: 48px;
+}
+.job-row:first-of-type {
+  border-top: none;
+}
+.job-row-main {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  min-width: 0;
+}
+.job-ref {
+  font-weight: 700;
+  font-size: 14px;
+  flex: 0 0 auto;
+}
+/* The customer name yields first — the plate and the status are what identify the car. */
+.job-cust {
+  color: var(--text-dim);
+  font-size: 12.5px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  min-width: 0;
+}
+/* Black-and-yellow, monospaced, uppercase — a recognisable object, not a text label. */
+.rego-plate {
+  background: #111826;
+  color: #ffd23f;
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+  font-weight: 700;
+  font-size: 11.5px;
+  letter-spacing: 0.6px;
+  padding: 3px 7px;
+  border-radius: var(--radius-sm);
+  white-space: nowrap;
+}
+.status-pill {
+  color: #fff;
+  font-size: 11px;
+  font-weight: 700;
+  padding: 4px 9px;
+  border-radius: 999px;
+  white-space: nowrap;
+  flex: 0 0 auto;
+}
+
+.quick-actions {
+  display: flex;
+  gap: 8px;
+  margin-top: 16px;
+}
+.quick-actions .btn {
+  flex: 1;
+  justify-content: center;
+}
