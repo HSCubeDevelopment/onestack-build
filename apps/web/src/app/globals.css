@@ -1,30 +1,30 @@
 :root {
-  --bg: #f3f4f7;
+  --bg: #f4f6fa;
   --panel: #ffffff;
-  --panel-2: #f7f8fa;
-  --border: #edeef2;
-  --border-strong: #e2e4ea;
-  --text: #171a20;
-  --text-dim: #6b7280;
-  --text-faint: #9ca3af;
-  --brand: #6d4aff;
-  --brand-2: #8b6bff;
-  --brand-soft: #f1edff;
-  --green: #16a34a;
-  --green-soft: #e7f6ee;
-  --amber: #d97706;
-  --amber-soft: #fdf1e3;
-  --red: #e11d48;
-  --red-soft: #fdeaee;
-  --blue: #2563eb;
+  --panel-2: #eef1f6;
+  --border: #e7ebf0;
+  --border-strong: #d8dee7;
+  --text: #111826;
+  --text-dim: #5b6472;
+  --text-faint: #888780;
+  --brand: #ff6a2c;
+  --brand-2: #ff8a55;
+  --brand-soft: #ffe8dc;
+  --green: #10b981;
+  --green-soft: #dff5ee;
+  --amber: #f59e0b;
+  --amber-soft: #fef1d6;
+  --red: #c23a1e;
+  --red-soft: #fde2dc;
+  --blue: #3b82f6;
   --blue-soft: #e8f0fe;
   --purple: #7c3aed;
   --purple-soft: #f0e9fe;
-  --cyan: #0891b2;
-  --cyan-soft: #e2f5fa;
-  --ink: #14161c;
+  --cyan: #12a594;
+  --cyan-soft: #dff5ee;
+  --ink: #0f2340;
   --radius: 16px;
-  --radius-sm: 10px;
+  --radius-sm: 8px;
   --shadow-sm: 0 1px 2px rgba(16, 24, 40, 0.04), 0 1px 3px rgba(16, 24, 40, 0.05);
   --shadow: 0 1px 3px rgba(16, 24, 40, 0.06), 0 6px 20px rgba(16, 24, 40, 0.05);
   --sidebar-w: 236px;
@@ -33,30 +33,30 @@
 
 /* Dark theme — overrides the design tokens; every component reads these variables. */
 html.dark {
-  --bg: #0e1014;
-  --panel: #171a21;
-  --panel-2: #1f232c;
-  --border: #262b35;
-  --border-strong: #363c48;
-  --text: #e6e9ef;
-  --text-dim: #9aa4b2;
-  --text-faint: #6b7484;
-  --brand: #7c66ff;
-  --brand-2: #9b86ff;
-  --brand-soft: #211f3a;
+  --bg: #0b1220;
+  --panel: #111c2e;
+  --panel-2: #16233a;
+  --border: #1e2d47;
+  --border-strong: #2b3d5c;
+  --text: #e6ecf5;
+  --text-dim: #93a3bb;
+  --text-faint: #6b7c96;
+  --brand: #ff8a55;
+  --brand-2: #ffa477;
+  --brand-soft: #33200f;
   --green: #34d399;
-  --green-soft: #10281f;
+  --green-soft: #0d2a22;
   --amber: #fbbf24;
-  --amber-soft: #2a2410;
+  --amber-soft: #2d2410;
   --red: #fb7185;
-  --red-soft: #2f1720;
+  --red-soft: #31161c;
   --blue: #60a5fa;
   --blue-soft: #14233a;
   --purple: #b794ff;
   --purple-soft: #221a38;
-  --cyan: #22d3ee;
-  --cyan-soft: #0c2830;
-  --ink: #f3f5f8;
+  --cyan: #2dd4bf;
+  --cyan-soft: #0c2b28;
+  --ink: #f3f6fb;
   --shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.3), 0 1px 3px rgba(0, 0, 0, 0.35);
   --shadow: 0 1px 3px rgba(0, 0, 0, 0.4), 0 8px 24px rgba(0, 0, 0, 0.35);
 }
@@ -924,4 +924,177 @@ textarea.input {
   display: flex;
   align-items: center;
   gap: 10px;
+}
+
+/* ============================================================================================
+   Card 303 — installed-web-app (PWA) shell.
+   The shop adds this to their home screen, so on a phone it must present as an app: no sidebar,
+   a thumb-reachable bottom tab bar, and content that respects the notch and home indicator.
+   Everything here is inside a phone-width media query, so the desktop admin is untouched.
+   ============================================================================================ */
+
+/* Hidden on desktop; the sidebar owns navigation there. */
+.tabbar {
+  display: none;
+}
+
+@media (max-width: 899px) {
+  /* The sidebar is a desktop affordance. On a phone it is the thing that makes an app feel like a
+     website, so it goes entirely rather than hiding behind a hamburger. */
+  .app {
+    grid-template-columns: 1fr;
+  }
+  .sidebar {
+    display: none;
+  }
+
+  /* Paint under the status bar, then pad content back. Without this the header stops short of the
+     notch and the whole illusion breaks on the first scroll. */
+  .content {
+    padding-top: env(safe-area-inset-top);
+  }
+
+  /* Leave room for the fixed bar plus the home indicator, or the last card is unreachable. */
+  .main {
+    padding-bottom: calc(72px + env(safe-area-inset-bottom) + 16px);
+  }
+
+  .tabbar {
+    position: fixed;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    z-index: 50;
+    display: grid;
+    grid-auto-flow: column;
+    grid-auto-columns: 1fr;
+    align-items: center;
+    background: var(--ink);
+    padding: 8px 6px calc(8px + env(safe-area-inset-bottom));
+    /* A hairline, not a shadow: the bar sits ON the edge, it does not float above content. */
+    border-top: 1px solid rgba(255, 255, 255, 0.08);
+  }
+
+  .tabbar-item {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 3px;
+    padding: 6px 4px;
+    border-radius: var(--radius-sm);
+    color: rgba(255, 255, 255, 0.62);
+    font-size: 11px;
+    font-weight: 700;
+    text-decoration: none;
+    /* 44px is the documented minimum touch target; a workshop uses this with gloves on. */
+    min-height: 44px;
+    justify-content: center;
+    -webkit-tap-highlight-color: transparent;
+  }
+  .tabbar-item.is-active {
+    color: #fff;
+    background: rgba(255, 255, 255, 0.1);
+  }
+  .tabbar-item span {
+    line-height: 1;
+  }
+}
+
+/* Standalone = launched from the home screen rather than a browser tab. These rules only apply
+   there, so browsing the same URL in Safari still behaves like a normal web page. */
+@media (display-mode: standalone) {
+  /* Long-press text selection turns a tap-and-hold on a job card into a text selection, which reads
+     as broken. Inputs are exempted below — they still need to be selectable. */
+  body {
+    -webkit-user-select: none;
+    user-select: none;
+    /* Kills the rubber-band scroll past the top, the clearest "this is a web page" tell on iOS. */
+    overscroll-behavior-y: none;
+  }
+  input,
+  textarea,
+  [contenteditable] {
+    -webkit-user-select: text;
+    user-select: text;
+  }
+}
+
+/* --------------------------------------------------------------------------------------------
+   Card 303 — phone layout corrections.
+   Everything above sets the SHELL; these fix the CONTENT, which was still laid out for a desktop
+   and overflowed a 375px screen. Kept in one place so the desktop rules stay readable.
+   -------------------------------------------------------------------------------------------- */
+@media (max-width: 599px) {
+  /* Every multi-column grid becomes a single column. At 375px even two columns clip a KPI card's
+     value, and a number the owner cannot read is worse than one they have to scroll to. */
+  .grid.cols-2,
+  .grid.cols-3,
+  .grid.cols-4 {
+    grid-template-columns: 1fr;
+  }
+
+  /* Tighter gutters: 26px of side padding on a phone wastes a seventh of the screen. */
+  .main {
+    padding-left: 16px;
+    padding-right: 16px;
+  }
+  .topbar {
+    padding: 0 14px;
+    gap: 10px;
+  }
+
+  /* The topbar has to survive a narrow screen: the search takes the slack, the identity block
+     stops wrapping onto two lines, and the icon buttons hold their size. */
+  .topbar .search,
+  .topbar input[type='search'] {
+    flex: 1 1 auto;
+    min-width: 0;
+  }
+  /* The name and role come out entirely on a phone. A native app does not print who you are in the
+     header — the avatar already says it — and keeping them was clipping the sign-out button, which
+     is a real bug where a missing name is not. */
+  .topbar .u-name,
+  .topbar .u-role {
+    display: none;
+  }
+  .topbar .user {
+    min-width: 0;
+    flex: 0 0 auto;
+    gap: 6px;
+  }
+  /* The avatar and every icon button keep their size and stay tappable. */
+  .topbar .avatar,
+  .topbar .icon-btn {
+    flex: 0 0 auto;
+  }
+  /* The spacer exists to push things apart on a wide screen; on a phone it just steals room. */
+  .topbar .spacer {
+    display: none;
+  }
+
+  /* Wide content (tables, boards, charts) scrolls inside its own box rather than pushing the whole
+     page sideways — a horizontally-scrolling page is the fastest way to feel like a bad website. */
+  .table-wrap,
+  .board,
+  .scroll-x {
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+  }
+
+  /* Nothing may exceed the viewport. This is the backstop for any component not covered above. */
+  body {
+    overflow-x: hidden;
+  }
+}
+
+@media (max-width: 599px) {
+  /* Board columns sized so a second one peeks in — that visible edge is what tells a thumb the
+     board scrolls sideways. A full-width column looks like the only column. */
+  .board {
+    scroll-snap-type: x mandatory;
+  }
+  .board > * {
+    min-width: 78vw;
+    scroll-snap-align: start;
+  }
 }
