@@ -9,6 +9,21 @@ describe('Contact contract', () => {
       displayName: 'Casey',
       email: 'casey@example.com',
       phone: null,
+      address: null,
+      fields: {},
+      customFields: {},
+      createdAt: new Date(),
+    });
+    expect(ok.success).toBe(true);
+  });
+
+  it('accepts a contact carrying a postal address (card 10.1)', () => {
+    const ok = ContactContract.safeParse({
+      id: '11111111-1111-1111-1111-111111111111',
+      displayName: 'Amelia',
+      email: null,
+      phone: '0400111222',
+      address: { line1: '12 Sydney Road', suburb: 'Coburg', state: 'VIC', postcode: '3058' },
       fields: {},
       customFields: {},
       createdAt: new Date(),
