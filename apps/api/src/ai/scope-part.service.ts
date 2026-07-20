@@ -3,6 +3,16 @@ import { PriceBookService } from '../price-book/price-book.service';
 import { QuoteService, QuoteView } from '../quotes/quote.service';
 import { TenantService } from '../tenancy/tenant.service';
 import { partsFromScope, PriceBookPart } from './parts-from-scope';
+import {
+  PartGrade,
+  PartMargin,
+  PartsSummary,
+  ProcurementStatus,
+  canTransitionTo,
+  partMargin,
+  statusAfterReceipt,
+  summariseParts,
+} from './parts-procurement';
 
 export interface ScopePartView {
   id: string;
@@ -14,6 +24,28 @@ export interface ScopePartView {
   priceBookItemId: string | null;
   source: 'ai' | 'manual';
   sortOrder: number;
+
+  // Card 62.1 — procurement.
+  buyPriceCents: number | null;
+  grade: PartGrade | null;
+  procurementStatus: ProcurementStatus;
+  supplierContactId: string | null;
+  supplierPartNumber: string | null;
+  expectedAt: Date | null;
+  receivedAt: Date | null;
+  receivedQuantity: number;
+  /** Computed, never stored — storing it would let it drift from the prices it is derived from. */
+  margin: PartMargin;
+}
+
+/** Procurement details. Every field optional — supplier now, price when the invoice lands. */
+export interface SetProcurementInput {
+  buyPriceCents?: number | null;
+  grade?: PartGrade | null;
+  procurementStatus?: ProcurementStatus;
+  supplierContactId?: string | null;
+  supplierPartNumber?: string | null;
+  expectedAt?: Date | null;
 }
 
 export interface AddScopePartInput {
@@ -176,6 +208,99 @@ export class ScopePartService {
     });
   }
 
+  /**
+   * Card 62.1 — record what the shop is paying and who from. Every field is optional so an estimator
+   * can fill in the supplier now and the price when the invoice arrives, which is the real order of
+   * events on a workshop floor.
+   */
+  async setProcurement(
+    tenantId: string,
+    partId: string,
+    patch: SetProcurementInput,
+  ): Promise<ScopePartView> {
+    return this.tenants.runInTenant(tenantId, async (tx) => {
+      const current = await tx.scopePart.findFirst({ where: { id: partId } });
+      if (!current) throw new NotFoundException('Part not found');
+
+      if (patch.procurementStatus !== undefined) {
+        const from = current.procurementStatus as ProcurementStatus;
+        if (!canTransitionTo(from, patch.procurementStatus)) {
+          throw new BadRequestException(
+            `Cannot move a part from "${from}" to "${patch.procurementStatus}"`,
+          );
+        }
+      }
+      if (patch.buyPriceCents !== undefined && patch.buyPriceCents !== null) {
+        if (!Number.isInteger(patch.buyPriceCents) || patch.buyPriceCents < 0) {
+          throw new BadRequestException('buyPriceCents must be a non-negative integer of cents');
+        }
+      }
+
+      const updated = await tx.scopePart.update({
+        where: { id: partId },
+        data: {
+          ...(patch.buyPriceCents !== undefined ? { buyPriceCents: patch.buyPriceCents } : {}),
+          ...(patch.grade !== undefined ? { grade: patch.grade } : {}),
+          ...(patch.procurementStatus !== undefined
+            ? { procurementStatus: patch.procurementStatus }
+            : {}),
+          ...(patch.supplierContactId !== undefined
+            ? { supplierContactId: patch.supplierContactId }
+            : {}),
+          ...(patch.supplierPartNumber !== undefined
+            ? { supplierPartNumber: patch.supplierPartNumber }
+            : {}),
+          ...(patch.expectedAt !== undefined ? { expectedAt: patch.expectedAt } : {}),
+        },
+      });
+      return toView(updated);
+    });
+  }
+
+  /**
+   * Goods-received check-in. Quantities ACCUMULATE rather than overwrite, because a line is often
+   * delivered in two drops and the second delivery docket says "1", not "3". Receiving part of a line
+   * leaves it back-ordered; receiving the rest closes it.
+   */
+  async receive(tenantId: string, partId: string, quantity: number): Promise<ScopePartView> {
+    if (!Number.isInteger(quantity) || quantity <= 0) {
+      throw new BadRequestException('Received quantity must be a positive integer');
+    }
+    return this.tenants.runInTenant(tenantId, async (tx) => {
+      const current = await tx.scopePart.findFirst({ where: { id: partId } });
+      if (!current) throw new NotFoundException('Part not found');
+      if (current.procurementStatus === 'cancelled') {
+        throw new BadRequestException('Cannot receive a cancelled part');
+      }
+
+      const receivedQuantity = current.receivedQuantity + quantity;
+      const status = statusAfterReceipt(current.quantity, receivedQuantity);
+      const updated = await tx.scopePart.update({
+        where: { id: partId },
+        data: {
+          receivedQuantity,
+          procurementStatus: status,
+          // Stamped on the delivery that COMPLETES the line — that is the date the job was unblocked,
+          // which is what anyone looking back at the file actually wants to know.
+          ...(status === 'received' ? { receivedAt: new Date() } : {}),
+        },
+      });
+      return toView(updated);
+    });
+  }
+
+  /** Parts margin for a whole job. Excludes unpriced lines and says how many — see summariseParts. */
+  async marginForJob(tenantId: string, jobId: string): Promise<PartsSummary> {
+    const parts = await this.listForJob(tenantId, jobId);
+    return summariseParts(
+      parts.map((p) => ({
+        quantity: p.quantity,
+        unitPriceCents: p.unitPriceCents,
+        buyPriceCents: p.buyPriceCents,
+      })),
+    );
+  }
+
   async removePart(tenantId: string, partId: string): Promise<void> {
     await this.tenants.runInTenant(tenantId, async (tx) => {
       const row = await tx.scopePart.findFirst({ where: { id: partId } });
@@ -232,6 +357,14 @@ function toView(row: {
   priceBookItemId: string | null;
   source: string;
   sortOrder: number;
+  buyPriceCents: number | null;
+  grade: string | null;
+  procurementStatus: string;
+  supplierContactId: string | null;
+  supplierPartNumber: string | null;
+  expectedAt: Date | null;
+  receivedAt: Date | null;
+  receivedQuantity: number;
 }): ScopePartView {
   return {
     id: row.id,
@@ -243,5 +376,20 @@ function toView(row: {
     priceBookItemId: row.priceBookItemId,
     source: row.source as 'ai' | 'manual',
     sortOrder: row.sortOrder,
+    buyPriceCents: row.buyPriceCents,
+    grade: (row.grade as PartGrade | null) ?? null,
+    procurementStatus: row.procurementStatus as ProcurementStatus,
+    supplierContactId: row.supplierContactId,
+    supplierPartNumber: row.supplierPartNumber,
+    expectedAt: row.expectedAt,
+    receivedAt: row.receivedAt,
+    receivedQuantity: row.receivedQuantity,
+    // Derived on read. Storing margin would let it drift from the prices it comes from — the exact
+    // failure the card is trying to fix.
+    margin: partMargin({
+      quantity: row.quantity,
+      unitPriceCents: row.unitPriceCents,
+      buyPriceCents: row.buyPriceCents,
+    }),
   };
 }

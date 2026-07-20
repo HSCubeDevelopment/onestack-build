@@ -16,6 +16,8 @@ import { RolesGuard } from '../auth/roles.guard';
 import { QuoteView } from '../quotes/quote.service';
 import { AddScopePartDto, EditScopePartDto } from './dto/scope-part.dto';
 import { ScopePartService, ScopePartView } from './scope-part.service';
+import { PartsSummary } from './parts-procurement';
+import { ReceivePartDto, SetProcurementDto } from './dto/procurement.dto';
 
 /**
  * AI photo-to-quote — parts list (Phase 2 flagship, slice B). Derive an editable parts list from a job's
@@ -66,6 +68,39 @@ export class ScopePartController {
   }
 
   /** Build a Draft quote from the fully-priced parts list (through the shared Quote engine). */
+  /**
+   * Card 62.1 — record supplier, buy price, grade, ETA, status. OWNER-only like the rest of this
+   * controller: buy prices are the shop's cost base, not something the floor needs or should see.
+   */
+  @Patch('parts/:id/procurement')
+  setProcurement(
+    @CurrentUser() user: AuthContext,
+    @Param('id') id: string,
+    @Body() dto: SetProcurementDto,
+  ): Promise<ScopePartView> {
+    return this.parts.setProcurement(user.tenantId, id, {
+      ...dto,
+      expectedAt:
+        dto.expectedAt === undefined ? undefined : dto.expectedAt ? new Date(dto.expectedAt) : null,
+    });
+  }
+
+  /** Goods-received check-in. Quantities accumulate; a partial delivery stays back-ordered. */
+  @Post('parts/:id/receive')
+  receive(
+    @CurrentUser() user: AuthContext,
+    @Param('id') id: string,
+    @Body() dto: ReceivePartDto,
+  ): Promise<ScopePartView> {
+    return this.parts.receive(user.tenantId, id, dto.quantity);
+  }
+
+  /** Parts margin for the job — the number the card exists to make visible. */
+  @Get('work-items/:jobId/parts-list/margin')
+  margin(@CurrentUser() user: AuthContext, @Param('jobId') jobId: string): Promise<PartsSummary> {
+    return this.parts.marginForJob(user.tenantId, jobId);
+  }
+
   @Post('work-items/:jobId/parts-list/quote')
   buildQuote(@CurrentUser() user: AuthContext, @Param('jobId') jobId: string): Promise<QuoteView> {
     return this.parts.buildQuote(user.tenantId, jobId);
