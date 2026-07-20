@@ -147,6 +147,7 @@ jobs:
           npx prisma db execute --file prisma/sql/0042_inventory_par.sql --schema prisma/schema.prisma
           npx prisma db execute --file prisma/sql/0043_time_clock.sql --schema prisma/schema.prisma
           npx prisma db execute --file prisma/sql/0044_fleet.sql --schema prisma/schema.prisma
+          npx prisma db execute --file prisma/sql/0045_job_embedding.sql --schema prisma/schema.prisma
       # Guard the hand-written list above: a migration that exists but is never applied here means the
       # RLS gate and every integration test run against a schema that isn't the real one. Because this
       # job only runs when SUPABASE_CONFIGURED is set, such a gap can sit unnoticed indefinitely.
