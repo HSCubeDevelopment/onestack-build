@@ -8,6 +8,7 @@ import { DamageScopeController } from './damage-scope.controller';
 import { DamageScopeService } from './damage-scope.service';
 import { EMBEDDER, Embedder } from './embedder';
 import { EmbeddingIndexService } from './embedding-index.service';
+import { SimilarJobsService } from './similar-jobs.service';
 import { PurchaseOrderController } from './purchase-order.controller';
 import { PurchaseOrderService } from './purchase-order.service';
 import {
@@ -53,6 +54,7 @@ import { StubEmbedder } from './stub-embedder';
       useFactory: (): PurchaseOrderSender => new NoopPurchaseOrderSender(),
     },
     EmbeddingIndexService,
+    SimilarJobsService,
     {
       // Embedding vendor boundary (card 60.3). Deliberately stub-only for now: Anthropic has no
       // embeddings endpoint, so a real provider means a NEW vendor receiving customer damage photos —
@@ -62,6 +64,6 @@ import { StubEmbedder } from './stub-embedder';
       useFactory: (): Embedder => new StubEmbedder(),
     },
   ],
-  exports: [EmbeddingIndexService],
+  exports: [EmbeddingIndexService, SimilarJobsService],
 })
 export class AiModule {}
