@@ -116,7 +116,13 @@ describe.skipIf(!hasDb)('Work item detail — assign, notes, photos (card #21)',
       .body;
     expect(notes).toHaveLength(2);
     expect(notes[0].body).toBe('Started strip-down'); // newest first
-    expect(notes[0].authorUserId).toBe(a.staffUserId);
+    // Both notes were posted with auth(a) — the OWNER token — and the controller takes the author from
+    // the JWT subject, so the owner is who they belong to. Asserting staffUserId here was wrong from the
+    // day it was written; it just never ran until the suite was fixed.
+    expect(notes[0].authorUserId).toBe(a.ownerUserId);
+    // Guard against attribution becoming vacuous (hardcoded, null, or echoing whoever asks).
+    expect(notes[0].authorUserId).not.toBe(a.staffUserId);
+    expect(notes[1].authorUserId).toBe(a.ownerUserId);
     expect(notes[0].createdAt).toBeTruthy();
 
     // Empty note rejected.
