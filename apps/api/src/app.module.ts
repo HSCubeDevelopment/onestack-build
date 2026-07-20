@@ -51,6 +51,7 @@ import { TagsModule } from './tags/tags.module';
 import { TenantModule } from './tenancy/tenant.module';
 import { TimelineModule } from './timeline/timeline.module';
 import { TerminologyModule } from './terminology/terminology.module';
+import { VehicleProfileModule } from './vehicle-profile/vehicle-profile.module';
 import { WorkItemModule } from './work-items/work-item.module';
 
 @Module({
@@ -71,6 +72,7 @@ import { WorkItemModule } from './work-items/work-item.module';
     TerminologyModule, // global: TerminologyService (pack-driven labels for core concepts)
     ContactsModule,
     SchedulingModule, // toggleable module (OFF by default) — demonstrates feature enforcement
+    VehicleProfileModule, // card 11.1 — pull up a car
     WorkItemModule,
     SubjectModule,
     LineItemsModule, // shared Quote/Invoice line items (#6.9)

@@ -118,6 +118,28 @@ export class WorkItemService {
     return rows.map(toView);
   }
 
+  /**
+   * Every work item linked to a given subject, newest first (card 11.1 — "pull up a car").
+   *
+   * Exposed as a service method rather than letting callers query `onestack_work_item_subject`
+   * themselves: that join table belongs to this module, and §5 says modules talk through services, not
+   * each other's tables. Tenant-scoped like every other read here.
+   */
+  async listForSubject(tenantId: string, subjectId: string): Promise<WorkItemView[]> {
+    const rows = await this.tenants.runInTenant(tenantId, async (tx) => {
+      const links = await tx.workItemSubject.findMany({
+        where: { subjectId },
+        select: { workItemId: true },
+      });
+      if (links.length === 0) return [];
+      return tx.workItem.findMany({
+        where: { id: { in: links.map((l) => l.workItemId) }, deletedAt: null },
+        orderBy: { createdAt: 'desc' },
+      });
+    });
+    return rows.map(toView);
+  }
+
   /** Update mutable fields/assignees. CANNOT change state — that is `transition` only (card #6.3). */
   async update(
     tenantId: string,
