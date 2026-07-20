@@ -1,4 +1,14 @@
-import { IsEmail, IsObject, IsOptional, IsString, MaxLength, MinLength } from 'class-validator';
+import {
+  IsEmail,
+  IsObject,
+  IsOptional,
+  IsString,
+  MaxLength,
+  MinLength,
+  ValidateNested,
+} from 'class-validator';
+import { Type } from 'class-transformer';
+import { AddressDto } from './address.dto';
 
 export class CreateContactDto {
   @IsString()
@@ -15,6 +25,12 @@ export class CreateContactDto {
   @IsOptional()
   @IsEmail()
   email?: string;
+
+  /** Postal address (card 10.1). Core, not pack-specific — every vertical's customer has one. */
+  @IsOptional()
+  @ValidateNested()
+  @Type(() => AddressDto)
+  address?: AddressDto;
 
   @IsOptional()
   @IsObject()

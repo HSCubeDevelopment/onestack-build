@@ -18,9 +18,17 @@ const vin = z
   .regex(/^[A-HJ-NPR-Za-hj-npr-z0-9]{17}$/, 'VIN must be 17 characters (no I, O or Q)')
   .optional();
 
+/**
+ * Paint code — the manufacturer's colour identifier stamped on the compliance plate (e.g. '1G3', 'PXR').
+ * Card 10.1: a panel shop needs it to mix paint, and it is the one vehicle detail that cannot be looked
+ * up from the rego. Free-form because the format varies by manufacturer; trimmed and length-capped only.
+ */
+const paintCode = z.string().trim().min(1).max(20).optional();
+
 export const VehicleFields = z.object({
   rego,
   vin,
+  paintCode,
   make: z.string().min(1),
   model: z.string().min(1),
   year: z.number().int().gte(1900).lte(2100),

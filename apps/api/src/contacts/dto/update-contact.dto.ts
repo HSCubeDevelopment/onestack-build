@@ -1,4 +1,14 @@
-import { IsEmail, IsObject, IsOptional, IsString, MaxLength, MinLength } from 'class-validator';
+import {
+  IsEmail,
+  IsObject,
+  IsOptional,
+  IsString,
+  MaxLength,
+  MinLength,
+  ValidateNested,
+} from 'class-validator';
+import { Type } from 'class-transformer';
+import { AddressDto } from './address.dto';
 
 export class UpdateContactDto {
   @IsOptional()
@@ -16,6 +26,12 @@ export class UpdateContactDto {
   @IsOptional()
   @IsEmail()
   email?: string;
+
+  /** Postal address (card 10.1). Send null to clear it; omit to leave it unchanged. */
+  @IsOptional()
+  @ValidateNested()
+  @Type(() => AddressDto)
+  address?: AddressDto | null;
 
   @IsOptional()
   @IsObject()
