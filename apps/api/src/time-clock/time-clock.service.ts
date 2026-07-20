@@ -1,6 +1,7 @@
 import { BadRequestException, Injectable } from '@nestjs/common';
 import type { AppRole } from '../auth/auth.types';
 import { TenantService } from '../tenancy/tenant.service';
+import { checkGeofence, type Coords } from './geofence';
 
 export interface TimeEntryView {
   id: string;
@@ -58,13 +59,69 @@ export class TimeClockService {
   constructor(private readonly tenants: TenantService) {}
 
   /** Start a session. Errors if the user is already on the clock. */
-  async checkIn(tenantId: string, userId: string): Promise<ClockStatus> {
+  /**
+   * Start a session, gated on being at the workshop (card 53.1).
+   *
+   * The gate BLOCKS by default and allows an explicit override with a reason. A worker is never
+   * silently locked out — a denied permission or a phone that cannot see the sky must not cost someone
+   * their shift — but an override is recorded so the owner reviews it rather than it passing unnoticed.
+   *
+   * Only a distance and a verdict are stored. Coordinates arrive, are judged, and are discarded.
+   */
+  async checkIn(
+    tenantId: string,
+    userId: string,
+    position?: Coords | null,
+    override?: { reason: string } | null,
+  ): Promise<ClockStatus> {
+    const fence = checkGeofence(position);
+
+    if (!fence.allowed) {
+      const reason = override?.reason?.trim();
+      if (!reason) {
+        // 400 with the verdict attached, so the client can offer the override path rather than
+        // leaving the worker at a dead end.
+        throw new BadRequestException({
+          message: fence.reason,
+          geofence: { verdict: fence.verdict, distanceMetres: fence.distanceMetres },
+          canOverride: true,
+        });
+      }
+      if (reason.length < 4) {
+        throw new BadRequestException('Give a short reason for checking in off site');
+      }
+    }
+
     return this.tenants.runInTenant(tenantId, async (tx) => {
       const open = await tx.timeEntry.findFirst({ where: { userId, clockOutAt: null } });
       if (open) throw new BadRequestException('Already checked in');
-      const row = await tx.timeEntry.create({ data: { tenantId, userId } });
+      const row = await tx.timeEntry.create({
+        data: {
+          tenantId,
+          userId,
+          geofenceVerdict: fence.verdict,
+          geofenceDistanceMetres: fence.distanceMetres,
+          geofenceOverridden: !fence.allowed,
+          geofenceOverrideReason: fence.allowed ? null : (override?.reason?.trim() ?? null),
+        },
+      });
       return { onClock: true, entry: toView(row) };
     });
+  }
+
+  /**
+   * Check-ins that were overridden — the owner's review queue. Owner-only at the controller: an
+   * employee should not be able to read who else clocked on from where.
+   */
+  async overrides(tenantId: string): Promise<TimeEntryView[]> {
+    const rows = await this.tenants.runInTenant(tenantId, (tx) =>
+      tx.timeEntry.findMany({
+        where: { geofenceOverridden: true },
+        orderBy: { clockInAt: 'desc' },
+        take: 100,
+      }),
+    );
+    return rows.map(toView);
   }
 
   /** End the open session. Errors if the user is not on the clock. */
