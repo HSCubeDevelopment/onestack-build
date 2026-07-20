@@ -3,11 +3,22 @@ import { Prisma } from '@prisma/client';
 import { CustomFieldService } from '../custom-fields/custom-field.service';
 import { TenantService } from '../tenancy/tenant.service';
 
+/** Postal address on a contact (card 10.1). Core: every vertical's customer has one. */
+export interface ContactAddress {
+  line1?: string;
+  line2?: string;
+  suburb?: string;
+  state?: string;
+  postcode?: string;
+  country?: string;
+}
+
 export interface ContactView {
   id: string;
   displayName: string;
   email: string | null;
   phone: string | null;
+  address: ContactAddress | null;
   fields: Record<string, unknown>;
   customFields: Record<string, unknown>;
   createdAt: Date;
@@ -17,6 +28,7 @@ export interface CreateContactInput {
   displayName: string;
   phone: string;
   email?: string;
+  address?: ContactAddress;
   fields?: Record<string, unknown>;
   customFields?: Record<string, unknown>;
 }
@@ -24,6 +36,7 @@ export interface UpdateContactInput {
   displayName?: string;
   phone?: string;
   email?: string | null;
+  address?: ContactAddress | null;
   fields?: Record<string, unknown>;
   customFields?: Record<string, unknown>;
 }
@@ -53,7 +66,7 @@ export class ContactsService {
           displayName: input.displayName,
           phone: input.phone,
           email: input.email ?? null,
-          fields: (input.fields ?? {}) as Prisma.InputJsonValue,
+          fields: withAddress(input.fields, input.address) as Prisma.InputJsonValue,
           customFields: customFields as Prisma.InputJsonValue,
         },
       });
@@ -86,6 +99,14 @@ export class ContactsService {
       if (patch.displayName !== undefined) data.displayName = patch.displayName;
       if (patch.phone !== undefined) data.phone = patch.phone;
       if (patch.email !== undefined) data.email = patch.email;
+      // Address lives inside the `fields` JSONB, so a patch must merge rather than replace — otherwise
+      // updating an address would silently wipe every other pack-specific field on the contact.
+      if (patch.address !== undefined || patch.fields !== undefined) {
+        const base = patch.fields ?? (current.fields as Record<string, unknown>) ?? {};
+        data.fields = (
+          patch.address !== undefined ? withAddress(base, patch.address) : base
+        ) as Prisma.InputJsonValue;
+      }
       if (patch.fields !== undefined) data.fields = patch.fields as Prisma.InputJsonValue;
       if (validatedCustom !== undefined) {
         // Merge over the existing bag so values of ARCHIVED fields are preserved (not hard-deleted).
@@ -146,8 +167,44 @@ function toView(c: {
     displayName: c.displayName,
     email: c.email,
     phone: c.phone,
+    address: readAddress(c.fields),
     fields: (c.fields as Record<string, unknown>) ?? {},
     customFields: (c.customFields as Record<string, unknown>) ?? {},
     createdAt: c.createdAt,
   };
+}
+
+/**
+ * Fold an address into the `fields` JSONB. Passing null clears it; passing undefined leaves it alone.
+ * Address is stored here rather than in its own columns because Contact already carries a flexible
+ * `fields` blob, and adding columns for it would be a migration on the busiest table in the system for
+ * data that is optional and rarely queried.
+ */
+function withAddress(
+  fields: Record<string, unknown> | undefined,
+  address: ContactAddress | null | undefined,
+): Record<string, unknown> {
+  const base = { ...(fields ?? {}) };
+  if (address === undefined) return base;
+  if (address === null) {
+    delete base.address;
+    return base;
+  }
+  // Drop empty parts so a half-filled form does not persist a pile of empty strings.
+  const cleaned = Object.fromEntries(
+    Object.entries(address).filter(([, v]) => typeof v === 'string' && v.trim() !== ''),
+  );
+  if (Object.keys(cleaned).length === 0) {
+    delete base.address;
+    return base;
+  }
+  base.address = cleaned;
+  return base;
+}
+
+/** Read the address back out of the JSONB, tolerating a contact created before this existed. */
+function readAddress(fields: unknown): ContactAddress | null {
+  const blob = (fields as Record<string, unknown> | null)?.address;
+  if (!blob || typeof blob !== 'object') return null;
+  return blob as ContactAddress;
 }

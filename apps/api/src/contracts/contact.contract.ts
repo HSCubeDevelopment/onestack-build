@@ -7,6 +7,17 @@ export const ContactContract = z.object({
   displayName: z.string().min(1),
   email: z.string().email().nullable(),
   phone: z.string().nullable(),
+  /** Postal address (card 10.1). Core, not pack-specific — every vertical's customer has one. */
+  address: z
+    .object({
+      line1: z.string().optional(),
+      line2: z.string().optional(),
+      suburb: z.string().optional(),
+      state: z.string().optional(),
+      postcode: z.string().optional(),
+      country: z.string().optional(),
+    })
+    .nullable(),
   fields: z.record(z.unknown()),
   customFields: z.record(z.unknown()),
   createdAt: z.date(),
