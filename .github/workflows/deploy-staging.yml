@@ -41,13 +41,17 @@ jobs:
           node-version-file: .nvmrc
           cache: npm
 
+      # Official action, pinned to a commit SHA. Installing flyctl by piping fly.io/install.sh into a
+      # shell would hand anyone who compromises that URL arbitrary code execution in a runner holding
+      # our deploy tokens — the repo's own SAST gate blocks that pattern, correctly.
+      - name: Set up flyctl
+        if: ${{ env.FLY_API_TOKEN != '' }}
+        uses: superfly/flyctl-actions/setup-flyctl@ed8efb33836e8b2096c7fd3ba1c8afe303ebbff1 # 1.6
+
       - name: Deploy API + workers → Fly.io (Sydney)
         id: fly
         if: ${{ env.FLY_API_TOKEN != '' }}
-        run: |
-          curl -L https://fly.io/install.sh | sh
-          export PATH="$HOME/.fly/bin:$PATH"
-          flyctl deploy --config apps/api/fly.toml --remote-only
+        run: flyctl deploy --config apps/api/fly.toml --remote-only
 
       - name: Deploy Web → Vercel (syd1)
         id: vercel
