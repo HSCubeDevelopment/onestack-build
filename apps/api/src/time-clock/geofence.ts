@@ -27,21 +27,91 @@ export interface Geofence {
 }
 
 /**
- * The workshop. Coordinates for 15 Lipton Drive, Thomastown VIC 3074.
+ * Fallback centre for the workshop: 15 Lipton Drive, Thomastown VIC 3074.
  *
- * NOTE FOR REVIEW: these are approximate, taken from the street address rather than a surveyed point.
- * Stand in the workshop doorway, read the phone's coordinates, and correct them before go-live — a
- * geofence centred 50 m off means the far end of the yard falls outside it.
+ * ⚠️ THESE ARE GEOCODED FROM THE STREET ADDRESS, NOT SURVEYED. They are a starting point, not a
+ * measurement. A centre 50 m out puts the far end of the yard outside the fence and refuses a worker
+ * standing at their own bench.
  *
- * The 150 m radius is chosen to cover an industrial lot plus its street parking. Tighten it once the
- * centre is accurate; a radius smaller than the site is how you get false refusals every morning.
+ * They are the DEFAULT, not the value — see `readWorkshopFromEnv`. Correcting them is a config
+ * change, not a code change: stand in the workshop, read the phone's coordinates, set
+ * WORKSHOP_LATITUDE / WORKSHOP_LONGITUDE, restart. No deploy, no developer.
  */
-export const WORKSHOP: Geofence = {
+const DEFAULT_WORKSHOP: Geofence = {
   label: '15 Lipton Drive, Thomastown VIC',
   latitude: -37.6829,
   longitude: 145.0169,
+  // Covers an industrial lot plus its street parking. Tighten once the centre is accurate — a radius
+  // smaller than the site is how you get false refusals every morning; larger is merely generous.
   radiusMetres: 150,
 };
+
+/** A finite number from the environment, or null. Rejects '', 'abc' and a missing variable alike. */
+function envNumber(raw: string | undefined): number | null {
+  if (raw === undefined || raw.trim() === '') return null;
+  const n = Number(raw);
+  return Number.isFinite(n) ? n : null;
+}
+
+/**
+ * Read the fence from the environment, falling back to the geocoded default.
+ *
+ * Validates rather than trusts: a latitude of 200, a negative radius, or a typo'd coordinate would
+ * otherwise produce a fence that silently refuses everyone or accepts the whole state. An invalid
+ * value falls back to the default AND is reported, so a bad config is loud rather than mysterious.
+ */
+export function readWorkshopFromEnv(env: NodeJS.ProcessEnv = process.env): {
+  fence: Geofence;
+  problems: string[];
+} {
+  const problems: string[] = [];
+  const lat = envNumber(env.WORKSHOP_LATITUDE);
+  const lon = envNumber(env.WORKSHOP_LONGITUDE);
+  const radius = envNumber(env.WORKSHOP_RADIUS_METRES);
+  const label = env.WORKSHOP_LABEL?.trim();
+
+  // Latitude and longitude move together. Setting one is always a mistake, and silently using a new
+  // latitude with the default longitude would put the fence in a paddock.
+  const hasOne = lat !== null || lon !== null;
+  const hasBoth = lat !== null && lon !== null;
+  if (hasOne && !hasBoth) {
+    problems.push('Set BOTH WORKSHOP_LATITUDE and WORKSHOP_LONGITUDE, or neither.');
+  }
+
+  let latitude = DEFAULT_WORKSHOP.latitude;
+  let longitude = DEFAULT_WORKSHOP.longitude;
+  if (hasBoth) {
+    if (!isValidCoords({ latitude: lat, longitude: lon })) {
+      problems.push(`WORKSHOP_LATITUDE/LONGITUDE (${lat}, ${lon}) is not a valid coordinate.`);
+    } else {
+      latitude = lat;
+      longitude = lon;
+    }
+  }
+
+  let radiusMetres = DEFAULT_WORKSHOP.radiusMetres;
+  if (radius !== null) {
+    // A fence under 20 m is smaller than GPS error on a good day; over 5 km is not a workshop.
+    if (radius < 20 || radius > 5000) {
+      problems.push(`WORKSHOP_RADIUS_METRES (${radius}) must be between 20 and 5000.`);
+    } else {
+      radiusMetres = radius;
+    }
+  }
+
+  return {
+    fence: { label: label || DEFAULT_WORKSHOP.label, latitude, longitude, radiusMetres },
+    problems,
+  };
+}
+
+/**
+ * The active fence. Resolved once at module load, like any other config.
+ *
+ * Kept as a named export so existing callers and tests are unchanged, but it is no longer a literal:
+ * set the WORKSHOP_* variables to move it.
+ */
+export const WORKSHOP: Geofence = readWorkshopFromEnv().fence;
 
 /**
  * A GPS fix worse than this tells us almost nothing — a 500 m accuracy circle covers the whole
