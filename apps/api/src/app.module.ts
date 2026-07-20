@@ -51,6 +51,7 @@ import { TagsModule } from './tags/tags.module';
 import { TenantModule } from './tenancy/tenant.module';
 import { TimelineModule } from './timeline/timeline.module';
 import { TerminologyModule } from './terminology/terminology.module';
+import { PipelineModule } from './pipeline/pipeline.module';
 import { VehicleProfileModule } from './vehicle-profile/vehicle-profile.module';
 import { WorkItemModule } from './work-items/work-item.module';
 
@@ -72,6 +73,7 @@ import { WorkItemModule } from './work-items/work-item.module';
     TerminologyModule, // global: TerminologyService (pack-driven labels for core concepts)
     ContactsModule,
     SchedulingModule, // toggleable module (OFF by default) — demonstrates feature enforcement
+    PipelineModule, // card 52.3 — operations lifecycle pipeline
     VehicleProfileModule, // card 11.1 — pull up a car
     WorkItemModule,
     SubjectModule,
