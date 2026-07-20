@@ -1,5 +1,12 @@
 import { describe, expect, it } from 'vitest';
-import { checkGeofence, distanceMetres, formatDistance, isValidCoords, WORKSHOP } from './geofence';
+import {
+  checkGeofence,
+  distanceMetres,
+  formatDistance,
+  isValidCoords,
+  readWorkshopFromEnv,
+  WORKSHOP,
+} from './geofence';
 
 /** A position offset from the workshop by roughly `m` metres, due north. */
 const northOf = (m: number) => ({
@@ -115,5 +122,73 @@ describe('formatDistance', () => {
     expect(formatDistance(240)).toBe('240 m');
     expect(formatDistance(1500)).toBe('1.5 km');
     expect(formatDistance(42_000)).toBe('42 km');
+  });
+});
+
+describe('readWorkshopFromEnv', () => {
+  it('falls back to the geocoded default when nothing is set', () => {
+    const { fence, problems } = readWorkshopFromEnv({});
+    expect(problems).toEqual([]);
+    expect(fence.label).toMatch(/Lipton Drive/);
+    expect(fence.radiusMetres).toBe(150);
+  });
+
+  it('takes a corrected centre from the environment — no code change, no deploy', () => {
+    // The whole point of this function: someone stands in the workshop, reads their phone, sets two
+    // variables, restarts. Correcting a geocoded guess stops being a developer task.
+    const { fence, problems } = readWorkshopFromEnv({
+      WORKSHOP_LATITUDE: '-37.68351',
+      WORKSHOP_LONGITUDE: '145.01742',
+      WORKSHOP_RADIUS_METRES: '90',
+      WORKSHOP_LABEL: '15 Lipton Dr (surveyed)',
+    });
+    expect(problems).toEqual([]);
+    expect(fence.latitude).toBeCloseTo(-37.68351, 5);
+    expect(fence.longitude).toBeCloseTo(145.01742, 5);
+    expect(fence.radiusMetres).toBe(90);
+    expect(fence.label).toBe('15 Lipton Dr (surveyed)');
+  });
+
+  it('refuses half a coordinate rather than half-applying it', () => {
+    // A new latitude silently paired with the default longitude is the worst outcome available: a
+    // plausible-looking fence centred somewhere nobody works.
+    const { fence, problems } = readWorkshopFromEnv({ WORKSHOP_LATITUDE: '-37.68' });
+    expect(problems.join(' ')).toMatch(/BOTH/);
+    expect(fence.latitude).toBe(-37.6829);
+    expect(fence.longitude).toBe(145.0169);
+  });
+
+  it('rejects an impossible coordinate instead of fencing the ocean', () => {
+    const { fence, problems } = readWorkshopFromEnv({
+      WORKSHOP_LATITUDE: '200',
+      WORKSHOP_LONGITUDE: '145',
+    });
+    expect(problems.join(' ')).toMatch(/not a valid coordinate/);
+    expect(fence.latitude).toBe(-37.6829);
+  });
+
+  it('rejects a radius tighter than GPS error, or wider than a suburb', () => {
+    expect(readWorkshopFromEnv({ WORKSHOP_RADIUS_METRES: '5' }).problems.join(' ')).toMatch(
+      /between 20 and 5000/,
+    );
+    expect(readWorkshopFromEnv({ WORKSHOP_RADIUS_METRES: '99999' }).problems.join(' ')).toMatch(
+      /between 20 and 5000/,
+    );
+    // …and keeps the safe default rather than applying the nonsense value.
+    expect(readWorkshopFromEnv({ WORKSHOP_RADIUS_METRES: '5' }).fence.radiusMetres).toBe(150);
+  });
+
+  it('treats blank and non-numeric values as unset, never as NaN', () => {
+    // `Number('')` is 0, which would put the fence off the coast of Africa. This is the trap.
+    const { fence, problems } = readWorkshopFromEnv({
+      WORKSHOP_LATITUDE: '',
+      WORKSHOP_LONGITUDE: '',
+      WORKSHOP_RADIUS_METRES: 'abc',
+      WORKSHOP_LABEL: '   ',
+    });
+    expect(problems).toEqual([]);
+    expect(fence.latitude).toBe(-37.6829);
+    expect(fence.radiusMetres).toBe(150);
+    expect(fence.label).toMatch(/Lipton Drive/);
   });
 });
