@@ -21,7 +21,8 @@
     "test:int": "vitest run test/",
     "test:cov": "vitest run src/ --coverage",
     "coverage:ratchet": "tsx scripts/coverage-ratchet.ts",
-    "test:e2e": "playwright test"
+    "test:e2e": "playwright test",
+    "eval:retrieval": "tsx scripts/eval-retrieval.ts"
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^0.71.2",
