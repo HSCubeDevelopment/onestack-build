@@ -51,6 +51,19 @@ jobs:
           APPROVED_DESTRUCTIVE: ${{ contains(github.event.pull_request.labels.*.name, 'approved-destructive-migration') }}
         run: npm run check:migrations
 
+      # A migration that exists but is never applied in ci.yml means the RLS gate and every
+      # integration test run against a schema that isn't the real one. This is a pure file check with
+      # no database involved, so it belongs in a job that ALWAYS runs — living inside the DB-gated
+      # job meant it only ran when Supabase was configured, i.e. never, which is how it drifted.
+      - name: Every migration is applied in CI
+        working-directory: apps/api
+        run: |
+          missing=0
+          for f in $(ls prisma/sql/*.sql | grep -vE '_down|supabase-full' | xargs -n1 basename | sort); do
+            grep -q "$f" ../../.github/workflows/ci.yml || { echo "::error::$f is not applied in ci.yml"; missing=1; }
+          done
+          exit $missing
+
   # Card #5.3 — security gates: dependency audit + secret scan + SAST. All blocking.
   security:
     name: security gates
@@ -80,6 +93,23 @@ jobs:
 
   # Tenant-isolation + RLS suite against a Supabase TEST project. Enable with repo var
   # SUPABASE_CONFIGURED=true + the secrets below.
+  # The RLS gate below only runs when Supabase is configured, and a skipped check renders the same
+  # green as a passing one. This job always runs and says so out loud, so "tenant isolation was never
+  # verified" cannot keep reading as "tenant isolation is fine". It warns rather than fails: blocking
+  # every PR on a missing repo secret would punish the wrong people.
+  isolation-status:
+    name: tenant-isolation configured?
+    runs-on: ubuntu-latest
+    steps:
+      - name: Report
+        run: |
+          if [ "${{ vars.SUPABASE_CONFIGURED }}" = 'true' ]; then
+            echo "Tenant-isolation suite is enabled."
+          else
+            echo "::warning title=Tenant isolation NOT verified::The rls-gate job is skipped because the repo variable SUPABASE_CONFIGURED is not 'true'. RLS policies and cross-tenant tests are NOT being checked in CI. Set SUPABASE_CONFIGURED=true and the DATABASE_URL / DIRECT_URL / APP_DATABASE_URL / SUPABASE_JWT_SECRET secrets against a TEST Supabase project."
+            echo "Tenant isolation was NOT verified in CI. See the warning above."
+          fi
+
   integration:
     name: rls-gate · tenant-isolation
     runs-on: ubuntu-latest
@@ -147,16 +177,6 @@ jobs:
           npx prisma db execute --file prisma/sql/0042_inventory_par.sql --schema prisma/schema.prisma
           npx prisma db execute --file prisma/sql/0043_time_clock.sql --schema prisma/schema.prisma
           npx prisma db execute --file prisma/sql/0044_fleet.sql --schema prisma/schema.prisma
-      # Guard the hand-written list above: a migration that exists but is never applied here means the
-      # RLS gate and every integration test run against a schema that isn't the real one. Because this
-      # job only runs when SUPABASE_CONFIGURED is set, such a gap can sit unnoticed indefinitely.
-      - name: Every migration is applied above
-        run: |
-          missing=0
-          for f in $(ls prisma/sql/*.sql | grep -vE '_down|supabase-full' | xargs -n1 basename | sort); do
-            grep -q "$f" ../../.github/workflows/ci.yml || { echo "::error::$f is not applied in ci.yml"; missing=1; }
-          done
-          exit $missing
       - name: RLS gate
         run: npm run check:rls
       - name: Tenant-isolation + integration tests
