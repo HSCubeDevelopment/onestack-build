@@ -2,48 +2,45 @@
 
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
-import { Briefcase, Home, KanbanSquare, MoreHorizontal, Users } from 'lucide-react';
+import { MoreHorizontal } from 'lucide-react';
+import { navFor, type NavItem } from '@/lib/nav';
 
 /**
- * Card 303 — the bottom tab bar, shown only on phones.
+ * The bottom tab bar, shown only on phones.
  *
  * This is the single thing that most decides whether an installed web app reads as an app or as a
- * website. A sidebar behind a hamburger is a website; a fixed bottom bar with five destinations under
- * the thumb is an app. The five here are the prototype's own tabs, not a guess.
+ * website. A sidebar behind a hamburger is a website; a fixed bar with a handful of destinations under
+ * the thumb is an app.
  *
- * Hidden at >=900px, where the sidebar takes over — so the desktop admin is untouched.
+ * The destinations are DERIVED from `navFor(role)` rather than hand-listed. An earlier version had its
+ * own list and put Dashboard in the first slot for everyone — but Dashboard is owner-only, so an
+ * employee's home tab led straight to a screen whose every API call returns 403. Deriving from the same
+ * list the sidebar uses means the tab bar cannot offer a door the server will slam.
+ *
+ * Hidden at >=900px, where the sidebar takes over, so the desktop admin is untouched.
  */
 
-/**
- * The five destinations. These are the app's REAL routes — the prototype's tab labels included a
- * "Quote" tab, but the web app has no /quotes index (only /quotes/[id]), so pointing a tab at it
- * gave a dead 404. The board is the screen this shop lives in, so it takes that slot instead.
- */
-const TABS = [
-  { href: '/', label: 'Home', Icon: Home },
-  { href: '/board', label: 'Board', Icon: KanbanSquare },
-  { href: '/jobs', label: 'Jobs', Icon: Briefcase },
-  { href: '/customers', label: 'People', Icon: Users },
-  { href: '/more', label: 'More', Icon: MoreHorizontal },
-] as const;
-
-/**
- * An employee sees their own jobs, not the whole-shop board (card #12) — the API returns 403 for it,
- * so showing the tab would only offer them a door that slams. They keep the other four.
- */
-const STAFF_TABS = TABS.filter((t) => t.href !== '/board');
+/** Preferred order for the first four slots. Anything not allowed for the role is skipped. */
+const PREFERRED = ['/', '/board', '/jobs', '/customers', '/roster', '/time-clock'];
 
 export function MobileTabBar({ role }: { role: 'OWNER' | 'STAFF' }) {
   const pathname = usePathname();
-  const tabs = role === 'STAFF' ? STAFF_TABS : TABS;
 
   // The sign-in screen is not part of the shell — a tab bar over a login form looks broken.
   if (pathname?.startsWith('/login')) return null;
 
+  const allowed = navFor(role).filter((r): r is NavItem => !('section' in r));
+  const byHref = new Map(allowed.map((r) => [r.href, r]));
+
+  // Four from the preferred order, then More — five is the most a thumb reaches comfortably.
+  const tabs = PREFERRED.map((h) => byHref.get(h))
+    .filter((r): r is NavItem => r !== undefined)
+    .slice(0, 4);
+
   return (
     <nav className="tabbar" aria-label="Primary">
       {tabs.map(({ href, label, Icon }) => {
-        // Exact match for root, prefix match elsewhere, so /jobs/123 still lights up "Jobs".
+        // Exact match for root, prefix elsewhere, so /jobs/123 still lights up "Jobs".
         const active = href === '/' ? pathname === '/' : pathname?.startsWith(href);
         return (
           <Link
@@ -57,6 +54,15 @@ export function MobileTabBar({ role }: { role: 'OWNER' | 'STAFF' }) {
           </Link>
         );
       })}
+
+      <Link
+        href="/more"
+        className={`tabbar-item${pathname === '/more' ? ' is-active' : ''}`}
+        aria-current={pathname === '/more' ? 'page' : undefined}
+      >
+        <MoreHorizontal size={22} strokeWidth={pathname === '/more' ? 2.4 : 1.9} aria-hidden />
+        <span>More</span>
+      </Link>
     </nav>
   );
 }
