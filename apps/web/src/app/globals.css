@@ -1077,8 +1077,12 @@ textarea.input {
      becomes the scroll container via :has(). That avoids editing 20-odd pages to add a div, and
      `display: block` on the table itself — the other common trick — would destroy its column layout.
      :has() is supported by every browser that can install a PWA; the fallback below covers the rest. */
-  .card:has(> .table),
-  .card:has(> table),
+  /* ANY direct parent of a table, not just .card. Tables appear bare inside .card on some pages and
+     inside a plain <section> on others (time clock, roster), and the second group was still clipped
+     after the first fix. Matching on the relationship rather than on a class covers both, and every
+     page added later, without anyone having to remember a wrapper. */
+  :has(> .table),
+  :has(> table),
   .table-wrap,
   .board,
   .scroll-x {
@@ -1097,8 +1101,8 @@ textarea.input {
     }
   }
 
-  /* A table must be allowed to exceed the card, or it just squashes into unreadable columns. */
-  .card .table {
+  /* A table must be allowed to exceed its container, or it squashes into unreadable columns. */
+  .table {
     min-width: max-content;
   }
 
@@ -1182,4 +1186,43 @@ textarea.input {
 .more-chev {
   flex: 0 0 auto;
   color: var(--text-faint);
+}
+
+@media (max-width: 599px) {
+  /* Wide areas DO scroll, but with no scrollbar on iOS they look truncated — a user sees a cut-off
+     column and concludes the app is broken rather than swiping. These give the affordance back:
+     a always-visible slim scrollbar, and a right-edge fade that says "there is more this way".
+     Applied to the containers we made scrollable above, not globally. */
+  :has(> .table),
+  :has(> table),
+  .board,
+  .scroll-x,
+  [data-scroll-x] {
+    /* Firefox + Chromium honour this; it costs nothing where unsupported. */
+    scrollbar-width: thin;
+    /* The fade: a gradient pinned to the right edge that does not move with the content. */
+    background-image: linear-gradient(to left, var(--panel) 0 6px, transparent 24px);
+    background-attachment: local, scroll;
+  }
+  /* WebKit — iOS hides scrollbars entirely by default, which is the whole problem. */
+  :has(> .table)::-webkit-scrollbar,
+  .board::-webkit-scrollbar,
+  .scroll-x::-webkit-scrollbar,
+  [data-scroll-x]::-webkit-scrollbar {
+    height: 4px;
+    -webkit-appearance: none;
+  }
+  :has(> .table)::-webkit-scrollbar-thumb,
+  .board::-webkit-scrollbar-thumb,
+  .scroll-x::-webkit-scrollbar-thumb,
+  [data-scroll-x]::-webkit-scrollbar-thumb {
+    background: var(--border-strong);
+    border-radius: 999px;
+  }
+
+  /* The calendar's day grid is the widest thing in the app and had no marker at all. */
+  .cal-grid,
+  .calendar-grid {
+    scrollbar-width: thin;
+  }
 }
