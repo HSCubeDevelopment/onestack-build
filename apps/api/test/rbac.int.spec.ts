@@ -17,6 +17,11 @@ describe.skipIf(!hasDb)('auth + RBAC (HTTP)', () => {
   let admin: PrismaClient;
   let a: TestTenant;
   let b: TestTenant;
+  // A job in the automotive pack requires a customer (`fields.customerId`) and a subject
+  // (`requiresSubject: true` → the car). Creating one without both is a 400, so these are set up once
+  // and reused by every job this spec makes.
+  let customerId: string;
+  let vehicleId: string;
 
   beforeAll(async () => {
     admin = adminPrisma();
@@ -24,13 +29,48 @@ describe.skipIf(!hasDb)('auth + RBAC (HTTP)', () => {
     b = await makeTenant(admin, 'RBAC B');
     app = await createApp();
     await app.init();
+
+    customerId = (
+      await request(app.getHttpServer())
+        .post('/api/v1/contacts')
+        .set('Authorization', `Bearer ${a.ownerToken}`)
+        .send({ displayName: 'RBAC Customer', phone: '0400111222' })
+    ).body.id;
+    vehicleId = (
+      await request(app.getHttpServer())
+        .post(`/api/v1/contacts/${customerId}/vehicles`)
+        .set('Authorization', `Bearer ${a.ownerToken}`)
+        .send({ rego: 'RBAC01', make: 'Mazda', model: '3', year: 2019 })
+    ).body.id;
   });
 
   afterAll(async () => {
     await app.close();
+    // dropTenant only clears contacts + memberships. This spec now creates jobs, their subject links
+    // and a vehicle, so unwind those first — child-before-parent, or the deletes hit a foreign key.
+    // Same order as job-card.int.spec.ts, which builds the same shapes.
+    for (const t of [a.tenantId, b.tenantId]) {
+      for (const table of [
+        'onestack_work_item_subject',
+        'onestack_work_item',
+        'onestack_work_item_counter',
+        'onestack_subject',
+        'onestack_contact',
+      ]) {
+        await admin.$executeRawUnsafe(`DELETE FROM "${table}" WHERE "tenantId" = $1::uuid`, t);
+      }
+    }
     await dropTenant(admin, a.tenantId);
     await dropTenant(admin, b.tenantId);
     await admin.$disconnect();
+  });
+
+  /** The minimum valid body for a job in this pack. Callers add `assignees` as the test needs. */
+  const jobBody = (extra: Record<string, unknown> = {}) => ({
+    type: 'job',
+    fields: { customerId, description: 'RBAC fixture job' },
+    subjectIds: [vehicleId],
+    ...extra,
   });
 
   const http = () => request(app.getHttpServer());
@@ -152,12 +192,12 @@ describe.skipIf(!hasDb)('auth + RBAC (HTTP)', () => {
       const mine = await http()
         .post('/api/v1/work-items')
         .set('Authorization', `Bearer ${a.ownerToken}`)
-        .send({ type: 'job', fields: {}, assignees: [a.staffUserId] })
+        .send(jobBody({ assignees: [a.staffUserId] }))
         .expect(201);
       const theirs = await http()
         .post('/api/v1/work-items')
         .set('Authorization', `Bearer ${a.ownerToken}`)
-        .send({ type: 'job', fields: {}, assignees: [] })
+        .send(jobBody({ assignees: [] }))
         .expect(201);
 
       const staffList = await http()
@@ -191,7 +231,7 @@ describe.skipIf(!hasDb)('auth + RBAC (HTTP)', () => {
       const theirs = await http()
         .post('/api/v1/work-items')
         .set('Authorization', `Bearer ${a.ownerToken}`)
-        .send({ type: 'job', fields: {}, assignees: [] })
+        .send(jobBody({ assignees: [] }))
         .expect(201);
 
       await http()
@@ -209,7 +249,7 @@ describe.skipIf(!hasDb)('auth + RBAC (HTTP)', () => {
       const created = await http()
         .post('/api/v1/work-items')
         .set('Authorization', `Bearer ${a.staffToken}`)
-        .send({ type: 'job', fields: {} })
+        .send(jobBody())
         .expect(201);
       expect(created.body.assignees).toEqual([a.staffUserId]);
 
@@ -224,7 +264,7 @@ describe.skipIf(!hasDb)('auth + RBAC (HTTP)', () => {
       const theirs = await http()
         .post('/api/v1/work-items')
         .set('Authorization', `Bearer ${a.ownerToken}`)
-        .send({ type: 'job', fields: {}, assignees: [] })
+        .send(jobBody({ assignees: [] }))
         .expect(201);
 
       // The escalation this whole design hinges on: grant yourself a job, then read it "legitimately".

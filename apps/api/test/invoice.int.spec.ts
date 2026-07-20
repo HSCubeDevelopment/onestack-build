@@ -116,7 +116,12 @@ describe.skipIf(!hasDb)('Invoice (card #40)', () => {
       await http().post(`/api/v1/invoices/${inv.id}/mark-paid`).set(auth(a)).expect(201)
     ).body;
     expect(paid.status).toBe('Paid');
-    expect(paid.paidBy).toBe(a.staffUserId);
+    // Marked with auth(a) — the OWNER token — and taking payment is owner-only under deny-by-default
+    // RBAC, so the owner is who it must be recorded against. Asserting staffUserId was wrong from the
+    // day it was written; it just never ran until the suite was fixed.
+    expect(paid.paidBy).toBe(a.ownerUserId);
+    // Guard against attribution becoming vacuous (hardcoded, null, or echoing whoever asks).
+    expect(paid.paidBy).not.toBe(a.staffUserId);
     expect(paid.paidAt).toBeTruthy();
 
     // Editing a Paid invoice is prevented.
