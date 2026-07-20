@@ -189,6 +189,8 @@ function toView(c: {
     displayName: c.displayName,
     email: c.email,
     phone: c.phone,
+    address: ((c.fields as Record<string, unknown> | null)?.address ??
+      null) as ContactView['address'],
     fields: (c.fields as Record<string, unknown>) ?? {},
     customFields: (c.customFields as Record<string, unknown>) ?? {},
     createdAt: c.createdAt,

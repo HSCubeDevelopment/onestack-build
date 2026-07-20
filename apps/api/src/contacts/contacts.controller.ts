@@ -119,7 +119,14 @@ export class ContactsController {
     return this.subjects.create(user.tenantId, {
       type: 'vehicle',
       label: `${dto.make} ${dto.model} (${dto.rego})`,
-      fields: { rego: dto.rego, vin: dto.vin, make: dto.make, model: dto.model, year: dto.year },
+      fields: {
+        rego: dto.rego,
+        vin: dto.vin,
+        paintCode: dto.paintCode,
+        make: dto.make,
+        model: dto.model,
+        year: dto.year,
+      },
       customFields: dto.customFields,
       contactId: id,
     });

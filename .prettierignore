@@ -5,4 +5,6 @@ node_modules/
 coverage/
 
 # Design source of truth — vendored reference material, not code we maintain.
+# prototype.html is exported from the design tool and is read for exact CSS values (card 302);
+# reformatting it would create diff noise against the export and risk altering the reference.
 design/
