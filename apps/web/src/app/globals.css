@@ -434,6 +434,21 @@ p {
 }
 
 /* KPI cards (enterprise) */
+/**
+ * A label-over-value pair. `.kpi` had NO rule at all, so the inline `gap: 3` on the markup did
+ * nothing (gap needs a flex/grid container) and the two spans ran together — "Rego" + "re" rendered
+ * as "Regore" on the job and customer detail pages, at every screen width. Making it a column is the
+ * whole fix.
+ */
+.kpi {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+}
+.kpi > span {
+  overflow-wrap: anywhere;
+}
+
 .kpi-card {
   background: var(--panel);
   border: 1px solid var(--border);
@@ -752,11 +767,24 @@ textarea.input {
   padding: 34px;
   text-align: center;
 }
+/**
+ * The detail-page tab strip. The job card carries NINE tabs; at 375px only four fitted and the rest
+ * — Claim file, Floor orders, Supplier invoices, Notes, Photos — were simply unreachable, with no
+ * scrollbar to suggest otherwise. It scrolls now, and `flex-shrink: 0` on the tabs stops them
+ * squashing into unreadable slivers on the way.
+ */
 .tabs {
   display: flex;
   gap: 4px;
   border-bottom: 1px solid var(--border);
   margin-bottom: 18px;
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
+  scrollbar-width: thin;
+}
+.tabs > * {
+  flex: 0 0 auto;
+  white-space: nowrap;
 }
 .tab {
   padding: 9px 15px;
@@ -1224,5 +1252,35 @@ textarea.input {
   .cal-grid,
   .calendar-grid {
     scrollbar-width: thin;
+  }
+}
+
+@media (max-width: 599px) {
+  /* Detail-page headers stack their action buttons under the title instead of competing with it for
+     a 375px line. `.page-head` already wraps, but the actions then sat flush to the right edge with
+     the title squeezed beside them. */
+  .page-head {
+    gap: 12px;
+  }
+  .page-head > * {
+    min-width: 0;
+  }
+
+  /* Action rows wrap and their buttons stay full-height rather than shrinking to fit. A row of
+     actions that overflows is worse than one that takes two lines. */
+  .page-head .row,
+  .actions {
+    flex-wrap: wrap;
+  }
+  .page-head .btn,
+  .actions .btn {
+    flex: 0 0 auto;
+  }
+
+  /* Long identifiers — rego, VIN, claim numbers, emails — break rather than forcing the card wide. */
+  .kpi > span,
+  .card dd,
+  .mono {
+    overflow-wrap: anywhere;
   }
 }
