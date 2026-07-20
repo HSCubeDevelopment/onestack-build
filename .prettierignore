@@ -1,0 +1,8 @@
+# Build output & deps
+dist/
+.next/
+node_modules/
+coverage/
+
+# Design source of truth — vendored reference material, not code we maintain.
+design/
