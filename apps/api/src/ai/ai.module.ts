@@ -6,6 +6,8 @@ import { AnthropicDamageAnalyzer } from './anthropic-damage-analyzer';
 import { DAMAGE_ANALYZER, DamageAnalyzer } from './damage-analyzer';
 import { DamageScopeController } from './damage-scope.controller';
 import { DamageScopeService } from './damage-scope.service';
+import { EMBEDDER, Embedder } from './embedder';
+import { EmbeddingIndexService } from './embedding-index.service';
 import { PurchaseOrderController } from './purchase-order.controller';
 import { PurchaseOrderService } from './purchase-order.service';
 import {
@@ -16,6 +18,7 @@ import {
 import { ScopePartController } from './scope-part.controller';
 import { ScopePartService } from './scope-part.service';
 import { StubDamageAnalyzer } from './stub-damage-analyzer';
+import { StubEmbedder } from './stub-embedder';
 
 /**
  * AI module (Phase 2 flagship). Hosts the photo-to-quote pipeline:
@@ -49,6 +52,16 @@ import { StubDamageAnalyzer } from './stub-damage-analyzer';
       provide: PURCHASE_ORDER_SENDER,
       useFactory: (): PurchaseOrderSender => new NoopPurchaseOrderSender(),
     },
+    EmbeddingIndexService,
+    {
+      // Embedding vendor boundary (card 60.3). Deliberately stub-only for now: Anthropic has no
+      // embeddings endpoint, so a real provider means a NEW vendor receiving customer damage photos —
+      // a stack substitution, a PII flow, and an Australian data-residency question all at once. All
+      // three are human calls per CLAUDE.md, so the swap is left as this one line.
+      provide: EMBEDDER,
+      useFactory: (): Embedder => new StubEmbedder(),
+    },
   ],
+  exports: [EmbeddingIndexService],
 })
 export class AiModule {}
