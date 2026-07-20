@@ -49,8 +49,21 @@ export async function makeTenant(admin: PrismaClient, name: string): Promise<Tes
   };
 }
 
-/** Remove a tenant and its rows (admin/bypass). Safe to call in afterAll. */
+/**
+ * Remove a tenant and its rows (admin/bypass). Safe to call in afterAll.
+ *
+ * Audit logs, notifications and outbox events are written as SIDE EFFECTS by many modules, so no
+ * individual spec creates them deliberately and none cleans them up — but they hold a tenantId FK, so
+ * leaving them makes the tenant delete fail. They're cleared here rather than in each spec because the
+ * spec that triggered them usually doesn't know it did.
+ *
+ * A spec that creates its own domain rows (work items, subjects, invoices…) still clears those itself,
+ * before calling this — those have real FK ordering that only the spec knows.
+ */
 export async function dropTenant(admin: PrismaClient, tenantId: string): Promise<void> {
+  await admin.auditLog.deleteMany({ where: { tenantId } });
+  await admin.notification.deleteMany({ where: { tenantId } });
+  await admin.outboxEvent.deleteMany({ where: { tenantId } });
   await admin.contact.deleteMany({ where: { tenantId } });
   await admin.membership.deleteMany({ where: { tenantId } });
   await admin.tenant.deleteMany({ where: { id: tenantId } });
