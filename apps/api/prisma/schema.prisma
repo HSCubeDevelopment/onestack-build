@@ -1087,6 +1087,14 @@ model TimeEntry {
   clockInAt  DateTime  @default(now())
   clockOutAt DateTime?
   createdAt  DateTime  @default(now())
+
+  /// Card 53.1 — geofenced check-in. NOTE: there is deliberately no latitude/longitude here. The shop's
+  /// question is "were they on site?", which a distance and a verdict answer completely; storing
+  /// coordinates would build a location history of employees that nobody asked for.
+  geofenceVerdict        String? // inside | outside | inaccurate | unavailable
+  geofenceDistanceMetres Int?
+  geofenceOverridden     Boolean @default(false)
+  geofenceOverrideReason String?
   tenant     Tenant    @relation(fields: [tenantId], references: [id])
 
   @@index([tenantId])

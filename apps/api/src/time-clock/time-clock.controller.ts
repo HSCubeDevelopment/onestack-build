@@ -1,5 +1,6 @@
-import { Controller, Get, HttpCode, Post, Query, UseGuards } from '@nestjs/common';
+import { Body, Controller, Get, HttpCode, Post, Query, UseGuards } from '@nestjs/common';
 import { AuthContext } from '../auth/auth.types';
+import { CheckInDto } from './dto/check-in.dto';
 import { CurrentUser } from '../auth/current-user.decorator';
 import { JwtAuthGuard } from '../auth/jwt-auth.guard';
 import { AllowStaff, Roles } from '../auth/roles.decorator';
@@ -18,8 +19,25 @@ export class TimeClockController {
   @AllowStaff()
   @Post('check-in')
   @HttpCode(200)
-  checkIn(@CurrentUser() user: AuthContext): Promise<ClockStatus> {
-    return this.clock.checkIn(user.tenantId, user.userId);
+  checkIn(@CurrentUser() user: AuthContext, @Body() dto: CheckInDto): Promise<ClockStatus> {
+    return this.clock.checkIn(
+      user.tenantId,
+      user.userId,
+      dto.position ?? null,
+      dto.overrideReason ? { reason: dto.overrideReason } : null,
+    );
+  }
+
+  /**
+   * Check-ins that bypassed the geofence — the owner's review queue.
+   *
+   * NOT @AllowStaff: an employee should not be able to read who else clocked on from where. That is
+   * the whole reason this data is collected, and it is exactly the data that becomes surveillance if
+   * it is readable by peers.
+   */
+  @Get('overrides')
+  overrides(@CurrentUser() user: AuthContext): Promise<TimeEntryView[]> {
+    return this.clock.overrides(user.tenantId);
   }
 
   @AllowStaff()
