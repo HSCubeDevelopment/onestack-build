@@ -54,32 +54,36 @@ export default function RosterPage() {
       ) : (
         <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
           {byDay.map(([day, items]) => (
-            <div className="card pad0" key={day}>
-              <div style={{ padding: '10px 18px', fontWeight: 600 }}>{day}</div>
-              <div className="divider" />
-              <table className="table">
-                <tbody>
-                  {items.map((s) => (
-                    <tr key={s.id}>
-                      <td style={{ width: 130, whiteSpace: 'nowrap' }} className="muted">
-                        {time(s.startsAt)}–{time(s.endsAt)}
-                      </td>
-                      <td>
-                        {s.staffName}{' '}
-                        {s.kind === 'time_off' ? <span className="muted">· time off</span> : null}
-                      </td>
-                      <td className="muted">{s.notes ?? ''}</td>
-                      <td style={{ textAlign: 'right' }}>
-                        {isStaff ? null : (
-                          <button className="btn" onClick={() => remove(s.id)}>
-                            Remove
-                          </button>
-                        )}
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
+            <div className="card" key={day}>
+              <div className="lbl2" style={{ marginBottom: 4 }}>
+                {day.toUpperCase()}
+              </div>
+              {items.map((s) => (
+                <div className="job-row" key={s.id}>
+                  <div className="job-row-main">
+                    <span
+                      className="status-pill"
+                      style={{
+                        background: s.kind === 'time_off' ? 'var(--text-dim)' : 'var(--cyan)',
+                      }}
+                    >
+                      {time(s.startsAt)}–{time(s.endsAt)}
+                    </span>
+                    <div style={{ minWidth: 0 }}>
+                      <b style={{ fontSize: 14 }}>{s.staffName}</b>
+                      <div className="job-cust">
+                        {s.kind === 'time_off' ? 'Time off' : 'Shift'}
+                        {s.notes ? ` · ${s.notes}` : ''}
+                      </div>
+                    </div>
+                  </div>
+                  {isStaff ? null : (
+                    <button className="btn sm" onClick={() => remove(s.id)}>
+                      Remove
+                    </button>
+                  )}
+                </div>
+              ))}
             </div>
           ))}
         </div>

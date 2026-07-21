@@ -66,11 +66,13 @@ function LeadsTab() {
 
   return (
     <div className="stack">
-      <div className="row wrap">
+      <div className="seg" role="tablist" aria-label="Filter leads by status">
         {STATUS_FILTERS.map((s) => (
           <button
             key={s}
-            className={`btn sm ${status === s ? 'primary' : ''}`}
+            role="tab"
+            aria-selected={status === s}
+            className={status === s ? 'on' : ''}
             onClick={() => setStatus(s)}
           >
             {s}
@@ -81,82 +83,72 @@ function LeadsTab() {
       <ErrorBanner message={error} />
       {loading && <Loading />}
 
-      {data && data.length === 0 && <EmptyState>No leads here yet.</EmptyState>}
-
-      {data && data.length > 0 && (
-        <div className="card pad0">
-          <table className="table">
-            <thead>
-              <tr>
-                <th>Name</th>
-                <th>Phone</th>
-                <th>Email</th>
-                <th>Vehicle info</th>
-                <th>Source</th>
-                <th>Status</th>
-                <th>Created</th>
-                <th></th>
-              </tr>
-            </thead>
-            <tbody>
-              {data.map((lead) => (
-                <tr key={lead.id}>
-                  <td>
-                    <strong>{lead.name}</strong>
-                    {lead.message && (
-                      <div className="faint" style={{ fontSize: 12 }}>
-                        {lead.message}
-                      </div>
-                    )}
-                  </td>
-                  <td className="mono">{lead.phone}</td>
-                  <td className="muted">{lead.email ?? '—'}</td>
-                  <td className="muted">{lead.vehicleInfo ?? '—'}</td>
-                  <td className="muted">{lead.source}</td>
-                  <td>
-                    <StatusBadge status={lead.status} />
-                  </td>
-                  <td className="faint nowrap">
-                    {new Date(lead.createdAt).toLocaleDateString('en-AU', {
-                      day: 'numeric',
-                      month: 'short',
-                      year: 'numeric',
-                    })}
-                  </td>
-                  <td className="right nowrap">
-                    {lead.status === 'Converted' && lead.convertedContactId ? (
-                      <Link className="btn ghost sm" href={`/customers/${lead.convertedContactId}`}>
-                        View customer →
-                      </Link>
-                    ) : (
-                      <>
-                        {lead.status === 'New' && (
-                          <button
-                            className="btn ghost sm"
-                            disabled={busy === lead.id}
-                            onClick={() => markContacted(lead)}
-                          >
-                            Mark contacted
-                          </button>
-                        )}
-                        {(lead.status === 'New' || lead.status === 'Contacted') && (
-                          <button
-                            className="btn primary sm"
-                            disabled={busy === lead.id}
-                            onClick={() => convert(lead)}
-                          >
-                            Convert to customer
-                          </button>
-                        )}
-                      </>
-                    )}
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
+      {data && data.length === 0 && (
+        <div className="card">
+          <EmptyState>No leads here yet.</EmptyState>
         </div>
       )}
+
+      {data &&
+        data.map((lead) => (
+          <div className="card" key={lead.id}>
+            <div className="row wrap" style={{ justifyContent: 'space-between', marginBottom: 6 }}>
+              <b style={{ fontSize: 15 }}>{lead.name}</b>
+              <StatusBadge status={lead.status} />
+            </div>
+            {lead.message && (
+              <p className="muted" style={{ fontSize: 13, marginBottom: 8 }}>
+                {lead.message}
+              </p>
+            )}
+            <div className="muted" style={{ fontSize: 12.5 }}>
+              {lead.phone}
+              {lead.email ? ` · ${lead.email}` : ''}
+            </div>
+            {lead.vehicleInfo && (
+              <div className="muted" style={{ fontSize: 12.5 }}>
+                🚗 {lead.vehicleInfo}
+              </div>
+            )}
+            <div className="faint" style={{ fontSize: 11.5, marginTop: 4 }}>
+              via {lead.source} ·{' '}
+              {new Date(lead.createdAt).toLocaleDateString('en-AU', {
+                day: 'numeric',
+                month: 'short',
+                year: 'numeric',
+              })}
+            </div>
+            <div className="row" style={{ gap: 8, marginTop: 12 }}>
+              <div className="spacer" />
+              {lead.status === 'Converted' && lead.convertedContactId ? (
+                <Link className="btn ghost sm" href={`/customers/${lead.convertedContactId}`}>
+                  View customer →
+                </Link>
+              ) : (
+                <>
+                  {lead.status === 'New' && (
+                    <button
+                      className="btn ghost sm"
+                      disabled={busy === lead.id}
+                      onClick={() => markContacted(lead)}
+                    >
+                      Mark contacted
+                    </button>
+                  )}
+                  {(lead.status === 'New' || lead.status === 'Contacted') && (
+                    <button
+                      className="btn primary sm"
+                      disabled={busy === lead.id}
+                      onClick={() => convert(lead)}
+                    >
+                      Convert to customer
+                    </button>
+                  )}
+                </>
+              )}
+            </div>
+          </div>
+        ))}
     </div>
   );
 }
