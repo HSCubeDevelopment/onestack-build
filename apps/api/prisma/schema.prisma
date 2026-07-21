@@ -93,6 +93,7 @@ model Tenant {
   fleetPhotos         FleetPhoto[]
   yards               Yard[]
   yardDrops           YardDrop[]
+  sites               Site[]
 
   @@map("onestack_tenant")
 }
@@ -618,11 +619,13 @@ model WorkItem {
   assignees       Json              @default("[]")
   fields          Json              @default("{}")
   bookingIds      Json              @default("[]")
+  siteId          String?           @db.Uuid // SITE-1: the location this job belongs to (optional)
   version         Int               @default(1) // optimistic lock
   createdAt       DateTime          @default(now())
   updatedAt       DateTime          @updatedAt
   deletedAt       DateTime?
   tenant          Tenant            @relation(fields: [tenantId], references: [id])
+  site            Site?             @relation(fields: [tenantId, siteId], references: [tenantId, id])
   subjects        WorkItemSubject[]
   notes           WorkItemNote[]
   attachments     WorkItemAttachment[]
@@ -1540,4 +1543,26 @@ model YardDrop {
   @@index([tenantId])
   @@index([tenantId, status])
   @@map("onestack_yard_drop")
+}
+
+/// A physical location/branch of the shop (Multi-site, story SITE-1). A job optionally belongs to a
+/// site so an owner running more than one location can see and filter work per branch. GENERIC core
+/// (Scheduling & Ops) — a site is a business location, not a vertical noun. Tenant-scoped, forced RLS.
+/// The `@@unique([tenantId, id])` is the composite-FK target that keeps a job's siteId in its own tenant.
+model Site {
+  id        String     @id @default(uuid()) @db.Uuid
+  tenantId  String     @db.Uuid
+  name      String
+  code      String? // short label for pills/badges, e.g. "NTH"
+  address   String?
+  createdAt DateTime   @default(now())
+  updatedAt DateTime   @default(now())
+  deletedAt DateTime?
+  tenant    Tenant     @relation(fields: [tenantId], references: [id])
+  workItems WorkItem[]
+
+  @@unique([tenantId, name])
+  @@unique([tenantId, id])
+  @@index([tenantId])
+  @@map("onestack_site")
 }

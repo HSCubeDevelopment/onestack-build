@@ -1,5 +1,6 @@
 import { Module } from '@nestjs/common';
 import { InvoicesModule } from '../invoices/invoices.module';
+import { SitesModule } from '../sites/sites.module';
 import { WorkItemModule } from '../work-items/work-item.module';
 import { YardsModule } from '../yards/yards.module';
 import { DashboardController } from './dashboard.controller';
@@ -11,7 +12,7 @@ import { DashboardService } from './dashboard.service';
  * global CoreModule.
  */
 @Module({
-  imports: [WorkItemModule, InvoicesModule, YardsModule],
+  imports: [WorkItemModule, InvoicesModule, YardsModule, SitesModule],
   controllers: [DashboardController],
   providers: [DashboardService],
 })

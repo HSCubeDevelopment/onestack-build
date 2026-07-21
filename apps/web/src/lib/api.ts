@@ -75,10 +75,20 @@ export interface WorkItem {
   workflowVersion: number;
   assignees: string[];
   fields: Record<string, unknown>;
+  siteId: string | null; // SITE-1: the location this job belongs to
   version: number;
   subjects?: Vehicle[];
   /** Present only on the list when fetched with `?withSubjects=1`: the primary vehicle's label. */
   subjectLabel?: string | null;
+}
+
+/** A shop location/branch (SITE-1). A job optionally belongs to one. */
+export interface Site {
+  id: string;
+  name: string;
+  code: string | null;
+  address: string | null;
+  createdAt: string;
 }
 
 export interface Note {
@@ -178,12 +188,22 @@ export interface Board {
   columns: { state: string; isFinal: boolean; cards: BoardCard[] }[];
 }
 
+/** Active jobs at one location, for the dashboard's "By location" panel (SITE-1). */
+export interface SiteBreakdown {
+  siteId: string;
+  name: string;
+  code: string | null;
+  activeJobs: number;
+}
+
 export interface DashboardSummary {
   jobsByState: Record<string, number>;
   activeJobs: number;
   totalUnpaidCents: number;
   thisWeekRevenueCents: number;
   inYards: number;
+  sites: SiteBreakdown[]; // per-location active-job counts (SITE-1); empty for a single-site shop
+  unassignedActiveJobs: number; // active jobs not tagged to any site (SITE-1)
   weekStart: string;
 }
 

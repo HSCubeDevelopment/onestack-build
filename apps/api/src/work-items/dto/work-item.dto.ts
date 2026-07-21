@@ -7,6 +7,7 @@ import {
   IsUUID,
   Min,
   MinLength,
+  ValidateIf,
 } from 'class-validator';
 
 export class CreateWorkItemDto {
@@ -27,6 +28,11 @@ export class CreateWorkItemDto {
   @IsArray()
   @IsUUID('4', { each: true })
   assignees?: string[];
+
+  /** SITE-1: the location this job belongs to (optional). */
+  @IsOptional()
+  @IsUUID('4')
+  siteId?: string;
 }
 
 export class UpdateWorkItemDto {
@@ -38,6 +44,12 @@ export class UpdateWorkItemDto {
   @IsArray()
   @IsUUID('4', { each: true })
   assignees?: string[];
+
+  /** SITE-1: move a job to a location, or `null` to clear it. */
+  @IsOptional()
+  @ValidateIf((_, v) => v !== null)
+  @IsUUID('4')
+  siteId?: string | null;
 
   @IsInt()
   @Min(1)

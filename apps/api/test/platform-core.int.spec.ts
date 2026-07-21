@@ -7,6 +7,7 @@ import { AuditService } from '../src/audit/audit.service';
 import { PackRegistry } from '../src/core/pack-registry';
 import { CustomFieldService } from '../src/custom-fields/custom-field.service';
 import { WorkflowEngine } from '../src/core/workflow.engine';
+import { SitesService } from '../src/sites/sites.service';
 import { SubjectService } from '../src/subjects/subject.service';
 import { TenantService } from '../src/tenancy/tenant.service';
 import { WorkItemService } from '../src/work-items/work-item.service';
@@ -39,6 +40,7 @@ describe.skipIf(!hasDb)('platform core (work item + subject + workflow)', () => 
       new WorkflowEngine(registry),
       emitter,
       new AuditService(tenants),
+      new SitesService(tenants, new AuditService(tenants)),
     );
     subjects = new SubjectService(tenants, registry, new CustomFieldService(tenants));
     a = await makeTenant(admin, 'Core A');

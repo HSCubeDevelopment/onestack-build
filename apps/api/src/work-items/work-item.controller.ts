@@ -60,8 +60,10 @@ export class WorkItemController {
     @CurrentUser() user: AuthContext,
     @Query('type') type?: string,
     @Query('withSubjects') withSubjects?: string,
+    @Query('siteId') siteId?: string,
   ): Promise<(WorkItemView & { subjectLabel?: string | null })[]> {
-    const items = await this.workItems.list(user.tenantId, type, assignedScopeFor(user));
+    // SITE-1: `?siteId=<id>` narrows to one location; `?siteId=none` shows jobs not yet at a site.
+    const items = await this.workItems.list(user.tenantId, type, assignedScopeFor(user), siteId);
     if (withSubjects !== '1') return items;
     const labels = await this.subjects.labelsForWorkItems(
       user.tenantId,
