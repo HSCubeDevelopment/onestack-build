@@ -26,6 +26,7 @@ import {
 import { Hero, PipelineStrip, QuickActions, TodaysBoard } from '@/components/OwnerHome';
 import { ErrorBanner, humanize, Loading, StatusBadge, useAsync } from '@/components/ui';
 import { StateIcon, stateColor } from '@/components/Icon';
+import { setActiveSite } from '@/lib/active-site';
 
 export default function DashboardPage() {
   const today = new Date();
@@ -209,9 +210,9 @@ function ByLocation({ summary }: { summary: DashboardSummary }) {
     <div className="card">
       <div className="card-head">
         <div>
-          <h2>By location</h2>
+          <h2>Your workshops</h2>
           <div className="faint" style={{ fontSize: 12, marginTop: 2 }}>
-            Active jobs at each site
+            Active jobs at each workshop — tap to focus the app on one
           </div>
         </div>
         <Link href="/settings/sites" className="view-all">
@@ -223,6 +224,7 @@ function ByLocation({ summary }: { summary: DashboardSummary }) {
           <Link
             key={r.key}
             href="/jobs"
+            onClick={() => setActiveSite(r.key)}
             className="pbar"
             style={{ textDecoration: 'none', color: 'inherit' }}
           >

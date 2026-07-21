@@ -22,8 +22,13 @@ export class BoardController {
   constructor(private readonly board: BoardService) {}
 
   @Get()
-  get(@CurrentUser() user: AuthContext, @Query('type') type = 'job'): Promise<BoardView> {
-    return this.board.getBoard(user.tenantId, type);
+  get(
+    @CurrentUser() user: AuthContext,
+    @Query('type') type = 'job',
+    @Query('siteId') siteId?: string,
+  ): Promise<BoardView> {
+    // SITE-1: `?siteId=<id>` scopes the board to one workshop; `?siteId=none` shows unassigned jobs.
+    return this.board.getBoard(user.tenantId, type, siteId);
   }
 
   /** Drag a card to another column → move the job to that state (if a transition allows it). */

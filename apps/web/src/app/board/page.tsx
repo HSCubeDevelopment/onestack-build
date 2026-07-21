@@ -5,6 +5,7 @@ import { RefreshCw, Loader2 } from 'lucide-react';
 import { api, Board, BoardCard } from '@/lib/api';
 import { ErrorBanner, Loading, PageHead, StatusBadge, useAsync } from '@/components/ui';
 import { makeModelOf, regoOfCard } from '@/lib/job-display';
+import { ALL_SITES, useActiveSite } from '@/lib/active-site';
 
 /** Pure: return a new board with `id` moved into `targetState` (and its stateName updated). */
 function withCardMoved(board: Board, id: string, targetState: string): Board {
@@ -24,9 +25,14 @@ function withCardMoved(board: Board, id: string, targetState: string): Board {
 }
 
 export default function BoardPage() {
+  // 52.2: the board scopes to the active workshop (Topbar switcher); re-fetches when it changes.
+  const [activeSite] = useActiveSite();
   const { data, loading, error, reload, setData } = useAsync(
-    () => api.get<Board>('/board?type=job'),
-    [],
+    () =>
+      api.get<Board>(
+        `/board?type=job${activeSite !== ALL_SITES ? `&siteId=${encodeURIComponent(activeSite)}` : ''}`,
+      ),
+    [activeSite],
   );
   const [moveError, setMoveError] = useState<string | null>(null);
   const [dragging, setDragging] = useState<{ id: string; from: string } | null>(null);

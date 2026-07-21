@@ -11,6 +11,7 @@ export interface BoardCard {
   customerName: string | null;
   vehicleLabel: string | null;
   assignees: string[];
+  siteId: string | null; // SITE-1: the location this card's job belongs to
 }
 
 export interface BoardColumn {
@@ -40,13 +41,14 @@ export class BoardService {
     private readonly registry: PackRegistry,
   ) {}
 
-  async getBoard(tenantId: string, type: string): Promise<BoardView> {
+  async getBoard(tenantId: string, type: string, siteId?: string): Promise<BoardView> {
     if (!this.registry.hasWorkItemType(type))
       throw new BadRequestException(`Unknown work-item type: ${type}`);
     const def = this.registry.getWorkItemType(type);
     const stateOrder = Object.keys(def.workflow.states);
 
-    const items = await this.workItems.list(tenantId, type);
+    // SITE-1: an owner viewing one workshop passes its siteId ('none' = jobs not yet at a site).
+    const items = await this.workItems.list(tenantId, type, undefined, siteId);
 
     // Resolve customer names once (one list, mapped) rather than per-card.
     const contactList = await this.contacts.list(tenantId);
@@ -63,6 +65,7 @@ export class BoardService {
           customerName: customerId ? (nameById.get(customerId) ?? null) : null,
           vehicleLabel: subjectsForItem[0]?.label ?? null,
           assignees: wi.assignees,
+          siteId: wi.siteId ?? null,
         };
       }),
     );
@@ -115,6 +118,7 @@ export class BoardService {
       customerName,
       vehicleLabel: subjectsForItem[0]?.label ?? null,
       assignees: moved.assignees,
+      siteId: moved.siteId ?? null,
     };
   }
 }

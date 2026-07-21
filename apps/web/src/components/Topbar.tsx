@@ -2,6 +2,7 @@
 import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { Search, MessageSquare, Bell, LogIn, LogOut } from 'lucide-react';
+import { SiteSwitcher } from '@/components/SiteSwitcher';
 
 interface Me {
   userId: string;
@@ -33,6 +34,8 @@ export function Topbar() {
         <Search size={16} />
         <input placeholder="Search for anything…" />
       </div>
+      {/* Multi-workshop switcher (52.2) — only renders for a shop with 2+ sites, owners only. */}
+      {role === 'OWNER' && <SiteSwitcher />}
       <div className="spacer" />
       <button className="icon-btn" title="Messages">
         <MessageSquare size={17} />
