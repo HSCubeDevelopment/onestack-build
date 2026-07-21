@@ -19,6 +19,14 @@ export const PURPOSE_OPTIONS = [
   { value: 'OTHER', label: 'Other' },
 ];
 
+/** Bond outcomes on a return (FLT-1). A structured set beats free text — the ledger stays reportable. */
+export const BOND_OPTIONS = [
+  { value: 'Held', label: 'Held' },
+  { value: 'Refunded', label: 'Refunded' },
+  { value: 'Withheld', label: 'Withheld' },
+  { value: 'N/A', label: 'No bond' },
+];
+
 export interface FleetVehicle {
   id: string;
   rego: string;
