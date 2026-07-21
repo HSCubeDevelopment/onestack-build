@@ -35,6 +35,17 @@ async function request<T>(method: string, path: string, body?: unknown): Promise
 
 export const api = {
   get: <T>(path: string) => request<T>('GET', path),
+  /**
+   * GET, but on a 403 (role can't see this) or 404 (nothing there yet) resolve to `fallback` instead of
+   * throwing. Use for a panel that only SOME roles can see, so one forbidden sub-fetch inside a
+   * `Promise.all` never blanks a whole screen a staff member is allowed to open.
+   */
+  getOr: <T>(path: string, fallback: T): Promise<T> =>
+    request<T>('GET', path).catch((e) =>
+      e instanceof ApiError && (e.status === 403 || e.status === 404)
+        ? fallback
+        : Promise.reject(e),
+    ),
   post: <T>(path: string, body?: unknown) => request<T>('POST', path, body),
   patch: <T>(path: string, body?: unknown) => request<T>('PATCH', path, body),
   put: <T>(path: string, body?: unknown) => request<T>('PUT', path, body),

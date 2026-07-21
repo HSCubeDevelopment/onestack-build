@@ -13,6 +13,7 @@ import {
 import { AuthContext } from '../auth/auth.types';
 import { CurrentUser } from '../auth/current-user.decorator';
 import { JwtAuthGuard } from '../auth/jwt-auth.guard';
+import { AllowStaff } from '../auth/roles.decorator';
 import { RolesGuard } from '../auth/roles.guard';
 import { CustomFieldService, CustomFieldTarget, CustomFieldView } from './custom-field.service';
 import { DefineCustomFieldDto, UpdateCustomFieldDto } from './dto/custom-field.dto';
@@ -31,6 +32,12 @@ export class CustomFieldController {
     return this.fields.define(user.tenantId, dto);
   }
 
+  /**
+   * Reading the field DEFINITIONS is open to STAFF — a worker viewing a customer or vehicle needs the
+   * labels/types to render its custom fields (the values live on records they can already see). Only
+   * DEFINING/editing/archiving fields (below) stays OWNER-only.
+   */
+  @AllowStaff()
   @Get()
   list(
     @CurrentUser() user: AuthContext,

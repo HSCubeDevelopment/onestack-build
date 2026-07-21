@@ -16,8 +16,9 @@ export default function CustomerDetailPage() {
       Promise.all([
         api.get<Contact>(`/contacts/${id}`),
         api.get<Vehicle[]>(`/contacts/${id}/vehicles`),
-        api.get<CustomField[]>('/custom-fields?appliesTo=customer'),
-        api.get<CustomField[]>('/custom-fields?appliesTo=vehicle'),
+        // Field definitions are staff-readable now; tolerate a 403 anyway so this screen never blanks.
+        api.getOr<CustomField[]>('/custom-fields?appliesTo=customer', []),
+        api.getOr<CustomField[]>('/custom-fields?appliesTo=vehicle', []),
       ]),
     [id],
   );
