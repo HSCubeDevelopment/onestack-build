@@ -4,19 +4,27 @@ import {
   ForbiddenException,
   Get,
   HttpCode,
+  Param,
+  Patch,
   Post,
   UnauthorizedException,
   UseGuards,
 } from '@nestjs/common';
-import { IsEmail, IsString, MinLength } from 'class-validator';
+import { IsBoolean, IsEmail, IsString, MinLength } from 'class-validator';
 import * as jwt from 'jsonwebtoken';
 import { PrismaService } from '../prisma/prisma.service';
 import { AppRole, AuthContext } from './auth.types';
+import { AllowStaff } from './roles.decorator';
 import { CurrentUser } from './current-user.decorator';
 import { JwtAuthGuard } from './jwt-auth.guard';
 import { Roles } from './roles.decorator';
 import { RolesGuard } from './roles.guard';
 import { SupabaseAuthService } from './supabase-auth.service';
+
+class SetFinanceAccessDto {
+  @IsBoolean()
+  canViewFinance!: boolean;
+}
 
 export class LoginDto {
   @IsEmail()
@@ -117,22 +125,69 @@ export class LoginController {
     return { accounts };
   }
 
-  /** OWNER: users in this tenant with their email + role, so the hours page can show names, not ids. */
+  /**
+   * OWNER: users in this tenant with their email, role and finance access — so the team page can show
+   * names (not ids) and manage who can see money (40.8).
+   */
   @Get('directory')
   @UseGuards(JwtAuthGuard, RolesGuard)
   @Roles('OWNER')
   async directory(
     @CurrentUser() user: AuthContext,
-  ): Promise<{ userId: string; email: string | null; role: AppRole }[]> {
+  ): Promise<{ userId: string; email: string | null; role: AppRole; canViewFinance: boolean }[]> {
     const members = await this.prisma.membership.findMany({
       where: { tenantId: user.tenantId },
-      select: { userId: true, role: true },
+      select: { userId: true, role: true, canViewFinance: true },
     });
     const emails = await this.supabase.emailsByUserId(members.map((m) => m.userId));
     return members.map((m) => ({
       userId: m.userId,
       email: emails.get(m.userId) ?? null,
       role: m.role as AppRole,
+      // An owner always has finance access; the flag is only meaningful for staff.
+      canViewFinance: m.role === 'OWNER' ? true : m.canViewFinance,
     }));
+  }
+
+  /**
+   * OWNER: grant or revoke a staff member's finance access (40.8). Scoped to this tenant's members; an
+   * owner's access is intrinsic and not stored per-flag, so setting it on an owner is a no-op.
+   */
+  @Patch('members/:userId/finance')
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles('OWNER')
+  async setFinanceAccess(
+    @CurrentUser() user: AuthContext,
+    @Param('userId') userId: string,
+    @Body() dto: SetFinanceAccessDto,
+  ): Promise<{ userId: string; canViewFinance: boolean }> {
+    const membership = await this.prisma.membership.findFirst({
+      where: { tenantId: user.tenantId, userId },
+      select: { role: true },
+    });
+    if (!membership) throw new ForbiddenException('Not a member of this workshop');
+    if (membership.role !== 'OWNER') {
+      await this.prisma.membership.updateMany({
+        where: { tenantId: user.tenantId, userId },
+        data: { canViewFinance: dto.canViewFinance },
+      });
+    }
+    return { userId, canViewFinance: membership.role === 'OWNER' ? true : dto.canViewFinance };
+  }
+
+  /**
+   * The CURRENT user's own permissions (40.8) — so the web can decide whether to show the money nav.
+   * Staff-accessible: a member is always allowed to learn what they themselves can do.
+   */
+  @Get('permissions')
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @AllowStaff()
+  async permissions(@CurrentUser() user: AuthContext): Promise<{ canViewFinance: boolean }> {
+    if (user.role === 'OWNER') return { canViewFinance: true };
+    const membership = await this.prisma.membership.findFirst({
+      where: { tenantId: user.tenantId, userId: user.userId },
+      select: { canViewFinance: true },
+    });
+    return { canViewFinance: membership?.canViewFinance ?? false };
   }
 }

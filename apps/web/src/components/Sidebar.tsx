@@ -26,10 +26,16 @@ import {
 import { ThemeToggle } from '@/components/ThemeToggle';
 import { navFor, type NavRow } from '@/lib/nav';
 
-export function Sidebar({ role = 'OWNER' }: { role?: 'OWNER' | 'STAFF' }) {
+export function Sidebar({
+  role = 'OWNER',
+  canViewFinance = false,
+}: {
+  role?: 'OWNER' | 'STAFF';
+  canViewFinance?: boolean;
+}) {
   const path = usePathname();
   const isActive = (href: string) => (href === '/' ? path === '/' : path.startsWith(href));
-  const nav = navFor(role);
+  const nav = navFor(role, { canViewFinance });
   return (
     <aside className="sidebar">
       <div className="brand">

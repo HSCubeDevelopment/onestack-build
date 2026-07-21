@@ -16,9 +16,11 @@ import { Topbar } from '@/components/Topbar';
  */
 export function AppShell({
   role,
+  canViewFinance = false,
   children,
 }: {
   role: 'OWNER' | 'STAFF';
+  canViewFinance?: boolean;
   children: React.ReactNode;
 }) {
   const pathname = usePathname();
@@ -29,12 +31,12 @@ export function AppShell({
 
   return (
     <div className="app">
-      <Sidebar role={role} />
+      <Sidebar role={role} canViewFinance={canViewFinance} />
       <div className="content">
         <Topbar />
         <main className="main">{children}</main>
       </div>
-      <MobileTabBar role={role} />
+      <MobileTabBar role={role} canViewFinance={canViewFinance} />
     </div>
   );
 }

@@ -3,7 +3,7 @@ import type { Metadata, Viewport } from 'next';
 import { cookies } from 'next/headers';
 import { AppShell } from '@/components/AppShell';
 import { themeInitScript } from '@/components/ThemeToggle';
-import { SESSION_COOKIE, decodeToken } from '@/lib/session';
+import { apiBase, SESSION_COOKIE, decodeToken } from '@/lib/session';
 
 export const metadata: Metadata = {
   title: 'OneStack — Panel & Paint',
@@ -53,13 +53,29 @@ export default async function RootLayout({ children }: { children: React.ReactNo
   const store = await cookies();
   const token = store.get(SESSION_COOKIE)?.value;
   const role = (token ? decodeToken(token)?.role : undefined) === 'STAFF' ? 'STAFF' : 'OWNER';
+  // 40.8: an owner always sees money; a staff member only if the owner granted finance access. Resolve
+  // it server-side so the money nav is decided before render (the API still enforces it either way).
+  let canViewFinance = role === 'OWNER';
+  if (role === 'STAFF' && token) {
+    try {
+      const res = await fetch(`${apiBase()}/auth/permissions`, {
+        headers: { Authorization: `Bearer ${token}` },
+        cache: 'no-store',
+      });
+      if (res.ok) canViewFinance = Boolean((await res.json()).canViewFinance);
+    } catch {
+      canViewFinance = false;
+    }
+  }
   return (
     <html lang="en" suppressHydrationWarning>
       <head>
         <script dangerouslySetInnerHTML={{ __html: themeInitScript }} />
       </head>
       <body>
-        <AppShell role={role}>{children}</AppShell>
+        <AppShell role={role} canViewFinance={canViewFinance}>
+          {children}
+        </AppShell>
       </body>
     </html>
   );

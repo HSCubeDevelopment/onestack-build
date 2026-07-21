@@ -359,6 +359,9 @@ model Membership {
   tenantId  String   @db.Uuid
   userId    String   @db.Uuid // Supabase auth user id (auth.users.id)
   role      Role     @default(STAFF)
+  // 40.8: an owner can grant a STAFF member finance access without making them an owner. Owners always
+  // have it regardless of this flag.
+  canViewFinance Boolean @default(false)
   createdAt DateTime @default(now())
   tenant    Tenant   @relation(fields: [tenantId], references: [id])
 

@@ -23,13 +23,19 @@ import { navFor, type NavItem } from '@/lib/nav';
 /** Preferred order for the first four slots. Anything not allowed for the role is skipped. */
 const PREFERRED = ['/', '/board', '/jobs', '/customers', '/roster', '/time-clock'];
 
-export function MobileTabBar({ role }: { role: 'OWNER' | 'STAFF' }) {
+export function MobileTabBar({
+  role,
+  canViewFinance = false,
+}: {
+  role: 'OWNER' | 'STAFF';
+  canViewFinance?: boolean;
+}) {
   const pathname = usePathname();
 
   // The sign-in screen is not part of the shell — a tab bar over a login form looks broken.
   if (pathname?.startsWith('/login')) return null;
 
-  const allowed = navFor(role).filter((r): r is NavItem => !('section' in r));
+  const allowed = navFor(role, { canViewFinance }).filter((r): r is NavItem => !('section' in r));
   const byHref = new Map(allowed.map((r) => [r.href, r]));
 
   // Four from the preferred order, then More — five is the most a thumb reaches comfortably.
