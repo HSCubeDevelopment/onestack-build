@@ -100,42 +100,39 @@ function CustomerDetail({
         </div>
       )}
 
-      <div className="card pad0">
-        <div className="row" style={{ padding: '14px 18px' }}>
+      <div className="card">
+        <div className="card-head">
           <h2>Vehicles</h2>
-          <div className="spacer" />
           <button className="btn sm" onClick={() => setAddingVehicle(true)}>
             + Add vehicle
           </button>
         </div>
-        <div className="divider" />
         {vehicles.length === 0 ? (
           <EmptyState>No vehicles yet.</EmptyState>
         ) : (
-          <table className="table">
-            <thead>
-              <tr>
-                <th>Rego</th>
-                <th>Make</th>
-                <th>Model</th>
-                <th>Year</th>
-                <th>VIN</th>
-              </tr>
-            </thead>
-            <tbody>
-              {vehicles.map((v) => (
-                <tr key={v.id}>
-                  <td>
-                    <strong>{fieldStr(v, 'rego') || v.label}</strong>
-                  </td>
-                  <td>{fieldStr(v, 'make') || <span className="faint">—</span>}</td>
-                  <td>{fieldStr(v, 'model') || <span className="faint">—</span>}</td>
-                  <td>{fieldStr(v, 'year') || <span className="faint">—</span>}</td>
-                  <td className="mono">{fieldStr(v, 'vin') || <span className="faint">—</span>}</td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
+          <div className="stack" style={{ gap: 10 }}>
+            {vehicles.map((v) => {
+              const rego = fieldStr(v, 'rego');
+              const make = fieldStr(v, 'make');
+              const model = fieldStr(v, 'model');
+              const year = fieldStr(v, 'year');
+              const vin = fieldStr(v, 'vin');
+              const title = [make, model, year].filter(Boolean).join(' ') || v.label;
+              return (
+                <div key={v.id} className="vehicle-card">
+                  <div className="row" style={{ gap: 8, flexWrap: 'wrap' }}>
+                    {rego && <span className="rego-plate">{rego.toUpperCase()}</span>}
+                    <b style={{ fontSize: 14 }}>{title}</b>
+                  </div>
+                  {vin && (
+                    <div className="muted" style={{ fontSize: 12, marginTop: 6 }}>
+                      VIN <span className="mono">{vin}</span>
+                    </div>
+                  )}
+                </div>
+              );
+            })}
+          </div>
         )}
       </div>
 
