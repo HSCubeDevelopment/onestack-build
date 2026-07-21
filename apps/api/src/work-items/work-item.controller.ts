@@ -35,14 +35,14 @@ export class WorkItemController {
   ) {}
 
   /**
-   * A worker photographing a car creates the job here. Force STAFF-created jobs to be assigned to their
-   * creator: the assignee scope would otherwise hide the job the moment it's made, and it stops a worker
-   * from creating work assigned to someone else.
+   * A worker (or tow driver) photographing a car creates the job here. Force a non-owner-created job to
+   * be assigned to its creator: the assignee scope would otherwise hide the job the moment it's made, and
+   * it stops a worker from creating work assigned to someone else. Owners create for the whole shop.
    */
   @AllowStaff()
   @Post()
   create(@CurrentUser() user: AuthContext, @Body() dto: CreateWorkItemDto): Promise<WorkItemView> {
-    const input = user.role === 'STAFF' ? { ...dto, assignees: [user.userId] } : dto;
+    const input = user.role !== 'OWNER' ? { ...dto, assignees: [user.userId] } : dto;
     return this.workItems.create(user.tenantId, input);
   }
 
