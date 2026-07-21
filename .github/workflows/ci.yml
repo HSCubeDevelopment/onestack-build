@@ -182,6 +182,7 @@ jobs:
           npx prisma db execute --file prisma/sql/0047_time_entry_geofence.sql --schema prisma/schema.prisma
           npx prisma db execute --file prisma/sql/0048_yards.sql --schema prisma/schema.prisma
           npx prisma db execute --file prisma/sql/0049_sites.sql --schema prisma/schema.prisma
+          npx prisma db execute --file prisma/sql/0050_finance_view.sql --schema prisma/schema.prisma
       - name: RLS gate
         run: npm run check:rls
       - name: Tenant-isolation + integration tests

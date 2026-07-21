@@ -20,6 +20,7 @@ import {
   Car,
   Warehouse,
   Building2,
+  Users2,
   DollarSign,
   type LucideIcon,
 } from 'lucide-react';
@@ -49,6 +50,8 @@ export type NavItem = {
   alert?: boolean;
   staff?: boolean;
   offWedge?: boolean;
+  /** 40.8: a money destination — shown to OWNER always, and to STAFF only with finance access. */
+  financeView?: boolean;
 };
 export type NavRow = { section: string } | NavItem;
 
@@ -76,11 +79,14 @@ export const NAV: NavRow[] = [
   { href: '/referrals', label: 'Referrals', Icon: Share2, offWedge: true },
   { href: '/pos', label: 'Point of sale', Icon: ScanLine, offWedge: true },
   { section: 'Finance' },
-  // Money is OWNER-only (no `staff`) — the API's /finance/overview is OWNER-gated too.
-  { href: '/money', label: 'Money & Payments', Icon: DollarSign },
+  // Money: OWNER always, plus STAFF the owner has granted finance access (40.8). The API's
+  // /finance/overview is gated the same way (FinanceGuard).
+  { href: '/money', label: 'Money & Payments', Icon: DollarSign, financeView: true },
   { section: 'Settings' },
   // Sites: owner-only management (create/edit/delete 403 for staff), so no `staff` flag (SITE-1).
   { href: '/settings/sites', label: 'Sites', Icon: Building2 },
+  // Team: owner manages members + finance access (40.8).
+  { href: '/settings/team', label: 'Team', Icon: Users2 },
   { href: '/settings/custom-fields', label: 'Custom fields', Icon: SlidersHorizontal },
   { href: '/settings/webhooks', label: 'Webhooks', Icon: Webhook },
   { href: '/settings/integrations', label: 'Integrations', Icon: Blocks },
@@ -99,8 +105,13 @@ function pruneEmptySections(rows: NavRow[]): NavRow[] {
  * Hide what this vertical doesn't use (#300), then everything an employee can't open, then tidy up any
  * heading the filtering emptied.
  */
-export function navFor(role: 'OWNER' | 'STAFF'): NavRow[] {
+export function navFor(role: 'OWNER' | 'STAFF', opts?: { canViewFinance?: boolean }): NavRow[] {
+  const canFinance = role === 'OWNER' || !!opts?.canViewFinance;
   const onWedge = NAV.filter((r) => 'section' in r || !r.offWedge);
-  const allowed = role === 'OWNER' ? onWedge : onWedge.filter((r) => 'section' in r || r.staff);
+  const allowed =
+    role === 'OWNER'
+      ? onWedge
+      : // STAFF: their allowlisted destinations, plus money destinations only if granted finance access.
+        onWedge.filter((r) => 'section' in r || r.staff || (r.financeView && canFinance));
   return pruneEmptySections(allowed);
 }
