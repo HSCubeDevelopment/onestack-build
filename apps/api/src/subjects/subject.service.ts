@@ -121,6 +121,29 @@ export class SubjectService {
     return rows.map(toView);
   }
 
+  /**
+   * Primary subject label for MANY work items in one query — the jobs list needs a rego per row and
+   * doing it per-item (as the board does) is an N+1. Returns a map keyed by workItemId; a job with no
+   * subject simply isn't in the map. Tenant-scoped through the central wrapper, so it only ever sees
+   * this tenant's links — and the caller passes an already-authorised id set, so it can't widen scope.
+   */
+  async labelsForWorkItems(tenantId: string, workItemIds: string[]): Promise<Map<string, string>> {
+    if (workItemIds.length === 0) return new Map();
+    const links = await this.tenants.runInTenant(tenantId, (tx) =>
+      tx.workItemSubject.findMany({
+        where: { workItemId: { in: workItemIds }, subject: { deletedAt: null } },
+        include: { subject: { select: { label: true } } },
+      }),
+    );
+    // First link wins per job — a job has one vehicle in the automotive pack; if that ever changes the
+    // board (which shows subjects[0]) makes the same choice, so the two surfaces stay consistent.
+    const byWorkItem = new Map<string, string>();
+    for (const link of links) {
+      if (!byWorkItem.has(link.workItemId)) byWorkItem.set(link.workItemId, link.subject.label);
+    }
+    return byWorkItem;
+  }
+
   /** Search subjects of a type by a JSONB field value (e.g. vehicles by rego). This tenant only. */
   async searchByField(
     tenantId: string,

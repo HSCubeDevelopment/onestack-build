@@ -1,0 +1,15 @@
+# Builds the OneStack API image from the repo root using deploy/api.Dockerfile, then pushes it.
+steps:
+  - name: gcr.io/cloud-builders/docker
+    args:
+      - build
+      - -f
+      - deploy/api.Dockerfile
+      - -t
+      - australia-southeast1-docker.pkg.dev/procureos-499711/onestack/api:latest
+      - .
+images:
+  - australia-southeast1-docker.pkg.dev/procureos-499711/onestack/api:latest
+options:
+  machineType: E2_HIGHCPU_8
+timeout: 1800s

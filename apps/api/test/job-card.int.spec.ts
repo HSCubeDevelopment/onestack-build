@@ -148,4 +148,25 @@ describe.skipIf(!hasDb)('Job card (card #20)', () => {
     const listB = (await http().get('/api/v1/work-items?type=job').set(auth(b)).expect(200)).body;
     expect(listB.find((j: { id: string }) => j.id === job.id)).toBeUndefined();
   });
+
+  // The jobs list (card 302) needs a rego per row without an N+1 of per-job lookups.
+  it('withSubjects=1 enriches each list row with its vehicle label; the plain list does not', async () => {
+    const job = (await newJob().expect(201)).body;
+
+    const plain = (await http().get('/api/v1/work-items?type=job').set(auth(a)).expect(200))
+      .body as { id: string; subjectLabel?: string }[];
+    expect(plain.find((j) => j.id === job.id)?.subjectLabel).toBeUndefined();
+
+    const enriched = (
+      await http().get('/api/v1/work-items?type=job&withSubjects=1').set(auth(a)).expect(200)
+    ).body as { id: string; subjectLabel?: string | null }[];
+    // The label is the vehicle we attached — "Mazda 3 (JOB001)" — so a plate can be parsed from it.
+    expect(enriched.find((j) => j.id === job.id)?.subjectLabel).toBe('Mazda 3 (JOB001)');
+
+    // Enrichment can't widen scope: Shop B's enriched list still contains none of Shop A's jobs.
+    const enrichedB = (
+      await http().get('/api/v1/work-items?type=job&withSubjects=1').set(auth(b)).expect(200)
+    ).body as { id: string }[];
+    expect(enrichedB.find((j) => j.id === job.id)).toBeUndefined();
+  });
 });

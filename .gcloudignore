@@ -1,0 +1,12 @@
+# Keep the Cloud Build source upload small. The image installs its own deps and builds fresh, so none
+# of these are needed in the build context.
+.git
+**/node_modules
+**/dist
+**/.next
+**/.turbo
+**/.expo
+coverage
+playwright-report
+**/*.log
+onestack-mobile

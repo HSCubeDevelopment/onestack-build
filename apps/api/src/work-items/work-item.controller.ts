@@ -46,11 +46,28 @@ export class WorkItemController {
     return this.workItems.create(user.tenantId, input);
   }
 
-  /** STAFF only ever receive jobs they're assigned to; OWNER sees the tenant's whole list. */
+  /**
+   * STAFF only ever receive jobs they're assigned to; OWNER sees the tenant's whole list.
+   *
+   * `withSubjects=1` adds a `subjectLabel` (the job's vehicle, e.g. "Toyota Corolla (1XY 4KP)") to
+   * each row so the jobs list can show a rego plate without an N+1 of per-job lookups. The labels are
+   * resolved for THIS already-scoped set only, so a STAFF caller never learns about a job that isn't
+   * theirs — the enrichment can't widen what `list` already narrowed.
+   */
   @AllowStaff()
   @Get()
-  list(@CurrentUser() user: AuthContext, @Query('type') type?: string): Promise<WorkItemView[]> {
-    return this.workItems.list(user.tenantId, type, assignedScopeFor(user));
+  async list(
+    @CurrentUser() user: AuthContext,
+    @Query('type') type?: string,
+    @Query('withSubjects') withSubjects?: string,
+  ): Promise<(WorkItemView & { subjectLabel?: string | null })[]> {
+    const items = await this.workItems.list(user.tenantId, type, assignedScopeFor(user));
+    if (withSubjects !== '1') return items;
+    const labels = await this.subjects.labelsForWorkItems(
+      user.tenantId,
+      items.map((wi) => wi.id),
+    );
+    return items.map((wi) => ({ ...wi, subjectLabel: labels.get(wi.id) ?? null }));
   }
 
   /** The "job card": the work item + its linked subjects (e.g. the vehicle) pulled in automatically. */
