@@ -1682,6 +1682,14 @@ textarea.input {
   height: 88px;
 }
 
+/* A vehicle shown on the customer record — an inset card led by its plate. */
+.vehicle-card {
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  padding: 12px 14px;
+  background: var(--panel-2);
+}
+
 /* A soft split-billing card (insurer + excess), navy like the prototype so money reads as distinct
    from the rest of the job. */
 .splitcard {
