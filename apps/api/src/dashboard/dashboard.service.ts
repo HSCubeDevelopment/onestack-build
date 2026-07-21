@@ -2,12 +2,14 @@ import { Injectable } from '@nestjs/common';
 import { PackRegistry } from '../core/pack-registry';
 import { InvoiceService } from '../invoices/invoice.service';
 import { WorkItemService } from '../work-items/work-item.service';
+import { YardsService } from '../yards/yards.service';
 
 export interface DashboardSummary {
   jobsByState: Record<string, number>;
   activeJobs: number; // jobs not in a final workflow state
   totalUnpaidCents: number; // outstanding across all non-Void invoices
   thisWeekRevenueCents: number; // money received since the start of the week
+  inYards: number; // cars currently parked in yards, awaiting a job (YRD-1)
   weekStart: Date;
 }
 
@@ -23,15 +25,17 @@ export class DashboardService {
     private readonly workItems: WorkItemService,
     private readonly invoices: InvoiceService,
     private readonly registry: PackRegistry,
+    private readonly yards: YardsService,
   ) {}
 
   async getSummary(tenantId: string, jobType = 'job'): Promise<DashboardSummary> {
     const weekStart = startOfIsoWeek(new Date());
 
-    const [jobs, totalUnpaidCents, thisWeekRevenueCents] = await Promise.all([
+    const [jobs, totalUnpaidCents, thisWeekRevenueCents, inYards] = await Promise.all([
       this.workItems.list(tenantId, jobType),
       this.invoices.outstandingCents(tenantId),
       this.invoices.revenueSince(tenantId, weekStart),
+      this.yards.countInYards(tenantId),
     ]);
 
     const finalStates = this.registry.hasWorkItemType(jobType)
@@ -49,7 +53,7 @@ export class DashboardService {
       if (!finalStates.has(wi.stateName)) activeJobs++;
     }
 
-    return { jobsByState, activeJobs, totalUnpaidCents, thisWeekRevenueCents, weekStart };
+    return { jobsByState, activeJobs, totalUnpaidCents, thisWeekRevenueCents, inYards, weekStart };
   }
 }
 
