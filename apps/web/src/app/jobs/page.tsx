@@ -5,6 +5,7 @@ import { useRouter } from 'next/navigation';
 import { ChevronRight, Search } from 'lucide-react';
 import { api, Contact, Site, Vehicle, WorkItem } from '@/lib/api';
 import { useRole } from '@/lib/use-role';
+import { useActiveSite } from '@/lib/active-site';
 import { humanizeState, makeModelOf, regoOf, StatePill } from '@/lib/job-display';
 import { EmptyState, ErrorBanner, Loading, Modal, PageHead, useAsync } from '@/components/ui';
 
@@ -38,7 +39,8 @@ export default function JobsPage() {
   const [showNew, setShowNew] = useState(false);
   const [query, setQuery] = useState('');
   const [filter, setFilter] = useState<Filter>('All');
-  const [siteFilter, setSiteFilter] = useState<string>('all'); // 'all' | siteId | 'none' (SITE-1)
+  // 52.2: the jobs list scopes to the active workshop, shared with the Topbar switcher.
+  const [siteFilter, setSiteFilter] = useActiveSite(); // 'all' | siteId | 'none'
 
   const jobs = useMemo(() => data?.[0] ?? [], [data]);
   const contacts = data?.[1] ?? [];
