@@ -20,6 +20,13 @@ const ACCOUNTS = [
     email: process.env.DEMO_STAFF_EMAIL ?? 'staff@onestack.test',
     password: process.env.DEMO_STAFF_PASSWORD ?? 'Staff!2345',
   },
+  {
+    // Tow driver — a STAFF member (YRD-2 runs tow-in on the staff-accessible flow). A distinct TOW
+    // role (gap 301) would be an auth-model change; this is just a dedicated demo login.
+    role: Role.STAFF,
+    email: process.env.DEMO_TOW_EMAIL ?? 'tow@onestack.test',
+    password: process.env.DEMO_TOW_PASSWORD ?? 'Tow!2345',
+  },
 ];
 
 const headers = { apikey: KEY, Authorization: `Bearer ${KEY}`, 'Content-Type': 'application/json' };
