@@ -7,6 +7,7 @@ import {
 import { LineItemService } from '../line-items/line-item.service';
 import { NotificationService } from '../notifications/notification.service';
 import { TenantClient, TenantService } from '../tenancy/tenant.service';
+import { buildMoneyOverview, FinanceInvoiceRow, MoneyOverview } from './finance';
 
 export interface InvoiceLineInput {
   description: string;
@@ -427,6 +428,51 @@ export class InvoiceService {
       const billed = lineSum._sum.lineTotalCents ?? 0;
       const paid = paySum._sum.amountCents ?? 0;
       return Math.max(0, billed - paid);
+    });
+  }
+
+  /**
+   * The owner's money picture (FIN-1) — aggregated read-model over this tenant's invoices/payments.
+   * All the maths lives in the pure `buildMoneyOverview`; here we just load the rows it needs.
+   * Written-off and void invoices are excluded (not collectible money). Tenant-scoped.
+   */
+  async financeOverview(tenantId: string): Promise<MoneyOverview> {
+    return this.tenants.runInTenant(tenantId, async (tx) => {
+      const invoices = await tx.invoice.findMany({
+        where: { status: { notIn: ['Void', 'WrittenOff'] } },
+        include: { portions: true, payments: true },
+      });
+      const ids = invoices.map((i) => i.id);
+      const lineSums = ids.length
+        ? await tx.lineItem.groupBy({
+            by: ['parentId'],
+            where: { parentType: 'invoice', parentId: { in: ids } },
+            _sum: { lineTotalCents: true },
+          })
+        : [];
+      const billedById = new Map(lineSums.map((l) => [l.parentId, l._sum.lineTotalCents ?? 0]));
+
+      const rows: FinanceInvoiceRow[] = invoices.map((i) => {
+        const paidCents = i.payments.reduce((s, p) => s + p.amountCents, 0);
+        const lastPaymentAt = i.payments.reduce<Date | null>(
+          (a, p) => (a === null || p.receivedAt > a ? p.receivedAt : a),
+          null,
+        );
+        return {
+          status: i.status,
+          issueDate: i.issueDate,
+          dueDate: i.dueDate,
+          billedCents: billedById.get(i.id) ?? 0,
+          paidCents,
+          lastPaymentAt,
+          portions: i.portions.map((p) => ({
+            payerName: p.payerName,
+            payerContactId: p.payerContactId,
+            amountCents: p.amountCents,
+          })),
+        };
+      });
+      return buildMoneyOverview(rows, new Date());
     });
   }
 

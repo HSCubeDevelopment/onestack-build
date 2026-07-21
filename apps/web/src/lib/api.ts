@@ -187,6 +187,23 @@ export interface DashboardSummary {
   weekStart: string;
 }
 
+/** Money & Payments overview (FIN-1). All cents. Mirrors the API's MoneyOverview. */
+export interface AgingBuckets {
+  d0_30: number;
+  d30_60: number;
+  d60_90: number;
+  d90_plus: number;
+}
+export interface MoneyOverview {
+  owedCents: number;
+  overdueCents: number;
+  bankedLast30Cents: number;
+  pipeline: { invoicedAwaitingCents: number; paidLast30Cents: number };
+  agingByPayer: { insurer: AgingBuckets; customer: AgingBuckets };
+  insurerScorecard: { name: string; owedCents: number; avgDaysToPay: number | null }[];
+  needsChasing: { overdueCount: number; overdueCents: number; uncollectedExcessCents: number };
+}
+
 export interface PriceBookItem {
   id: string;
   name: string;
