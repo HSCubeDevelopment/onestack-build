@@ -17,4 +17,7 @@ options:
   machineType: E2_HIGHCPU_8
 timeout: 1800s
 substitutions:
-  _API_BASE: 'http://localhost:3001/api/v1'
+  # Default to the deployed API so a plain `gcloud builds submit` never bakes localhost into
+  # the image (next.config inlines this at build time). Override with --substitutions _API_BASE=… for
+  # other environments.
+  _API_BASE: 'https://onestack-api-239611169150.australia-southeast1.run.app/api/v1'
