@@ -31,5 +31,8 @@ COPY --from=build /app/node_modules ./node_modules
 COPY --from=build /app/package.json ./package.json
 COPY --from=build /app/apps/api ./apps/api
 WORKDIR /app/apps/api
+# Drop root: run as the image's built-in unprivileged `node` user. The copied files are world-readable
+# and the API writes nothing to disk, so read-only access is all it needs. (Security gate: missing-user.)
+USER node
 # main.ts listens on process.env.PORT (Cloud Run injects PORT=8080).
 CMD ["node", "dist/main.js"]
