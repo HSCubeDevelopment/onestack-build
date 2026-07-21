@@ -18,6 +18,7 @@ import {
   Webhook,
   Blocks,
   Car,
+  Warehouse,
   type LucideIcon,
 } from 'lucide-react';
 
@@ -61,6 +62,9 @@ export const NAV: NavRow[] = [
   { section: 'Fleet & courtesy cars' },
   { href: '/fleet', label: 'Fleet & cars', Icon: Car },
   { href: '/fleet/bookings', label: 'Fleet bookings', Icon: CalendarDays },
+  // Yards: staff (or a tow driver) can park a car and see the awaiting list; managing the yard
+  // network is owner-only, enforced by the API. `staff: true` mirrors the @AllowStaff reads.
+  { href: '/yards', label: 'Yards', Icon: Warehouse, staff: true },
   { section: 'Customers & sales' },
   { href: '/customers', label: 'Customers', Icon: Users, staff: true },
   { href: '/leads', label: 'Leads', Icon: Mail, alert: true },

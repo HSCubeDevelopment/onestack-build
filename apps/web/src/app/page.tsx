@@ -5,6 +5,7 @@ import {
   Wrench,
   DollarSign,
   Receipt,
+  Warehouse,
   Download,
   Mail,
   ArrowUpRight,
@@ -109,7 +110,7 @@ function Overview({
   return (
     <div className="stack">
       {/* KPI row */}
-      <div className="grid cols-4">
+      <div className="grid" style={{ gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))' }}>
         <Kpi
           Icon={Briefcase}
           tint="brand"
@@ -145,6 +146,15 @@ function Overview({
           value={money(summary.totalUnpaidCents)}
           trend={{ dir: ready > 0 ? 'up' : 'flat', text: `${ready} ready` }}
           foot="Across open invoices"
+        />
+        <Kpi
+          Icon={Warehouse}
+          tint="blue"
+          title="In yards"
+          desc="Cars parked, awaiting a job"
+          value={String(summary.inYards)}
+          trend={{ dir: summary.inYards > 0 ? 'up' : 'flat', text: 'awaiting' }}
+          foot="Traceable before intake"
         />
       </div>
 
@@ -205,6 +215,7 @@ function Kpi({
     amber: ['var(--amber-soft)', 'var(--amber)'],
     green: ['var(--green-soft)', 'var(--green)'],
     red: ['var(--red-soft)', 'var(--red)'],
+    blue: ['var(--blue-soft)', 'var(--blue)'],
   };
   const [bg, fg] = tints[tint] ?? tints.brand;
   const TrendIco = trend.dir === 'up' ? ArrowUpRight : trend.dir === 'down' ? ArrowDownRight : Dot;

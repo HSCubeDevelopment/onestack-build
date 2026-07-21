@@ -91,6 +91,8 @@ model Tenant {
   fleetReturns        FleetReturn[]
   fleetBookings       FleetBooking[]
   fleetPhotos         FleetPhoto[]
+  yards               Yard[]
+  yardDrops           YardDrop[]
 
   @@map("onestack_tenant")
 }
@@ -1496,4 +1498,46 @@ model JobEmbedding {
   @@index([tenantId, workItemId])
   @@index([tenantId, kind])
   @@map("onestack_job_embedding")
+}
+
+/// A yard where an incoming car can be parked before a job exists (Yards & vehicle logistics, YRD-1).
+/// The yard's own lat/long is a fixed BUSINESS location — used to suggest the nearest yard to a driver.
+/// A driver's live position is never stored: it is used transiently on the device to pre-select a yard.
+/// Tenant-scoped with forced RLS.
+model Yard {
+  id        String     @id @default(uuid()) @db.Uuid
+  tenantId  String     @db.Uuid
+  name      String
+  latitude  Float?
+  longitude Float?
+  createdAt DateTime   @default(now())
+  updatedAt DateTime   @default(now())
+  deletedAt DateTime?
+  tenant    Tenant     @relation(fields: [tenantId], references: [id])
+  drops     YardDrop[]
+
+  @@unique([tenantId, name])
+  @@index([tenantId])
+  @@map("onestack_yard")
+}
+
+/// A car parked at a yard (YRD-1). While `status = in_yard` the car shows in "Awaiting in yards".
+/// Marking it collected records when it left. Tenant-scoped with forced RLS.
+model YardDrop {
+  id          String    @id @default(uuid()) @db.Uuid
+  tenantId    String    @db.Uuid
+  yardId      String    @db.Uuid
+  rego        String
+  comments    String?
+  status      String    @default("in_yard") // in_yard | collected
+  droppedAt   DateTime  @default(now())
+  collectedAt DateTime?
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @default(now())
+  tenant      Tenant    @relation(fields: [tenantId], references: [id])
+  yard        Yard      @relation(fields: [yardId], references: [id])
+
+  @@index([tenantId])
+  @@index([tenantId, status])
+  @@map("onestack_yard_drop")
 }

@@ -183,6 +183,7 @@ export interface DashboardSummary {
   activeJobs: number;
   totalUnpaidCents: number;
   thisWeekRevenueCents: number;
+  inYards: number;
   weekStart: string;
 }
 
