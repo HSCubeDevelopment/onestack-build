@@ -40,7 +40,7 @@ export class JwtAuthGuard implements CanActivate {
     const tenantId = payload['tenant_id'] as string | undefined;
     const role = payload['role'] as AppRole | undefined;
 
-    if (!userId || !tenantId || (role !== 'OWNER' && role !== 'STAFF')) {
+    if (!userId || !tenantId || (role !== 'OWNER' && role !== 'STAFF' && role !== 'TOW')) {
       throw new UnauthorizedException('Token is missing tenant/role claims');
     }
 

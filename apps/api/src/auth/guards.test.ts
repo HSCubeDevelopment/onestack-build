@@ -39,6 +39,13 @@ describe('JwtAuthGuard', () => {
     expect(req.auth).toMatchObject({ tenantId: 'tA', role: 'STAFF' });
   });
 
+  it('accepts a TOW token (301) — a first-class role, not just OWNER/STAFF', () => {
+    const token = sign({ sub: 'tow-1', tenant_id: 'tA', role: 'TOW' });
+    const req: Record<string, unknown> = { headers: { authorization: `Bearer ${token}` } };
+    expect(guard.canActivate(ctxWith(req))).toBe(true);
+    expect(req.auth).toMatchObject({ tenantId: 'tA', role: 'TOW' });
+  });
+
   it('rejects a missing token', () => {
     expect(() => guard.canActivate(ctxWith({ headers: {} }))).toThrow();
   });
