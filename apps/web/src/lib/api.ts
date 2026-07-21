@@ -10,6 +10,9 @@ export class ApiError extends Error {
   constructor(
     public status: number,
     message: string,
+    /** The parsed error body, when the server sent one — e.g. the geofence verdict on a refused
+     *  check-in carries `{ canOverride, geofence: { verdict } }`. */
+    public body?: unknown,
   ) {
     super(message);
   }
@@ -25,7 +28,7 @@ async function request<T>(method: string, path: string, body?: unknown): Promise
   const data = text ? JSON.parse(text) : null;
   if (!res.ok) {
     const msg = (data && (data.message || data.error)) || `Request failed (${res.status})`;
-    throw new ApiError(res.status, Array.isArray(msg) ? msg.join(', ') : String(msg));
+    throw new ApiError(res.status, Array.isArray(msg) ? msg.join(', ') : String(msg), data);
   }
   return data as T;
 }
@@ -74,6 +77,8 @@ export interface WorkItem {
   fields: Record<string, unknown>;
   version: number;
   subjects?: Vehicle[];
+  /** Present only on the list when fetched with `?withSubjects=1`: the primary vehicle's label. */
+  subjectLabel?: string | null;
 }
 
 export interface Note {
@@ -542,6 +547,52 @@ export interface TimeEntry {
 export interface ClockStatus {
   onClock: boolean;
   entry: TimeEntry | null;
+}
+
+/** The body a geofenced check-in returns when it refuses (card 53.1). Coordinates are never echoed. */
+export interface GeofenceRefusal {
+  message: string;
+  canOverride: boolean;
+  geofence: {
+    verdict: 'inside' | 'outside' | 'inaccurate' | 'unavailable';
+    distanceMetres: number | null;
+  };
+}
+
+/** Narrow an unknown error body to a geofence refusal we can offer an override for. */
+export function asGeofenceRefusal(body: unknown): GeofenceRefusal | null {
+  if (body && typeof body === 'object' && 'canOverride' in body && 'geofence' in body) {
+    return body as GeofenceRefusal;
+  }
+  return null;
+}
+
+/** A browser Geolocation position trimmed to what the check-in endpoint accepts. */
+export interface BrowserPosition {
+  latitude: number;
+  longitude: number;
+  accuracyMetres?: number;
+}
+
+/**
+ * Ask the browser where it is, resolving to null rather than throwing when it can't say. A null is a
+ * legitimate answer — permission denied, no hardware, a timeout — and the server treats it as
+ * "location unavailable", which is refusable-with-override, not an error to swallow.
+ */
+export function getBrowserPosition(timeoutMs = 8000): Promise<BrowserPosition | null> {
+  if (typeof navigator === 'undefined' || !navigator.geolocation) return Promise.resolve(null);
+  return new Promise((resolve) => {
+    navigator.geolocation.getCurrentPosition(
+      (pos) =>
+        resolve({
+          latitude: pos.coords.latitude,
+          longitude: pos.coords.longitude,
+          accuracyMetres: Number.isFinite(pos.coords.accuracy) ? pos.coords.accuracy : undefined,
+        }),
+      () => resolve(null),
+      { enableHighAccuracy: true, timeout: timeoutMs, maximumAge: 30_000 },
+    );
+  });
 }
 
 export interface StaffTotal {

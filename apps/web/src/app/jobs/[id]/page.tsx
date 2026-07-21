@@ -14,6 +14,7 @@ import {
   Vehicle,
   WorkItem,
 } from '@/lib/api';
+import { Camera, MessageSquarePlus } from 'lucide-react';
 import {
   EmptyState,
   ErrorBanner,
@@ -23,6 +24,7 @@ import {
   StatusBadge,
   useAsync,
 } from '@/components/ui';
+import { makeModelOf, regoOf, StatePill } from '@/lib/job-display';
 import {
   ClaimFileTab,
   EstimateTab,
@@ -153,6 +155,8 @@ function JobDetail({
   const customerName = contactName(job.fields.customerId);
   const subjects = job.subjects ?? [];
   const vehicleLabels = subjects.map((v) => v.label).join(', ');
+  const primaryVehicle = subjects[0];
+  const primaryRego = regoOf(primaryVehicle?.label);
   const events = EVENTS[job.stateName] ?? [];
   const assigned = userId ? job.assignees.includes(userId) : false;
 
@@ -183,10 +187,16 @@ function JobDetail({
       </PageHead>
 
       <div className="card" style={{ marginBottom: 18 }}>
+        <div className="row wrap" style={{ marginBottom: 10 }}>
+          {primaryVehicle && (
+            <b style={{ fontSize: 17 }}>{makeModelOf(primaryVehicle.label) ?? job.reference}</b>
+          )}
+          {primaryRego && <span className="rego-plate">{primaryRego}</span>}
+          <StatePill state={job.stateName} />
+        </div>
         <div className="row wrap">
-          <StatusBadge status={job.stateName} />
           <span className="muted">{customerName}</span>
-          {vehicleLabels && <span className="faint">· {vehicleLabels}</span>}
+          {vehicleLabels && !primaryVehicle && <span className="faint">· {vehicleLabels}</span>}
           <div className="spacer" />
           <span className="faint">
             {job.assignees.length} assignee{job.assignees.length === 1 ? '' : 's'}
@@ -227,7 +237,16 @@ function JobDetail({
       </div>
 
       {tab === 'overview' && (
-        <OverviewTab job={job} subjects={subjects} contactName={contactName} />
+        <OverviewTab
+          job={job}
+          subjects={subjects}
+          contactName={contactName}
+          quotes={quotes}
+          invoices={invoices}
+          notes={notes}
+          attachments={attachments}
+          setTab={setTab}
+        />
       )}
       {tab === 'estimate' && (
         <EstimateTab jobId={jobId} reloadJob={reload} setTab={(t) => setTab(t as Tab)} />
@@ -255,23 +274,150 @@ function JobDetail({
 
 /* ---------------- Overview ---------------- */
 
+/**
+ * A claim pack assembles as the car moves through the shop. This is a HONEST readiness estimate — a
+ * checklist of the things a claim needs, scored from data that is actually present on the job, not a
+ * decorative number. Each item is either done or it isn't; the bar is the fraction done.
+ *
+ * (The prototype shows a hard-coded "80% ready". This computes it, and lists exactly what's missing,
+ * so the figure means something.)
+ */
+function claimReadiness({
+  hasClaim,
+  photos,
+  quotes,
+  invoices,
+}: {
+  hasClaim: boolean;
+  photos: number;
+  quotes: number;
+  invoices: number;
+}) {
+  const items = [
+    { label: 'Claim details recorded', done: hasClaim },
+    { label: 'Damage photos (3+)', done: photos >= 3 },
+    { label: 'Quote prepared', done: quotes >= 1 },
+    { label: 'Invoice raised', done: invoices >= 1 },
+  ];
+  const done = items.filter((i) => i.done).length;
+  return {
+    items,
+    pct: Math.round((done / items.length) * 100),
+    missing: items.filter((i) => !i.done),
+  };
+}
+
 function OverviewTab({
   job,
   subjects,
   contactName,
+  quotes,
+  invoices,
+  notes,
+  attachments,
+  setTab,
 }: {
   job: WorkItem;
   subjects: Vehicle[];
   contactName: (id: unknown) => string;
+  quotes: Quote[];
+  invoices: Invoice[];
+  notes: Note[];
+  attachments: Attachment[];
+  setTab: (t: Tab) => void;
 }) {
   const claim = job.fields.claim as Record<string, unknown> | undefined;
   const description = (job.fields.description as string) || '';
+  const readiness = claimReadiness({
+    hasClaim: !!claim,
+    photos: attachments.length,
+    quotes: quotes.length,
+    invoices: invoices.length,
+  });
+  const recentNotes = [...notes]
+    .sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime())
+    .slice(0, 6);
 
   return (
     <div className="stack">
+      {description && (
+        <div className="card">
+          <h3 style={{ marginBottom: 10 }}>Description</h3>
+          <p>{description}</p>
+        </div>
+      )}
+
+      {/* Claim file readiness — assembles automatically as the car moves. */}
       <div className="card">
-        <h3 style={{ marginBottom: 10 }}>Description</h3>
-        {description ? <p>{description}</p> : <span className="faint">No description.</span>}
+        <div className="card-head" style={{ marginBottom: 8 }}>
+          <h3 style={{ margin: 0 }}>Claim file</h3>
+          <span className={`conf ${readiness.pct === 100 ? 'hi' : 'md'}`}>
+            {readiness.pct}% ready
+          </span>
+        </div>
+        <div className={`readiness ${readiness.pct === 100 ? 'done' : ''}`}>
+          <span style={{ width: `${readiness.pct}%` }} />
+        </div>
+        {readiness.missing.length > 0 ? (
+          <div className="muted" style={{ fontSize: 12.5 }}>
+            Missing: <b>{readiness.missing.map((m) => m.label).join(' · ')}</b>
+          </div>
+        ) : (
+          <div className="muted" style={{ fontSize: 12.5 }}>
+            Everything a claim pack needs is present.
+          </div>
+        )}
+        <div className="row" style={{ marginTop: 12 }}>
+          <div className="spacer" />
+          <button className="btn sm" onClick={() => setTab('claim')}>
+            Open claim pack →
+          </button>
+        </div>
+      </div>
+
+      {/* Add note / add photo — the two things a person does most on a job, one tap from the top. */}
+      <div className="row" style={{ gap: 8 }}>
+        <button
+          className="btn"
+          style={{ flex: 1, justifyContent: 'center' }}
+          onClick={() => setTab('notes')}
+        >
+          <MessageSquarePlus size={15} aria-hidden /> Add note
+        </button>
+        <button
+          className="btn"
+          style={{ flex: 1, justifyContent: 'center' }}
+          onClick={() => setTab('photos')}
+        >
+          <Camera size={15} aria-hidden /> Add photo
+        </button>
+      </div>
+
+      {/* Timeline — real activity, newest first. Notes are the auto-logged record we actually have; a
+          job with none simply says so rather than showing invented events. */}
+      <div className="card">
+        <div className="card-head" style={{ marginBottom: 8 }}>
+          <h3 style={{ margin: 0 }}>Timeline</h3>
+          <span className="faint">{notes.length} entries</span>
+        </div>
+        {recentNotes.length === 0 ? (
+          <span className="faint">No activity logged yet.</span>
+        ) : (
+          <div className="timeline">
+            {recentNotes.map((n) => (
+              <div key={n.id} className="tl-row">
+                <span className="tl-dot" aria-hidden />
+                <span className="tl-body">{n.body}</span>
+                <span className="tl-when">
+                  {new Date(n.createdAt).toLocaleDateString('en-AU', {
+                    day: 'numeric',
+                    month: 'short',
+                  })}
+                </span>
+              </div>
+            ))}
+          </div>
+        )}
       </div>
 
       {claim && (

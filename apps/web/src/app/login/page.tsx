@@ -46,14 +46,8 @@ export default function LoginPage() {
   };
 
   return (
-    <div
-      style={{
-        display: 'grid',
-        placeItems: 'center',
-        minHeight: 'calc(100vh - var(--topbar-h) - 48px)',
-      }}
-    >
-      <div className="card" style={{ width: 380, maxWidth: '100%' }}>
+    <div style={{ width: '100%', maxWidth: 380 }}>
+      <div className="card" style={{ width: '100%' }}>
         <div style={{ marginBottom: 18 }}>
           <h1 style={{ fontSize: 22, fontWeight: 700, margin: 0 }}>Sign in</h1>
           <p style={{ color: 'var(--text-dim)', margin: '4px 0 0', fontSize: 14 }}>

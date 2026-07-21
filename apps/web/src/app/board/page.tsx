@@ -4,6 +4,7 @@ import { useState } from 'react';
 import { RefreshCw, Loader2 } from 'lucide-react';
 import { api, Board, BoardCard } from '@/lib/api';
 import { ErrorBanner, Loading, PageHead, StatusBadge, useAsync } from '@/components/ui';
+import { makeModelOf, regoOfCard } from '@/lib/job-display';
 
 /** Pure: return a new board with `id` moved into `targetState` (and its stateName updated). */
 function withCardMoved(board: Board, id: string, targetState: string): Board {
@@ -178,13 +179,17 @@ function Card({
           <Loader2 size={14} className="spin" />
         </span>
       )}
-      <div className="ref">{card.reference}</div>
-      <div style={{ fontSize: 12 }}>{card.customerName ?? '—'}</div>
-      {card.vehicleLabel && (
-        <div className="faint" style={{ fontSize: 11 }}>
-          {card.vehicleLabel}
-        </div>
+      <div className="row" style={{ gap: 7, marginBottom: 4 }}>
+        <span className="ref">{card.reference}</span>
+        {/* The plate is how a shop names a car; it leads the card, the job number is secondary. */}
+        {regoOfCard(card) && <span className="rego-plate">{regoOfCard(card)}</span>}
+      </div>
+      {makeModelOf(card.vehicleLabel) && (
+        <div style={{ fontSize: 12.5, fontWeight: 600 }}>{makeModelOf(card.vehicleLabel)}</div>
       )}
+      <div className="faint" style={{ fontSize: 12 }}>
+        {card.customerName ?? '—'}
+      </div>
       {card.assignees.length > 0 && (
         <div className="faint" style={{ fontSize: 11, marginTop: 4 }}>
           {card.assignees.length} assigned

@@ -3,6 +3,7 @@
 import Link from 'next/link';
 import { AlertTriangle, ArrowRight, Camera, Clock } from 'lucide-react';
 import type { BoardCard, PipelineView } from '@/lib/api';
+import { humanizeState, regoOfCard, stageTint } from '@/lib/job-display';
 
 /**
  * The owner home, matched to the prototype's `homeOwner()`.
@@ -20,19 +21,6 @@ import type { BoardCard, PipelineView } from '@/lib/api';
  * with placeholder numbers would put figures on an owner's home screen that mean nothing. They go in
  * when their cards land.
  */
-
-/**
- * Pull the plate out of a board card's vehicle label.
- *
- * The board renders a vehicle as "MAKE MODEL (rego)" — the rego is NOT on the work item's own
- * fields, it lives on the linked vehicle Subject, and the board read-model is the thing that has
- * already joined them. Parsing the label is cheaper than a second round trip per row.
- */
-function regoOf(card: BoardCard): string | null {
-  const match = card.vehicleLabel?.match(/\(([^)]+)\)\s*$/);
-  const rego = match?.[1]?.trim();
-  return rego ? rego.toUpperCase() : null;
-}
 
 export function Hero({ name, carsInShop }: { name: string; carsInShop: number }) {
   return (
@@ -79,20 +67,6 @@ export function PipelineStrip({ pipeline }: { pipeline: PipelineView }) {
   );
 }
 
-/** The fixed five-colour status set from the prototype. Same state, same colour, everywhere. */
-function stageTint(state: string): string {
-  const key = state.toLowerCase().replace(/[\s_-]/g, '');
-  const table: Record<string, string> = {
-    booked: 'var(--text-dim)',
-    inprogress: 'var(--amber)',
-    awaitingparts: 'var(--amber)',
-    ready: 'var(--green)',
-    collected: 'var(--blue)',
-    towed: 'var(--purple)',
-  };
-  return table[key] ?? 'var(--text-dim)';
-}
-
 export function TodaysBoard({ board }: { board: BoardCard[] }) {
   const open = board.filter((j) => !/collected|cancelled/i.test(j.stateName)).slice(0, 5);
 
@@ -109,7 +83,7 @@ export function TodaysBoard({ board }: { board: BoardCard[] }) {
         <p className="faint">Nothing on the floor right now.</p>
       ) : (
         open.map((card) => {
-          const rego = regoOf(card);
+          const rego = regoOfCard(card);
           return (
             <Link key={card.id} href={`/jobs/${card.id}`} className="job-row">
               <div className="job-row-main">
@@ -126,12 +100,6 @@ export function TodaysBoard({ board }: { board: BoardCard[] }) {
       )}
     </section>
   );
-}
-
-/** "AwaitingParts" is a machine name; a person reads "Awaiting parts". */
-function humanizeState(state: string): string {
-  const spaced = state.replace(/([a-z])([A-Z])/g, '$1 $2').replace(/[_-]+/g, ' ');
-  return spaced.charAt(0).toUpperCase() + spaced.slice(1).toLowerCase();
 }
 
 /** The prototype's quick actions. Only routes that exist — a dead tile is worse than no tile. */

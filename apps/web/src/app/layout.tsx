@@ -1,9 +1,7 @@
 import './globals.css';
 import type { Metadata, Viewport } from 'next';
 import { cookies } from 'next/headers';
-import { MobileTabBar } from '@/components/MobileTabBar';
-import { Sidebar } from '@/components/Sidebar';
-import { Topbar } from '@/components/Topbar';
+import { AppShell } from '@/components/AppShell';
 import { themeInitScript } from '@/components/ThemeToggle';
 import { SESSION_COOKIE, decodeToken } from '@/lib/session';
 
@@ -61,14 +59,7 @@ export default async function RootLayout({ children }: { children: React.ReactNo
         <script dangerouslySetInnerHTML={{ __html: themeInitScript }} />
       </head>
       <body>
-        <div className="app">
-          <Sidebar role={role} />
-          <div className="content">
-            <Topbar />
-            <main className="main">{children}</main>
-          </div>
-          <MobileTabBar role={role} />
-        </div>
+        <AppShell role={role}>{children}</AppShell>
       </body>
     </html>
   );

@@ -122,6 +122,16 @@ p {
   grid-template-columns: var(--sidebar-w) 1fr;
   min-height: 100vh;
 }
+/* The sign-in screen renders without the app chrome (no sidebar / topbar / tab bar). Full-bleed,
+   centred, and painting into the safe areas like any other installed-app screen. */
+.auth-page {
+  min-height: 100vh;
+  min-height: 100dvh;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: calc(24px + env(safe-area-inset-top)) 20px calc(24px + env(safe-area-inset-bottom));
+}
 .sidebar {
   background: var(--panel);
   border-right: 1px solid var(--border);
@@ -1458,4 +1468,241 @@ textarea.input {
 .quick-actions .btn {
   flex: 1;
   justify-content: center;
+}
+
+/* ============================================================================================
+   Card 302 — the rest of the prototype's screen vocabulary.
+   The owner home (Card 304, above) already carried the hero/pipeline/job-row/rego/status-pill.
+   These are the primitives the OTHER screens need — jobs list, job detail, quotes — so the whole
+   app speaks one visual language instead of the home screen looking like the prototype and every
+   other screen looking like a spreadsheet.
+   ============================================================================================ */
+
+/* Segment control — the prototype's status filter (In progress / Booked / Ready / Collected) and
+   the timesheet period switch. A pill-in-a-trough, thumb-sized, scrolls if the labels overflow. */
+.seg {
+  display: flex;
+  gap: 3px;
+  background: var(--panel-2);
+  border-radius: 12px;
+  padding: 3px;
+  margin: 2px 0 14px;
+  overflow-x: auto;
+  scrollbar-width: none;
+}
+.seg::-webkit-scrollbar {
+  display: none;
+}
+.seg > button {
+  flex: 1 0 auto;
+  border: none;
+  background: none;
+  font-family: inherit;
+  font-size: 12.5px;
+  font-weight: 680;
+  color: var(--text-dim);
+  padding: 8px 12px;
+  border-radius: 9px;
+  cursor: pointer;
+  white-space: nowrap;
+}
+.seg > button.on {
+  background: var(--panel);
+  color: var(--ink);
+  box-shadow: var(--shadow-sm);
+}
+
+/* A search field sized like an input the prototype puts at the top of the jobs screen. */
+.search-field {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  background: var(--panel);
+  border: 1px solid var(--border-strong);
+  border-radius: 12px;
+  padding: 10px 13px;
+  color: var(--text-faint);
+  margin: 2px 0 12px;
+}
+.search-field input {
+  border: none;
+  background: transparent;
+  outline: none;
+  font-size: 14px;
+  color: var(--text);
+  width: 100%;
+  font-family: inherit;
+}
+
+/* A quote/invoice line rendered as a row rather than a table cell — description + source over a
+   right-aligned price. This is how the prototype shows a quote on a phone. */
+.qline {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 12px;
+  padding: 10px 0;
+  border-bottom: 1px solid var(--border);
+}
+.qline:last-child {
+  border-bottom: none;
+}
+.qline .q-meta {
+  color: var(--text-faint);
+  font-size: 11px;
+  margin-top: 2px;
+}
+.qline .q-price {
+  text-align: right;
+  white-space: nowrap;
+  font-weight: 650;
+}
+.tot {
+  display: flex;
+  justify-content: space-between;
+  font-size: 13px;
+  padding: 4px 0;
+}
+.tot.big {
+  font-weight: 800;
+  font-size: 16px;
+  border-top: 2px solid var(--ink);
+  margin-top: 6px;
+  padding-top: 8px;
+  color: var(--ink);
+}
+
+/* Confidence / part-status chip. hi = confident/done, md = in-flight, lo = needs a look. */
+.conf {
+  font-size: 10px;
+  font-weight: 800;
+  padding: 2px 8px;
+  border-radius: 999px;
+  white-space: nowrap;
+}
+.conf.hi {
+  background: var(--green-soft);
+  color: var(--green);
+}
+.conf.md {
+  background: var(--amber-soft);
+  color: var(--amber);
+}
+.conf.lo {
+  background: var(--red-soft);
+  color: var(--red);
+}
+
+/* A blue "here's how this works" note, and an orange "something needs you" note. Straight from the
+   prototype's .hintnote / .notif. */
+.hintnote {
+  background: var(--blue-soft);
+  border: 1px solid var(--border);
+  border-color: color-mix(in srgb, var(--blue) 30%, transparent);
+  color: var(--blue);
+  border-radius: 10px;
+  padding: 9px 12px;
+  font-size: 12px;
+  line-height: 1.45;
+  margin: 2px 0 12px;
+}
+.notif {
+  background: var(--brand-soft);
+  border: 1px solid color-mix(in srgb, var(--brand) 30%, transparent);
+  color: var(--brand);
+  border-radius: 12px;
+  padding: 10px 12px;
+  font-size: 12.5px;
+  display: flex;
+  gap: 8px;
+  align-items: center;
+  margin-bottom: 8px;
+}
+
+/* Readiness bar — "claim file 80% ready", assembling as the car moves. Amber while incomplete,
+   green at 100%. The width is set inline from real data. */
+.readiness {
+  height: 8px;
+  border-radius: 999px;
+  background: var(--panel-2);
+  overflow: hidden;
+  margin: 9px 0;
+}
+.readiness > span {
+  display: block;
+  height: 100%;
+  border-radius: 999px;
+  background: var(--brand);
+}
+.readiness.done > span {
+  background: var(--green);
+}
+
+/* Auto-logged timeline — a dotted spine of events, newest first. */
+.timeline {
+  display: flex;
+  flex-direction: column;
+}
+.tl-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 9px 0;
+  border-bottom: 1px dashed var(--border);
+}
+.tl-row:last-child {
+  border-bottom: none;
+}
+.tl-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: var(--purple);
+  flex: 0 0 auto;
+}
+.tl-body {
+  flex: 1;
+  min-width: 0;
+  font-size: 12.5px;
+  font-weight: 600;
+}
+.tl-when {
+  color: var(--text-faint);
+  font-size: 11.5px;
+  white-space: nowrap;
+}
+
+/* Photo grid — three-up tiles the way a shop scans a job's photos. */
+.photo-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr 1fr;
+  gap: 8px;
+}
+.photo-grid .thumb {
+  height: 88px;
+}
+
+/* A soft split-billing card (insurer + excess), navy like the prototype so money reads as distinct
+   from the rest of the job. */
+.splitcard {
+  background: linear-gradient(135deg, #0f2340, #16325b);
+  color: #fff;
+  border-radius: var(--radius);
+  padding: 16px;
+}
+.splitcard .splitrow {
+  display: flex;
+  justify-content: space-between;
+  padding: 8px 0;
+  font-size: 13px;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.12);
+}
+.splitcard .splitrow:last-child {
+  border-bottom: none;
+}
+.splitcard .lbl2 {
+  font-size: 11px;
+  font-weight: 800;
+  letter-spacing: 0.3px;
+  color: rgba(255, 255, 255, 0.7);
 }
