@@ -82,13 +82,20 @@ export default function JobDetailPage() {
   );
   const [tab, setTab] = useState<Tab>('overview');
   const [userId, setUserId] = useState<string | null>(null);
+  const [role, setRole] = useState<string | null>(null);
   const [actionErr, setActionErr] = useState<string | null>(null);
 
   useEffect(() => {
     fetch('/api/me')
       .then((r) => r.json())
-      .then((d: { userId: string }) => setUserId(d.userId))
-      .catch(() => setUserId(null));
+      .then((d: { userId: string; role?: string }) => {
+        setUserId(d.userId);
+        setRole(d.role ?? null);
+      })
+      .catch(() => {
+        setUserId(null);
+        setRole(null);
+      });
   }, []);
 
   return (
@@ -110,6 +117,7 @@ export default function JobDetailPage() {
           contacts={data[5]}
           jobId={id}
           userId={userId}
+          role={role}
           tab={tab}
           setTab={setTab}
           reload={reload}
@@ -130,6 +138,7 @@ function JobDetail({
   contacts,
   jobId,
   userId,
+  role,
   tab,
   setTab,
   reload,
@@ -144,6 +153,7 @@ function JobDetail({
   contacts: Contact[];
   jobId: string;
   userId: string | null;
+  role: string | null;
   tab: Tab;
   setTab: (t: Tab) => void;
   reload: () => Promise<unknown>;
@@ -175,6 +185,12 @@ function JobDetail({
   const assignMe = () =>
     act(() => api.post(`/work-items/${jobId}/assign`, { assignees: [userId] }));
   const unassign = () => act(() => api.post(`/work-items/${jobId}/assign`, { assignees: [] }));
+  const waiveExcessHold = () => act(() => api.post(`/work-items/${jobId}/waive-excess-hold`, {}));
+
+  // INS-2: an insured job holds the car until the customer excess is collected. The pack's COLLECT
+  // guard sets `excessOutstanding`; surface it here so the front desk knows WHY release is blocked,
+  // and give the owner an audited one-click override.
+  const excessHeld = job.fields.excessOutstanding === true && job.stateName === 'Ready';
 
   return (
     <>
@@ -213,6 +229,26 @@ function JobDetail({
             ))}
         </div>
       </div>
+
+      {excessHeld && (
+        <div
+          className="card"
+          style={{ marginBottom: 18, borderLeft: '4px solid var(--warn, #b45309)' }}
+        >
+          <div className="row wrap" style={{ alignItems: 'center', gap: 10 }}>
+            <b>🔒 Excess not collected</b>
+            <span className="muted">
+              This car can&apos;t be released until the customer&apos;s insurance excess is paid.
+            </span>
+            <div className="spacer" />
+            {role === 'OWNER' && (
+              <button className="btn sm" onClick={() => void waiveExcessHold()}>
+                Waive hold &amp; release
+              </button>
+            )}
+          </div>
+        </div>
+      )}
 
       <ErrorBanner message={actionErr} />
 

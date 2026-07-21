@@ -74,6 +74,10 @@ export const automotivePack: Pack = {
         promisedDate: z.string().optional(),
         completedDate: z.string().optional(),
         claim: ClaimFields.optional(), // present ⇒ insured job (card #15)
+        // INS-2: true while a customer-excess portion on the job is still unpaid. Kept in sync by the
+        // invoice flow (set when an excess split is applied, cleared when it's paid or an owner waives).
+        // The COLLECT guard below reads it. Optional/backward-compatible — a job without it is not held.
+        excessOutstanding: z.boolean().optional(),
       }),
       workflow: {
         workItemType: 'job',
@@ -85,9 +89,16 @@ export const automotivePack: Pack = {
             on: { AWAIT_PARTS: { target: 'AwaitingParts' }, READY: { target: 'Ready' } },
           },
           AwaitingParts: { on: { RESUME: { target: 'InProgress' } } },
-          Ready: { on: { COLLECT: { target: 'Collected' } } },
+          // INS-2: a car can only be released once the customer's excess is collected (or waived).
+          Ready: { on: { COLLECT: { target: 'Collected', guard: 'excessCollected' } } },
           Collected: { final: true },
         },
+      },
+      // INS-2: the release gate. A job with no excess (excessOutstanding !== true) collects freely; a
+      // job still owing an excess is blocked until it's paid or an owner waives the hold. The vertical
+      // rule lives HERE in the pack — the core engine only enforces named guards generically.
+      guards: {
+        excessCollected: (ctx) => ctx.fields.excessOutstanding !== true,
       },
     },
   ],

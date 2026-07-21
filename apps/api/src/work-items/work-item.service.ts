@@ -7,6 +7,7 @@ import {
 import { EventEmitter2 } from '@nestjs/event-emitter';
 import { Prisma } from '@prisma/client';
 import { z } from 'zod';
+import { AuditService } from '../audit/audit.service';
 import { PackRegistry } from '../core/pack-registry';
 import { WorkflowEngine, WorkflowError } from '../core/workflow.engine';
 import { TenantService } from '../tenancy/tenant.service';
@@ -43,6 +44,7 @@ export class WorkItemService {
     private readonly registry: PackRegistry,
     private readonly workflow: WorkflowEngine,
     private readonly events: EventEmitter2,
+    private readonly audit: AuditService,
   ) {}
 
   async create(tenantId: string, input: CreateWorkItemInput): Promise<WorkItemView> {
@@ -206,6 +208,32 @@ export class WorkItemService {
         state: fired.nextState,
       });
     }
+    return this.get(tenantId, id);
+  }
+
+  /**
+   * INS-2 override: an owner releases a held job for collection despite an unpaid customer excess
+   * ("collect excess before release, or override with permission"). Clears the `excessOutstanding`
+   * flag the pack's COLLECT guard reads, and records WHO waived it and when — an audited exception,
+   * not a silent bypass. Owner-only is enforced at the controller.
+   */
+  async waiveExcessHold(tenantId: string, userId: string, id: string): Promise<WorkItemView> {
+    await this.tenants.runInTenant(tenantId, async (tx) => {
+      const wi = await tx.workItem.findFirst({ where: { id, deletedAt: null } });
+      if (!wi) throw new NotFoundException('Work item not found');
+      const fields = { ...(wi.fields as Record<string, unknown>), excessOutstanding: false };
+      await tx.workItem.update({
+        where: { id },
+        data: { fields: fields as Prisma.InputJsonValue },
+      });
+      await this.audit.recordIn(tx, {
+        tenantId,
+        actorUserId: userId,
+        action: 'job.excess_hold.waived',
+        entityType: 'work_item',
+        entityId: id,
+      });
+    });
     return this.get(tenantId, id);
   }
 
