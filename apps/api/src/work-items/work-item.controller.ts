@@ -111,6 +111,18 @@ export class WorkItemController {
     return this.workItems.transition(user.tenantId, id, dto.event);
   }
 
+  /**
+   * INS-2 override — OWNER only (no @AllowStaff): release a job for collection despite an unpaid
+   * customer excess. Audited. Staff must collect the excess; only an owner can waive the hold.
+   */
+  @Post(':id/waive-excess-hold')
+  waiveExcessHold(
+    @CurrentUser() user: AuthContext,
+    @Param('id') id: string,
+  ): Promise<WorkItemView> {
+    return this.workItems.waiveExcessHold(user.tenantId, user.userId, id);
+  }
+
   @Delete(':id')
   @HttpCode(204)
   async remove(@CurrentUser() user: AuthContext, @Param('id') id: string): Promise<void> {

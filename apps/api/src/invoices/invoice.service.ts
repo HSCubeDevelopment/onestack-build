@@ -4,6 +4,7 @@ import {
   Injectable,
   NotFoundException,
 } from '@nestjs/common';
+import { Prisma } from '@prisma/client';
 import { LineItemService } from '../line-items/line-item.service';
 import { NotificationService } from '../notifications/notification.service';
 import { TenantClient, TenantService } from '../tenancy/tenant.service';
@@ -295,7 +296,40 @@ export class InvoiceService {
           },
         });
       }
+      await this.syncExcessHold(tx, inv.workItemId); // INS-2: a new excess portion holds the job
       return this.viewFrom(tx, inv);
+    });
+  }
+
+  /**
+   * INS-2 — keep the job's `excessOutstanding` flag in step with its invoices. The flag is true while
+   * ANY non-void invoice on the job carries a "Customer excess" portion with a balance still owing; the
+   * pack's COLLECT guard reads it to block release. Called whenever an excess split or a payment lands.
+   *
+   * This touches the work-item row directly, mirroring how InvoiceService already reads it
+   * (createFromJob, customerRecipient) — a boolean it owns the meaning of, merged into the existing
+   * pack-validated fields, so no other field is disturbed.
+   */
+  private async syncExcessHold(tx: TenantClient, workItemId: string): Promise<void> {
+    const invoices = await tx.invoice.findMany({
+      where: { workItemId, status: { not: 'Void' } },
+      include: { portions: true, payments: true },
+    });
+    const unpaidExcess = invoices.some((inv) =>
+      inv.portions.some((p) => {
+        if (p.description !== 'Customer excess') return false;
+        const paidToPortion = inv.payments
+          .filter((pay) => pay.portionId === p.id)
+          .reduce((s, pay) => s + pay.amountCents, 0);
+        return p.amountCents - paidToPortion > 0;
+      }),
+    );
+    const job = await tx.workItem.findFirst({ where: { id: workItemId, deletedAt: null } });
+    if (!job) return;
+    const fields = { ...(job.fields as Record<string, unknown>), excessOutstanding: unpaidExcess };
+    await tx.workItem.update({
+      where: { id: workItemId },
+      data: { fields: fields as Prisma.InputJsonValue },
     });
   }
 
@@ -363,6 +397,7 @@ export class InvoiceService {
         Object.keys(patch).length > 0
           ? await tx.invoice.update({ where: { id }, data: patch })
           : inv;
+      await this.syncExcessHold(tx, inv.workItemId); // INS-2: paying the excess may release the job
       return this.viewFrom(tx, updated);
     });
   }
