@@ -1682,6 +1682,19 @@ textarea.input {
   height: 88px;
 }
 
+/* A needs-chasing row on the Money page — icon, label, amount pill. */
+.chase-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 10px 0;
+  border-bottom: 1px solid var(--border);
+  font-size: 13px;
+}
+.chase-row:last-child {
+  border-bottom: none;
+}
+
 /* A vehicle shown on the customer record — an inset card led by its plate. */
 .vehicle-card {
   border: 1px solid var(--border);
