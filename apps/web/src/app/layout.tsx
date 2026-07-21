@@ -52,11 +52,14 @@ export default async function RootLayout({ children }: { children: React.ReactNo
   // shown a link the API would refuse. The API is the enforcement; this is just what we render.
   const store = await cookies();
   const token = store.get(SESSION_COOKIE)?.value;
-  const role = (token ? decodeToken(token)?.role : undefined) === 'STAFF' ? 'STAFF' : 'OWNER';
-  // 40.8: an owner always sees money; a staff member only if the owner granted finance access. Resolve
-  // it server-side so the money nav is decided before render (the API still enforces it either way).
+  const claimRole = token ? decodeToken(token)?.role : undefined;
+  // Map the token role to the app's three roles; anything unknown falls back to OWNER (the demo default).
+  const role: 'OWNER' | 'STAFF' | 'TOW' =
+    claimRole === 'STAFF' ? 'STAFF' : claimRole === 'TOW' ? 'TOW' : 'OWNER';
+  // 40.8: an owner always sees money; a non-owner only if the owner granted finance access. Resolve it
+  // server-side so the money nav is decided before render (the API still enforces it either way).
   let canViewFinance = role === 'OWNER';
-  if (role === 'STAFF' && token) {
+  if (role !== 'OWNER' && token) {
     try {
       const res = await fetch(`${apiBase()}/auth/permissions`, {
         headers: { Authorization: `Bearer ${token}` },

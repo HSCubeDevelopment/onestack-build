@@ -1,4 +1,4 @@
-export type AppRole = 'OWNER' | 'STAFF';
+export type AppRole = 'OWNER' | 'STAFF' | 'TOW';
 
 /** Resolved from a verified Supabase JWT and attached to the request. */
 export interface AuthContext {

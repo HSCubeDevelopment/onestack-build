@@ -19,6 +19,10 @@ describe('assignedScopeFor', () => {
     expect(assignedScopeFor(user('OWNER'))).toBeUndefined();
   });
 
+  it('scopes a TOW driver to their own jobs, like any non-owner (301, fail-safe)', () => {
+    expect(assignedScopeFor(user('TOW', 'tow-7'))).toBe('tow-7');
+  });
+
   it('returns the id itself, so a caller cannot accidentally pass a truthy non-id', () => {
     // Guards against a refactor that returns `true`/`'me'` and silently matches nothing (or everything).
     const scope = assignedScopeFor(user('STAFF', 'abc'));

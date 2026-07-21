@@ -30,7 +30,7 @@ export function Sidebar({
   role = 'OWNER',
   canViewFinance = false,
 }: {
-  role?: 'OWNER' | 'STAFF';
+  role?: 'OWNER' | 'STAFF' | 'TOW';
   canViewFinance?: boolean;
 }) {
   const path = usePathname();

@@ -6,7 +6,7 @@ import { SiteSwitcher } from '@/components/SiteSwitcher';
 
 interface Me {
   userId: string;
-  role: 'OWNER' | 'STAFF';
+  role: 'OWNER' | 'STAFF' | 'TOW';
   signedIn: boolean;
 }
 
@@ -49,7 +49,9 @@ export function Topbar() {
         <div className="avatar">{me?.signedIn ? role.slice(0, 2).toUpperCase() : 'DE'}</div>
         <div>
           <div className="u-name">{me?.signedIn ? 'Signed in' : 'Demo (owner)'}</div>
-          <div className="u-role">{role === 'OWNER' ? 'Owner' : 'Staff'}</div>
+          <div className="u-role">
+            {role === 'OWNER' ? 'Owner' : role === 'TOW' ? 'Tow' : 'Staff'}
+          </div>
         </div>
         {me?.signedIn ? (
           <button className="icon-btn" title="Sign out" onClick={signOut}>

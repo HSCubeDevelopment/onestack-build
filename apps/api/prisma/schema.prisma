@@ -13,6 +13,7 @@ datasource db {
 enum Role {
   OWNER
   STAFF
+  TOW
 
   @@map("onestack_role")
 }

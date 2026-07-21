@@ -1,0 +1,5 @@
+-- Reverse of 0051_tow_role. Postgres cannot DROP an enum value in place; rolling back means recreating
+-- the enum without 'TOW' (after repointing any TOW members to STAFF). Left as a documented manual step
+-- rather than an automatic destructive rewrite.
+-- UPDATE "onestack_membership" SET "role" = 'STAFF' WHERE "role" = 'TOW';
+-- (then recreate "onestack_role" without 'TOW' — manual).

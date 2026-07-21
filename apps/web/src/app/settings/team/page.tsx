@@ -8,7 +8,7 @@ import { EmptyState, ErrorBanner, Loading, PageHead, useAsync } from '@/componen
 interface Member {
   userId: string;
   email: string | null;
-  role: 'OWNER' | 'STAFF';
+  role: 'OWNER' | 'STAFF' | 'TOW';
   canViewFinance: boolean;
 }
 

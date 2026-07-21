@@ -19,7 +19,7 @@ export function AppShell({
   canViewFinance = false,
   children,
 }: {
-  role: 'OWNER' | 'STAFF';
+  role: 'OWNER' | 'STAFF' | 'TOW';
   canViewFinance?: boolean;
   children: React.ReactNode;
 }) {

@@ -23,4 +23,4 @@ export const Roles = (...roles: AppRole[]) => SetMetadata(ROLES_KEY, roles);
  * Opting a route in is necessary but rarely sufficient: routes that return per-job data must ALSO scope
  * their query to the caller's assigned jobs. The guard answers "may they call this?", not "whose rows?".
  */
-export const AllowStaff = () => Roles('OWNER', 'STAFF');
+export const AllowStaff = () => Roles('OWNER', 'STAFF', 'TOW');

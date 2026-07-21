@@ -27,7 +27,7 @@ export function MobileTabBar({
   role,
   canViewFinance = false,
 }: {
-  role: 'OWNER' | 'STAFF';
+  role: 'OWNER' | 'STAFF' | 'TOW';
   canViewFinance?: boolean;
 }) {
   const pathname = usePathname();

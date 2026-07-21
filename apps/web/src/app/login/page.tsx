@@ -6,7 +6,7 @@ interface DemoAccount {
   label: string;
   email: string;
   password: string;
-  role: 'OWNER' | 'STAFF';
+  role: 'OWNER' | 'STAFF' | 'TOW';
 }
 
 export default function LoginPage() {

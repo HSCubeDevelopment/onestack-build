@@ -111,9 +111,7 @@ export class LoginController {
     const ownerPw = process.env.DEMO_OWNER_PASSWORD;
     const staff = process.env.DEMO_STAFF_EMAIL;
     const staffPw = process.env.DEMO_STAFF_PASSWORD;
-    // A tow driver signs in as a STAFF member (YRD-2 runs tow-in on the staff-accessible flow); the
-    // "Tow" label just distinguishes the demo account on the sign-in page. No new auth role — a distinct
-    // TOW role (gap 301) is an auth-model change left for human review.
+    // A tow driver is a first-class TOW role (301) — staff-level API access with a tow-focused web nav.
     const tow = process.env.DEMO_TOW_EMAIL;
     const towPw = process.env.DEMO_TOW_PASSWORD;
     const accounts: { label: string; email: string; password: string; role: AppRole }[] = [];
@@ -121,7 +119,7 @@ export class LoginController {
       accounts.push({ label: 'Owner', email: owner, password: ownerPw, role: 'OWNER' });
     if (staff && staffPw)
       accounts.push({ label: 'Staff', email: staff, password: staffPw, role: 'STAFF' });
-    if (tow && towPw) accounts.push({ label: 'Tow', email: tow, password: towPw, role: 'STAFF' });
+    if (tow && towPw) accounts.push({ label: 'Tow', email: tow, password: towPw, role: 'TOW' });
     return { accounts };
   }
 

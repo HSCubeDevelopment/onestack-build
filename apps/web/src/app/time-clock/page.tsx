@@ -16,7 +16,7 @@ import { ErrorBanner, Loading, PageHead, useAsync } from '@/components/ui';
 
 interface Me {
   userId: string;
-  role: 'OWNER' | 'STAFF';
+  role: 'OWNER' | 'STAFF' | 'TOW';
   signedIn: boolean;
 }
 
