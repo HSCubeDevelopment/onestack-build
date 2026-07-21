@@ -23,6 +23,7 @@ import {
   type ScopePart,
   type ShareResult,
   type SupplierInvoice,
+  type WorkItem,
 } from '@/lib/api';
 import { EmptyState, ErrorBanner, Loading, Modal, useAsync } from '@/components/ui';
 
@@ -371,15 +372,20 @@ export function EstimateTab({
 
 export function ClaimFileTab({ jobId }: { jobId: string }) {
   const { data, loading, error, reload } = useAsync(
-    () => api.get<ClaimFile>(`/work-items/${jobId}/claim-file`),
+    () =>
+      Promise.all([
+        api.get<ClaimFile>(`/work-items/${jobId}/claim-file`),
+        api.get<WorkItem>(`/work-items/${jobId}`),
+      ]),
     [jobId],
   );
   const { err, busy, act } = useAct(reload);
   const [shareText, setShareText] = useState<string | null>(null);
+  const [editClaim, setEditClaim] = useState(false);
   if (loading) return <Loading />;
   if (error) return <ErrorBanner message={error} />;
   if (!data) return null;
-  const c = data;
+  const [c, job] = data;
 
   return (
     <div className="stack">
@@ -389,6 +395,9 @@ export function ClaimFileTab({ jobId }: { jobId: string }) {
         <div className="row" style={{ marginBottom: 10 }}>
           <h3 style={{ margin: 0 }}>Claim pack · {c.job.reference}</h3>
           <div className="spacer" />
+          <button className="btn sm" onClick={() => setEditClaim(true)}>
+            {c.claim ? 'Edit claim' : 'Add claim'}
+          </button>
           <button
             className="btn sm"
             disabled={busy}
@@ -512,7 +521,178 @@ export function ClaimFileTab({ jobId }: { jobId: string }) {
           href: `/api/backend/claim-file/documents/${d.id}/content`,
         }))}
       />
+
+      {editClaim && (
+        <ClaimEditModal
+          job={job}
+          onClose={() => setEditClaim(false)}
+          onSaved={() => {
+            setEditClaim(false);
+            void reload();
+          }}
+        />
+      )}
     </div>
+  );
+}
+
+/** The claim record as stored on a job's fields (mirrors the pack's ClaimFields). */
+interface ClaimRecord {
+  insurer: string;
+  insurerContactId?: string;
+  claimNumber: string;
+  assessor?: string;
+  dateLodged?: string;
+  authorisedAmountCents?: number;
+  excessCents?: number;
+  billPayer?: 'insurer' | 'customer';
+}
+
+/**
+ * Claim create/edit (15.1). Edits the claim record on the job's fields through the generic work-item
+ * update (the pack validates the shape). Insurer + claim number are required; amounts are entered in
+ * dollars and stored as integer cents. Nothing here transmits to an insurer — that is an external
+ * integration (80.1) deferred by the product owner.
+ */
+function ClaimEditModal({
+  job,
+  onClose,
+  onSaved,
+}: {
+  job: WorkItem;
+  onClose: () => void;
+  onSaved: () => void;
+}) {
+  const existing = (job.fields as { claim?: ClaimRecord }).claim;
+  const [insurer, setInsurer] = useState(existing?.insurer ?? '');
+  const [claimNumber, setClaimNumber] = useState(existing?.claimNumber ?? '');
+  const [assessor, setAssessor] = useState(existing?.assessor ?? '');
+  const [dateLodged, setDateLodged] = useState(existing?.dateLodged ?? '');
+  const [authorised, setAuthorised] = useState(
+    existing?.authorisedAmountCents != null ? String(existing.authorisedAmountCents / 100) : '',
+  );
+  const [excess, setExcess] = useState(
+    existing?.excessCents != null ? String(existing.excessCents / 100) : '',
+  );
+  const [billPayer, setBillPayer] = useState<'insurer' | 'customer'>(
+    existing?.billPayer ?? 'insurer',
+  );
+  const [saving, setSaving] = useState(false);
+  const [err, setErr] = useState<string | null>(null);
+
+  const dollarsToCents = (s: string): number | undefined => {
+    const n = parseFloat(s);
+    return s.trim() === '' || Number.isNaN(n) ? undefined : Math.round(n * 100);
+  };
+
+  async function submit() {
+    setErr(null);
+    setSaving(true);
+    // Preserve any existing claim fields we don't edit here (e.g. insurerContactId set at intake).
+    const claim: ClaimRecord = {
+      ...existing,
+      insurer: insurer.trim(),
+      claimNumber: claimNumber.trim(),
+      assessor: assessor.trim() || undefined,
+      dateLodged: dateLodged.trim() || undefined,
+      authorisedAmountCents: dollarsToCents(authorised),
+      excessCents: dollarsToCents(excess),
+      billPayer,
+    };
+    try {
+      await api.patch(`/work-items/${job.id}`, {
+        fields: { ...job.fields, claim },
+        expectedVersion: job.version,
+      });
+      onSaved();
+    } catch (e) {
+      setErr(e instanceof ApiError ? e.message : 'Could not save the claim');
+      setSaving(false);
+    }
+  }
+
+  const canSubmit = !!insurer.trim() && !!claimNumber.trim() && !saving;
+
+  return (
+    <Modal title={existing ? 'Edit claim' : 'Add claim'} onClose={onClose}>
+      <div className="stack">
+        <ErrorBanner message={err} />
+        <div className="grid cols-2">
+          <label className="field">
+            Insurer *
+            <input className="input" value={insurer} onChange={(e) => setInsurer(e.target.value)} />
+          </label>
+          <label className="field">
+            Claim number *
+            <input
+              className="input"
+              value={claimNumber}
+              onChange={(e) => setClaimNumber(e.target.value)}
+            />
+          </label>
+        </div>
+        <div className="grid cols-2">
+          <label className="field">
+            Assessor
+            <input
+              className="input"
+              value={assessor}
+              onChange={(e) => setAssessor(e.target.value)}
+            />
+          </label>
+          <label className="field">
+            Date lodged
+            <input
+              className="input"
+              type="date"
+              value={dateLodged}
+              onChange={(e) => setDateLodged(e.target.value)}
+            />
+          </label>
+        </div>
+        <div className="grid cols-2">
+          <label className="field">
+            Authorised amount ($)
+            <input
+              className="input"
+              type="number"
+              value={authorised}
+              onChange={(e) => setAuthorised(e.target.value)}
+              placeholder="assessor-approved"
+            />
+          </label>
+          <label className="field">
+            Customer excess ($)
+            <input
+              className="input"
+              type="number"
+              value={excess}
+              onChange={(e) => setExcess(e.target.value)}
+            />
+          </label>
+        </div>
+        <label className="field">
+          Bill
+          <select
+            className="select"
+            value={billPayer}
+            onChange={(e) => setBillPayer(e.target.value as 'insurer' | 'customer')}
+          >
+            <option value="insurer">Insurer (authorised) + customer (excess)</option>
+            <option value="customer">Customer pays</option>
+          </select>
+        </label>
+        <div className="row">
+          <div className="spacer" />
+          <button className="btn ghost" onClick={onClose}>
+            Cancel
+          </button>
+          <button className="btn primary" disabled={!canSubmit} onClick={() => void submit()}>
+            {saving ? 'Saving…' : 'Save claim'}
+          </button>
+        </div>
+      </div>
+    </Modal>
   );
 }
 
