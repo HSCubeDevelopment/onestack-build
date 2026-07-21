@@ -10,6 +10,7 @@ import { z } from 'zod';
 import { AuditService } from '../audit/audit.service';
 import { PackRegistry } from '../core/pack-registry';
 import { WorkflowEngine, WorkflowError } from '../core/workflow.engine';
+import { SitesService } from '../sites/sites.service';
 import { TenantService } from '../tenancy/tenant.service';
 
 export interface CreateWorkItemInput {
@@ -17,6 +18,7 @@ export interface CreateWorkItemInput {
   fields?: Record<string, unknown>;
   assignees?: string[];
   subjectIds?: string[];
+  siteId?: string | null; // SITE-1: the location this job belongs to (optional)
 }
 
 export interface WorkItemView {
@@ -27,6 +29,7 @@ export interface WorkItemView {
   workflowVersion: number;
   assignees: string[];
   fields: Record<string, unknown>;
+  siteId: string | null; // SITE-1
   version: number;
   createdAt: Date;
   updatedAt: Date;
@@ -45,6 +48,7 @@ export class WorkItemService {
     private readonly workflow: WorkflowEngine,
     private readonly events: EventEmitter2,
     private readonly audit: AuditService,
+    private readonly sites: SitesService,
   ) {}
 
   async create(tenantId: string, input: CreateWorkItemInput): Promise<WorkItemView> {
@@ -56,6 +60,9 @@ export class WorkItemService {
     if (def.requiresSubject && (input.subjectIds ?? []).length === 0) {
       throw new BadRequestException(`A "${input.type}" requires at least one linked subject`);
     }
+    // SITE-1: a job may be tagged with a location. Validate through the sites module (owns the table),
+    // which reads under RLS — so a cross-tenant or soft-deleted site id is rejected, never stored.
+    if (input.siteId) await this.sites.assertInTenant(tenantId, input.siteId);
 
     return this.tenants.runInTenant(tenantId, async (tx) => {
       const counter = await tx.workItemCounter.upsert({
@@ -75,6 +82,7 @@ export class WorkItemService {
           reference,
           assignees: (input.assignees ?? []) as Prisma.InputJsonValue,
           fields: fields as Prisma.InputJsonValue,
+          siteId: input.siteId ?? null,
         },
       });
 
@@ -105,14 +113,23 @@ export class WorkItemService {
     return toView(wi);
   }
 
-  /** List work items, optionally filtered by type (e.g. all "job" work items). This tenant only. */
-  async list(tenantId: string, type?: string, assignedTo?: string): Promise<WorkItemView[]> {
+  /**
+   * List work items, optionally filtered by type (e.g. all "job" work items). This tenant only.
+   * `siteId` (SITE-1) narrows to one location; pass the sentinel `'none'` for jobs with no site yet.
+   */
+  async list(
+    tenantId: string,
+    type?: string,
+    assignedTo?: string,
+    siteId?: string,
+  ): Promise<WorkItemView[]> {
     const rows = await this.tenants.runInTenant(tenantId, (tx) =>
       tx.workItem.findMany({
         where: {
           deletedAt: null,
           ...(type ? { type } : {}),
           ...(assignedTo ? { assignees: { array_contains: assignedTo } } : {}),
+          ...(siteId ? { siteId: siteId === 'none' ? null : siteId } : {}),
         },
         orderBy: { createdAt: 'desc' },
       }),
@@ -146,25 +163,37 @@ export class WorkItemService {
   async update(
     tenantId: string,
     id: string,
-    patch: { fields?: Record<string, unknown>; assignees?: string[]; expectedVersion: number },
+    patch: {
+      fields?: Record<string, unknown>;
+      assignees?: string[];
+      siteId?: string | null;
+      expectedVersion: number;
+    },
   ): Promise<WorkItemView> {
-    return this.tenants.runInTenant(tenantId, async (tx) => {
+    // SITE-1: reassigning a job to a location validates the site the same way create does.
+    if (patch.siteId) await this.sites.assertInTenant(tenantId, patch.siteId);
+    await this.tenants.runInTenant(tenantId, async (tx) => {
       const current = await tx.workItem.findFirst({ where: { id, deletedAt: null } });
       if (!current) throw new NotFoundException('Work item not found');
       const def = this.workItemTypeOrThrow(current.type);
       const nextFields =
         patch.fields !== undefined ? this.validateFields(def.fields, patch.fields) : undefined;
 
-      const data: Prisma.WorkItemUpdateManyMutationInput = { version: { increment: 1 } };
+      // Unchecked variant so the raw `siteId` FK scalar can be set directly (SITE-1); it's part of the
+      // `site` relation, which the restricted UpdateManyMutationInput omits.
+      const data: Prisma.WorkItemUncheckedUpdateManyInput = { version: { increment: 1 } };
       if (nextFields !== undefined) data.fields = nextFields as Prisma.InputJsonValue;
       if (patch.assignees !== undefined) data.assignees = patch.assignees as Prisma.InputJsonValue;
+      if (patch.siteId !== undefined) data.siteId = patch.siteId;
       const res = await tx.workItem.updateMany({
         where: { id, version: patch.expectedVersion, deletedAt: null },
         data,
       });
       if (res.count !== 1) throw new ConflictException('Work item was modified concurrently');
-      return this.get(tenantId, id);
     });
+    // Read AFTER the write transaction commits — a nested read runs on a different pooled connection
+    // and would otherwise return the pre-update snapshot (same reason `assign` reads outside its tx).
+    return this.get(tenantId, id);
   }
 
   /**
@@ -291,6 +320,7 @@ function toView(wi: {
   workflowVersion: number;
   assignees: unknown;
   fields: unknown;
+  siteId: string | null;
   version: number;
   createdAt: Date;
   updatedAt: Date;
@@ -303,6 +333,7 @@ function toView(wi: {
     workflowVersion: wi.workflowVersion,
     assignees: (wi.assignees as string[]) ?? [],
     fields: (wi.fields as Record<string, unknown>) ?? {},
+    siteId: wi.siteId ?? null,
     version: wi.version,
     createdAt: wi.createdAt,
     updatedAt: wi.updatedAt,

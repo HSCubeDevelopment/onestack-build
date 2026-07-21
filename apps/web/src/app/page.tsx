@@ -183,11 +183,77 @@ function Overview({
         </div>
       </div>
 
+      {/* By location — only a multi-site shop has sites to break down (SITE-1). */}
+      {summary.sites.length > 0 && <ByLocation summary={summary} />}
+
       {/* bottom row */}
       <div className="grid cols-3">
         <TasksCard jobs={jobs} />
         <ActivityCard jobs={jobs} leads={leads} />
         <EventsCard bookings={bookings} />
+      </div>
+    </div>
+  );
+}
+
+/** Active jobs per location (SITE-1). Only rendered when the shop runs more than one site. */
+function ByLocation({ summary }: { summary: DashboardSummary }) {
+  const rows = [
+    ...summary.sites.map((s) => ({ key: s.siteId, label: s.name, code: s.code, n: s.activeJobs })),
+    ...(summary.unassignedActiveJobs > 0
+      ? [{ key: 'none', label: 'No location', code: null, n: summary.unassignedActiveJobs }]
+      : []),
+  ];
+  const max = Math.max(1, ...rows.map((r) => r.n));
+  return (
+    <div className="card">
+      <div className="card-head">
+        <div>
+          <h2>By location</h2>
+          <div className="faint" style={{ fontSize: 12, marginTop: 2 }}>
+            Active jobs at each site
+          </div>
+        </div>
+        <Link href="/settings/sites" className="view-all">
+          Manage sites →
+        </Link>
+      </div>
+      <div className="stack" style={{ gap: 11 }}>
+        {rows.map((r) => (
+          <Link
+            key={r.key}
+            href="/jobs"
+            className="pbar"
+            style={{ textDecoration: 'none', color: 'inherit' }}
+          >
+            <span
+              className="pbar-ico"
+              style={{ background: 'var(--brand-soft)', color: 'var(--brand)' }}
+            >
+              <Warehouse size={15} />
+            </span>
+            <div style={{ flex: 1 }}>
+              <div className="row" style={{ marginBottom: 5 }}>
+                <span style={{ fontSize: 12.5, fontWeight: 550 }}>
+                  {r.label}
+                  {r.code ? (
+                    <span className="badge" style={{ marginLeft: 8 }}>
+                      {r.code}
+                    </span>
+                  ) : null}
+                </span>
+                <div className="spacer" />
+                <span style={{ fontSize: 12.5, fontWeight: 680 }}>{r.n}</span>
+              </div>
+              <div className="track">
+                <div
+                  className="fill"
+                  style={{ width: `${(r.n / max) * 100}%`, background: 'var(--brand)' }}
+                />
+              </div>
+            </div>
+          </Link>
+        ))}
       </div>
     </div>
   );

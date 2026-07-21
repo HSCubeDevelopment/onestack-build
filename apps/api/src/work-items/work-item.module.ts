@@ -1,4 +1,5 @@
 import { Module } from '@nestjs/common';
+import { SitesModule } from '../sites/sites.module';
 import { SubjectModule } from '../subjects/subject.module';
 import { AttachmentService } from './attachment.service';
 import {
@@ -12,7 +13,7 @@ import { WorkItemController } from './work-item.controller';
 import { WorkItemService } from './work-item.service';
 
 @Module({
-  imports: [SubjectModule], // for a work item's linked subjects (e.g. a job's vehicle)
+  imports: [SubjectModule, SitesModule], // subjects (a job's vehicle) + sites (validate a job's location)
   controllers: [WorkItemController, WorkItemDetailController],
   providers: [
     WorkItemService,

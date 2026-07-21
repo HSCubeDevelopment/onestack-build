@@ -3,7 +3,7 @@ import { useMemo, useState } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { ChevronRight, Search } from 'lucide-react';
-import { api, Contact, Vehicle, WorkItem } from '@/lib/api';
+import { api, Contact, Site, Vehicle, WorkItem } from '@/lib/api';
 import { useRole } from '@/lib/use-role';
 import { humanizeState, makeModelOf, regoOf, StatePill } from '@/lib/job-display';
 import { EmptyState, ErrorBanner, Loading, Modal, PageHead, useAsync } from '@/components/ui';
@@ -31,15 +31,18 @@ export default function JobsPage() {
       Promise.all([
         api.get<WorkItem[]>('/work-items?type=job&withSubjects=1'),
         api.get<Contact[]>('/contacts'),
+        api.get<Site[]>('/sites'),
       ]),
     [],
   );
   const [showNew, setShowNew] = useState(false);
   const [query, setQuery] = useState('');
   const [filter, setFilter] = useState<Filter>('All');
+  const [siteFilter, setSiteFilter] = useState<string>('all'); // 'all' | siteId | 'none' (SITE-1)
 
   const jobs = useMemo(() => data?.[0] ?? [], [data]);
   const contacts = data?.[1] ?? [];
+  const sites = useMemo(() => data?.[2] ?? [], [data]);
   const contactName = (id: unknown): string =>
     contacts.find((c) => c.id === id)?.displayName ?? '—';
 
@@ -54,6 +57,8 @@ export default function JobsPage() {
     const q = query.trim().toLowerCase();
     return jobs.filter((j) => {
       if (filter !== 'All' && j.stateName !== filter) return false;
+      if (siteFilter === 'none' && j.siteId) return false;
+      if (siteFilter !== 'all' && siteFilter !== 'none' && j.siteId !== siteFilter) return false;
       if (!q) return true;
       const hay = [j.reference, j.subjectLabel ?? '', contactName(j.fields.customerId)]
         .join(' ')
@@ -61,7 +66,7 @@ export default function JobsPage() {
       return hay.includes(q);
     });
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [jobs, contacts, query, filter]);
+  }, [jobs, contacts, query, filter, siteFilter]);
 
   return (
     <>
@@ -103,6 +108,27 @@ export default function JobsPage() {
             ))}
           </div>
 
+          {/* Location filter — only a multi-site shop needs it (SITE-1). */}
+          {sites.length > 0 && (
+            <label className="field" style={{ marginBottom: 12 }}>
+              Location
+              <select
+                className="select"
+                value={siteFilter}
+                onChange={(e) => setSiteFilter(e.target.value)}
+                aria-label="Filter by location"
+              >
+                <option value="all">All locations</option>
+                {sites.map((s) => (
+                  <option key={s.id} value={s.id}>
+                    {s.name}
+                  </option>
+                ))}
+                <option value="none">No location</option>
+              </select>
+            </label>
+          )}
+
           <div className="card">
             {shown.length === 0 ? (
               <EmptyState>
@@ -143,6 +169,7 @@ export default function JobsPage() {
       {showNew && (
         <NewJobModal
           contacts={contacts}
+          sites={sites}
           onClose={() => setShowNew(false)}
           onCreated={() => {
             setShowNew(false);
@@ -164,14 +191,17 @@ export default function JobsPage() {
  */
 function NewJobModal({
   contacts,
+  sites,
   onClose,
   onCreated,
 }: {
   contacts: Contact[];
+  sites: Site[];
   onClose: () => void;
   onCreated: () => void;
 }) {
   const router = useRouter();
+  const [siteId, setSiteId] = useState(''); // SITE-1: optional location for the job
   // Default to "new customer" when the shop has none yet — otherwise the dropdown is empty and useless.
   const [customerMode, setCustomerMode] = useState<'existing' | 'new'>(
     contacts.length ? 'existing' : 'new',
@@ -248,6 +278,7 @@ function NewJobModal({
         type: 'job',
         fields: { customerId: cid, description: description || undefined },
         subjectIds: [vid],
+        ...(siteId ? { siteId } : {}),
       });
       onCreated();
       router.push(`/jobs/${job.id}`);
@@ -428,6 +459,21 @@ function NewJobModal({
               </div>
             )}
           </>
+        )}
+
+        {/* Location — only when the shop runs more than one site (SITE-1). Optional. */}
+        {sites.length > 0 && (
+          <label className="field">
+            Location
+            <select className="select" value={siteId} onChange={(e) => setSiteId(e.target.value)}>
+              <option value="">No location</option>
+              {sites.map((s) => (
+                <option key={s.id} value={s.id}>
+                  {s.name}
+                </option>
+              ))}
+            </select>
+          </label>
         )}
 
         <label className="field">

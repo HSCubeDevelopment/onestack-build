@@ -19,6 +19,7 @@ import {
   Blocks,
   Car,
   Warehouse,
+  Building2,
   DollarSign,
   type LucideIcon,
 } from 'lucide-react';
@@ -78,6 +79,8 @@ export const NAV: NavRow[] = [
   // Money is OWNER-only (no `staff`) — the API's /finance/overview is OWNER-gated too.
   { href: '/money', label: 'Money & Payments', Icon: DollarSign },
   { section: 'Settings' },
+  // Sites: owner-only management (create/edit/delete 403 for staff), so no `staff` flag (SITE-1).
+  { href: '/settings/sites', label: 'Sites', Icon: Building2 },
   { href: '/settings/custom-fields', label: 'Custom fields', Icon: SlidersHorizontal },
   { href: '/settings/webhooks', label: 'Webhooks', Icon: Webhook },
   { href: '/settings/integrations', label: 'Integrations', Icon: Blocks },
