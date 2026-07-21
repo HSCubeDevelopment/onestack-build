@@ -4,6 +4,7 @@ import { useRouter } from 'next/navigation';
 import { api } from '@/lib/api';
 import { EmptyState, ErrorBanner, Loading, Modal, PageHead, useAsync } from '@/components/ui';
 import {
+  BOND_OPTIONS,
   FleetDashboardStats,
   FleetSearchResults,
   FleetVehicle,
@@ -95,6 +96,14 @@ export default function FleetPage() {
           tone={s && s.needsAttention > 0 ? 'amber' : undefined}
         />
       </div>
+
+      {s && s.overdue > 0 ? (
+        <div className="notif" style={{ marginBottom: 12 }}>
+          ⚠️ {s.overdue} loan car{s.overdue === 1 ? '' : 's'} overdue —{' '}
+          {s.overdue === 1 ? 'it is' : 'they are'} out past the expected return. Chase the driver or
+          record the return.
+        </div>
+      ) : null}
 
       {s && s.needsAttention > 0 ? (
         <div
@@ -520,12 +529,19 @@ function RecordReturnModal({ onClose, onDone }: { onClose: () => void; onDone: (
           />
         </div>
         <div className="row" style={{ gap: 10 }}>
-          <input
-            className="input"
-            placeholder="Bond status"
+          <select
+            className="select"
             value={bondStatus}
             onChange={(e) => setBondStatus(e.target.value)}
-          />
+            aria-label="Bond status"
+          >
+            <option value="">Bond status…</option>
+            {BOND_OPTIONS.map((b) => (
+              <option key={b.value} value={b.value}>
+                {b.label}
+              </option>
+            ))}
+          </select>
           <input
             className="input"
             type="datetime-local"
