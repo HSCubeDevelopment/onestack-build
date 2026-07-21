@@ -1,7 +1,8 @@
 'use client';
 import { useEffect, useState } from 'react';
-import { MapPin, Plus, Trash2 } from 'lucide-react';
-import { api, ApiError, getBrowserPosition } from '@/lib/api';
+import { useRouter } from 'next/navigation';
+import { MapPin, Plus, Trash2, Truck } from 'lucide-react';
+import { api, ApiError, getBrowserPosition, WorkItem } from '@/lib/api';
 import { useRole } from '@/lib/use-role';
 import { nearestYardId, timeSince, Yard, YardDrop } from '@/lib/yards';
 import { EmptyState, ErrorBanner, Loading, Modal, PageHead, useAsync } from '@/components/ui';
@@ -25,10 +26,15 @@ export default function YardsPage() {
   const awaiting = data?.[1] ?? [];
 
   const [addingYard, setAddingYard] = useState(false);
+  const [towing, setTowing] = useState(false);
 
   return (
     <>
       <PageHead title="Yards" sub="Cars parked across the yard network, before a job exists">
+        {/* Tow-in is open to staff — a tow driver records a pickup and a job file is created. */}
+        <button className="btn" onClick={() => setTowing(true)}>
+          <Truck size={15} /> Tow in a car
+        </button>
         {isOwner && (
           <button className="btn primary" onClick={() => setAddingYard(true)}>
             <Plus size={15} /> Add yard
@@ -70,7 +76,154 @@ export default function YardsPage() {
           }}
         />
       )}
+
+      {towing && <TowCollectionModal onClose={() => setTowing(false)} />}
     </>
+  );
+}
+
+/**
+ * Record a tow collection (YRD-2). The driver has the car in front of them, so the car basics and the
+ * customer's details are captured here; saving auto-creates a job file (and notifies the team) and
+ * opens it. The pickup location is a typed address — the device's GPS is never sent or stored.
+ */
+function TowCollectionModal({ onClose }: { onClose: () => void }) {
+  const router = useRouter();
+  const [rego, setRego] = useState('');
+  const [make, setMake] = useState('');
+  const [model, setModel] = useState('');
+  const [year, setYear] = useState('');
+  const [pickupLocation, setPickup] = useState('');
+  const [customerName, setName] = useState('');
+  const [customerPhone, setPhone] = useState('');
+  const [comments, setComments] = useState('');
+  const [saving, setSaving] = useState(false);
+  const [err, setErr] = useState<string | null>(null);
+
+  const canSubmit =
+    !!rego.trim() &&
+    !!make.trim() &&
+    !!model.trim() &&
+    !!year.trim() &&
+    !!pickupLocation.trim() &&
+    !!customerName.trim() &&
+    !!customerPhone.trim() &&
+    !saving;
+
+  async function submit() {
+    setErr(null);
+    setSaving(true);
+    try {
+      const { job } = await api.post<{ job: WorkItem }>('/yards/tow-collections', {
+        rego: rego.trim(),
+        make: make.trim(),
+        model: model.trim(),
+        year: Number(year),
+        pickupLocation: pickupLocation.trim(),
+        customerName: customerName.trim(),
+        customerPhone: customerPhone.trim(),
+        comments: comments.trim() || undefined,
+      });
+      router.push(`/jobs/${job.id}`);
+    } catch (e) {
+      setErr(e instanceof ApiError ? e.message : 'Could not record the tow collection');
+      setSaving(false);
+    }
+  }
+
+  return (
+    <Modal title="Tow in a car" onClose={onClose}>
+      <div className="stack">
+        <ErrorBanner message={err} />
+        <div className="hintnote" style={{ margin: 0 }}>
+          Saving creates a job file and notifies the team. No quote yet — that comes later at the
+          workshop.
+        </div>
+
+        <div className="lbl2">CAR</div>
+        <div className="grid cols-2">
+          <label className="field">
+            Rego *
+            <input
+              className="input"
+              value={rego}
+              onChange={(e) => setRego(e.target.value)}
+              autoCapitalize="characters"
+            />
+          </label>
+          <label className="field">
+            Year *
+            <input
+              className="input"
+              type="number"
+              value={year}
+              onChange={(e) => setYear(e.target.value)}
+            />
+          </label>
+        </div>
+        <div className="grid cols-2">
+          <label className="field">
+            Make *
+            <input className="input" value={make} onChange={(e) => setMake(e.target.value)} />
+          </label>
+          <label className="field">
+            Model *
+            <input className="input" value={model} onChange={(e) => setModel(e.target.value)} />
+          </label>
+        </div>
+
+        <div className="lbl2">PICKUP</div>
+        <label className="field">
+          Picked up from *
+          <input
+            className="input"
+            value={pickupLocation}
+            onChange={(e) => setPickup(e.target.value)}
+            placeholder="e.g. 42 Main St, Coburg North"
+          />
+        </label>
+
+        <div className="lbl2">CUSTOMER</div>
+        <div className="grid cols-2">
+          <label className="field">
+            Name *
+            <input
+              className="input"
+              value={customerName}
+              onChange={(e) => setName(e.target.value)}
+            />
+          </label>
+          <label className="field">
+            Phone *
+            <input
+              className="input"
+              value={customerPhone}
+              onChange={(e) => setPhone(e.target.value)}
+            />
+          </label>
+        </div>
+
+        <label className="field">
+          Comments
+          <input
+            className="input"
+            value={comments}
+            onChange={(e) => setComments(e.target.value)}
+            placeholder="e.g. front-end damage, not driveable"
+          />
+        </label>
+
+        <div className="row">
+          <div className="spacer" />
+          <button className="btn ghost" onClick={onClose}>
+            Cancel
+          </button>
+          <button className="btn primary" disabled={!canSubmit} onClick={() => void submit()}>
+            {saving ? 'Saving…' : 'Confirm collected'}
+          </button>
+        </div>
+      </div>
+    </Modal>
   );
 }
 

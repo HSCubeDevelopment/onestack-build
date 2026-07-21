@@ -14,7 +14,9 @@ import { CurrentUser } from '../auth/current-user.decorator';
 import { JwtAuthGuard } from '../auth/jwt-auth.guard';
 import { AllowStaff } from '../auth/roles.decorator';
 import { RolesGuard } from '../auth/roles.guard';
+import { CreateTowCollectionDto } from './dto/tow.dto';
 import { CreateYardDropDto, CreateYardDto, UpdateYardDto } from './dto/yards.dto';
+import { TowCollectionResult, TowService } from './tow.service';
 import { YardDashboardStats, YardDropView, YardsService, YardView } from './yards.service';
 
 /**
@@ -25,7 +27,10 @@ import { YardDashboardStats, YardDropView, YardsService, YardView } from './yard
 @Controller('yards')
 @UseGuards(JwtAuthGuard, RolesGuard)
 export class YardsController {
-  constructor(private readonly yards: YardsService) {}
+  constructor(
+    private readonly yards: YardsService,
+    private readonly tow: TowService,
+  ) {}
 
   @AllowStaff()
   @Get()
@@ -69,6 +74,16 @@ export class YardsController {
   @Post('drops')
   drop(@CurrentUser() user: AuthContext, @Body() dto: CreateYardDropDto): Promise<YardDropView> {
     return this.yards.dropCar(user.tenantId, user.userId, dto);
+  }
+
+  /** Tow collection (YRD-2): a driver records a pickup → a job file is created and the team notified. */
+  @AllowStaff()
+  @Post('tow-collections')
+  towCollect(
+    @CurrentUser() user: AuthContext,
+    @Body() dto: CreateTowCollectionDto,
+  ): Promise<TowCollectionResult> {
+    return this.tow.collect(user.tenantId, user.userId, dto);
   }
 
   @AllowStaff()
