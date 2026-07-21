@@ -1,9 +1,19 @@
 'use client';
 import { useEffect, useRef, useState } from 'react';
+import Link from 'next/link';
 import { useRouter } from 'next/navigation';
+import { ChevronRight, Search } from 'lucide-react';
 import { api, Contact, CustomField } from '@/lib/api';
 import { EmptyState, ErrorBanner, Loading, Modal, PageHead, useAsync } from '@/components/ui';
 import { CustomFieldInputs } from '@/components/CustomFieldInputs';
+
+/** Two-letter initials for the avatar, from a display name. */
+function initialsOf(name: string): string {
+  const parts = name.trim().split(/\s+/).filter(Boolean);
+  if (parts.length === 0) return '#';
+  if (parts.length === 1) return parts[0].slice(0, 2).toUpperCase();
+  return (parts[0][0] + parts[parts.length - 1][0]).toUpperCase();
+}
 
 export default function CustomersPage() {
   const router = useRouter();
@@ -65,54 +75,40 @@ export default function CustomersPage() {
 
       <ErrorBanner message={error} />
 
-      <div className="card pad0">
-        <form className="row" style={{ padding: '14px 18px' }} onSubmit={onSearchSubmit}>
+      <form onSubmit={onSearchSubmit}>
+        <label className="search-field">
+          <Search size={16} aria-hidden />
           <input
-            className="input"
             placeholder="Search by name, phone or email…"
             value={q}
             onChange={(e) => onSearchChange(e.target.value)}
-            style={{ maxWidth: 360 }}
+            aria-label="Search customers"
           />
-        </form>
-        <div className="divider" />
+        </label>
+      </form>
+
+      <div className="card">
         {loading ? (
           <Loading />
         ) : contacts.length === 0 ? (
           <EmptyState>{q.trim() ? 'No customers match.' : 'No customers yet.'}</EmptyState>
         ) : (
-          <table className="table">
-            <thead>
-              <tr>
-                <th>Name</th>
-                <th>Phone</th>
-                <th>Email</th>
-                <th>Created</th>
-              </tr>
-            </thead>
-            <tbody>
-              {contacts.map((c) => (
-                <tr
-                  key={c.id}
-                  className="clickable"
-                  onClick={() => router.push(`/customers/${c.id}`)}
-                >
-                  <td>
-                    <strong>{c.displayName}</strong>
-                  </td>
-                  <td>{c.phone ?? <span className="faint">—</span>}</td>
-                  <td>{c.email ?? <span className="faint">—</span>}</td>
-                  <td className="muted">
-                    {new Date(c.createdAt).toLocaleDateString('en-AU', {
-                      day: 'numeric',
-                      month: 'short',
-                      year: 'numeric',
-                    })}
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
+          contacts.map((c) => (
+            <Link key={c.id} href={`/customers/${c.id}`} className="job-row">
+              <div className="job-row-main">
+                <span className="avatar" aria-hidden>
+                  {initialsOf(c.displayName)}
+                </span>
+                <div style={{ minWidth: 0 }}>
+                  <b style={{ fontSize: 14 }}>{c.displayName}</b>
+                  <div className="job-cust">
+                    {c.phone ?? c.email ?? <span className="faint">No contact details</span>}
+                  </div>
+                </div>
+              </div>
+              <ChevronRight size={16} className="more-chev" aria-hidden />
+            </Link>
+          ))
         )}
       </div>
 
