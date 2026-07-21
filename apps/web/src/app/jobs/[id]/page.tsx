@@ -72,8 +72,10 @@ export default function JobDetailPage() {
     () =>
       Promise.all([
         api.get<WorkItem>(`/work-items/${id}`),
-        api.get<Quote[]>(`/work-items/${id}/quotes`),
-        api.get<Invoice[]>(`/work-items/${id}/invoices`),
+        // Quotes + invoices are money, so owner-only. A staff member who can open this job just doesn't
+        // see those panels — a 403 here must NOT blank the whole page (the reported "Insufficient role").
+        api.getOr<Quote[]>(`/work-items/${id}/quotes`, []),
+        api.getOr<Invoice[]>(`/work-items/${id}/invoices`, []),
         api.get<Note[]>(`/work-items/${id}/notes`),
         api.get<Attachment[]>(`/work-items/${id}/attachments`),
         api.get<Contact[]>('/contacts'),
