@@ -635,7 +635,7 @@ export function getBrowserPosition(timeoutMs = 8000): Promise<BrowserPosition | 
 
 export interface StaffTotal {
   userId: string;
-  role: 'OWNER' | 'STAFF' | null;
+  role: 'OWNER' | 'STAFF' | 'TOW' | null;
   totalMinutes: number;
   sessions: number;
   onClock: boolean;
@@ -645,7 +645,7 @@ export interface StaffTotal {
 export interface DirectoryEntry {
   userId: string;
   email: string | null;
-  role: 'OWNER' | 'STAFF';
+  role: 'OWNER' | 'STAFF' | 'TOW';
 }
 
 /** Minutes → "3h 20m" / "45m". */

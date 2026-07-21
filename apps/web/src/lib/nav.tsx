@@ -52,6 +52,8 @@ export type NavItem = {
   offWedge?: boolean;
   /** 40.8: a money destination — shown to OWNER always, and to STAFF only with finance access. */
   financeView?: boolean;
+  /** 301: part of the tow-driver's focused surface (tow-in + their own jobs + clock). */
+  tow?: boolean;
 };
 export type NavRow = { section: string } | NavItem;
 
@@ -59,17 +61,17 @@ export const NAV: NavRow[] = [
   { section: 'Menu' },
   { href: '/', label: 'Dashboard', Icon: LayoutDashboard },
   { href: '/board', label: 'Job board', Icon: KanbanSquare },
-  { href: '/jobs', label: 'Jobs', Icon: Wrench, staff: true },
+  { href: '/jobs', label: 'Jobs', Icon: Wrench, staff: true, tow: true },
   { href: '/calendar', label: 'Calendar', Icon: CalendarDays },
   { href: '/waitlist', label: 'Waitlist', Icon: ListChecks },
   { href: '/roster', label: 'Roster', Icon: CalendarDays, staff: true },
-  { href: '/time-clock', label: 'Time clock', Icon: Clock, staff: true },
+  { href: '/time-clock', label: 'Time clock', Icon: Clock, staff: true, tow: true },
   { section: 'Fleet & courtesy cars' },
   { href: '/fleet', label: 'Fleet & cars', Icon: Car },
   { href: '/fleet/bookings', label: 'Fleet bookings', Icon: CalendarDays },
   // Yards: staff (or a tow driver) can park a car and see the awaiting list; managing the yard
   // network is owner-only, enforced by the API. `staff: true` mirrors the @AllowStaff reads.
-  { href: '/yards', label: 'Yards', Icon: Warehouse, staff: true },
+  { href: '/yards', label: 'Yards', Icon: Warehouse, staff: true, tow: true },
   { section: 'Customers & sales' },
   { href: '/customers', label: 'Customers', Icon: Users, staff: true },
   { href: '/leads', label: 'Leads', Icon: Mail, alert: true },
@@ -105,13 +107,21 @@ function pruneEmptySections(rows: NavRow[]): NavRow[] {
  * Hide what this vertical doesn't use (#300), then everything an employee can't open, then tidy up any
  * heading the filtering emptied.
  */
-export function navFor(role: 'OWNER' | 'STAFF', opts?: { canViewFinance?: boolean }): NavRow[] {
+export function navFor(
+  role: 'OWNER' | 'STAFF' | 'TOW',
+  opts?: { canViewFinance?: boolean },
+): NavRow[] {
   const canFinance = role === 'OWNER' || !!opts?.canViewFinance;
   const onWedge = NAV.filter((r) => 'section' in r || !r.offWedge);
-  const allowed =
-    role === 'OWNER'
-      ? onWedge
-      : // STAFF: their allowlisted destinations, plus money destinations only if granted finance access.
-        onWedge.filter((r) => 'section' in r || r.staff || (r.financeView && canFinance));
+  let allowed: NavRow[];
+  if (role === 'OWNER') {
+    allowed = onWedge;
+  } else if (role === 'TOW') {
+    // 301: a tow driver's focused surface — tow-in, their own jobs, and their clock. Nothing else.
+    allowed = onWedge.filter((r) => 'section' in r || r.tow);
+  } else {
+    // STAFF: their allowlisted destinations, plus money destinations only if granted finance access.
+    allowed = onWedge.filter((r) => 'section' in r || r.staff || (r.financeView && canFinance));
+  }
   return pruneEmptySections(allowed);
 }

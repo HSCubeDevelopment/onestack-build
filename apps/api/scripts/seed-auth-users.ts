@@ -21,9 +21,9 @@ const ACCOUNTS = [
     password: process.env.DEMO_STAFF_PASSWORD ?? 'Staff!2345',
   },
   {
-    // Tow driver — a STAFF member (YRD-2 runs tow-in on the staff-accessible flow). A distinct TOW
-    // role (gap 301) would be an auth-model change; this is just a dedicated demo login.
-    role: Role.STAFF,
+    // Tow driver — a first-class TOW role (301): staff-level API access, but a tow-focused web
+    // experience. Runs the tow-in flow (YRD-2).
+    role: Role.TOW,
     email: process.env.DEMO_TOW_EMAIL ?? 'tow@onestack.test',
     password: process.env.DEMO_TOW_PASSWORD ?? 'Tow!2345',
   },

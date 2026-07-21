@@ -10,5 +10,7 @@ import type { AuthContext } from './auth.types';
  * Keep this the single definition of "which jobs are mine" — duplicating the `role === 'STAFF'` check at
  * call sites is how one of them silently drifts open.
  */
+// Fail safe: ONLY an OWNER is unscoped. Every non-owner role (STAFF, TOW) is narrowed to their own
+// assigned jobs, so a new role is scoped by default rather than silently seeing the whole tenant.
 export const assignedScopeFor = (user: AuthContext): string | undefined =>
-  user.role === 'STAFF' ? user.userId : undefined;
+  user.role === 'OWNER' ? undefined : user.userId;

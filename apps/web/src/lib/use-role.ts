@@ -1,7 +1,7 @@
 'use client';
 import { useEffect, useState } from 'react';
 
-export type Role = 'OWNER' | 'STAFF';
+export type Role = 'OWNER' | 'STAFF' | 'TOW';
 
 /**
  * The caller's role, from /api/me (which reads the session cookie server-side).
@@ -19,7 +19,7 @@ export function useRole(): { role: Role | undefined; isStaff: boolean } {
     fetch('/api/me')
       .then((r) => r.json())
       .then((m: { role?: string }) => {
-        if (alive) setRole(m.role === 'STAFF' ? 'STAFF' : 'OWNER');
+        if (alive) setRole(m.role === 'OWNER' ? 'OWNER' : m.role === 'TOW' ? 'TOW' : 'STAFF');
       })
       // Fail closed: if we can't tell, assume the narrower surface rather than firing owner-only calls.
       .catch(() => alive && setRole('STAFF'));
@@ -27,5 +27,6 @@ export function useRole(): { role: Role | undefined; isStaff: boolean } {
       alive = false;
     };
   }, []);
-  return { role, isStaff: role === 'STAFF' };
+  // Any non-owner role (STAFF, TOW) is "staff-like" for what a page renders/fetches.
+  return { role, isStaff: role === 'STAFF' || role === 'TOW' };
 }
