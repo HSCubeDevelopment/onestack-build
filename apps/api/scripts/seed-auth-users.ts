@@ -4,21 +4,28 @@
 // Run: npm run seed:auth   (needs SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY, DEMO_TENANT_ID in apps/api/.env)
 import 'dotenv/config';
 import { PrismaClient, Role } from '@prisma/client';
+import { EMPLOYEE_ROSTER } from '../src/auth/employee-roster';
 
 const URL = (process.env.SUPABASE_URL ?? '').replace(/\/$/, '');
 const KEY = process.env.SUPABASE_SERVICE_ROLE_KEY ?? '';
 const TENANT_ID = process.env.DEMO_TENANT_ID ?? '0d15ea5e-0000-4000-8000-000000000001';
+
+// Every real employee (from the attendance sheet) shares one demo password, so the sign-in page's
+// "sign in as <employee>" dropdown can log in as any of them.
+const EMPLOYEE_PASSWORD = process.env.DEMO_STAFF_PASSWORD ?? 'Staff!2345';
 
 const ACCOUNTS = [
   {
     role: Role.OWNER,
     email: process.env.DEMO_OWNER_EMAIL ?? 'owner@onestack.test',
     password: process.env.DEMO_OWNER_PASSWORD ?? 'Owner!2345',
+    name: 'Owner',
   },
   {
     role: Role.STAFF,
     email: process.env.DEMO_STAFF_EMAIL ?? 'staff@onestack.test',
     password: process.env.DEMO_STAFF_PASSWORD ?? 'Staff!2345',
+    name: 'Staff',
   },
   {
     // Tow driver — a first-class TOW role (301): staff-level API access, but a tow-focused web
@@ -26,33 +33,54 @@ const ACCOUNTS = [
     role: Role.TOW,
     email: process.env.DEMO_TOW_EMAIL ?? 'tow@onestack.test',
     password: process.env.DEMO_TOW_PASSWORD ?? 'Tow!2345',
+    name: 'Tow',
   },
+  // The workshop's real employees (attendance sheet) — each a STAFF login in the demo tenant.
+  ...EMPLOYEE_ROSTER.map((e) => ({
+    role: Role.STAFF,
+    email: e.email,
+    password: EMPLOYEE_PASSWORD,
+    name: e.name,
+  })),
 ];
 
 const headers = { apikey: KEY, Authorization: `Bearer ${KEY}`, 'Content-Type': 'application/json' };
 
-/** Create the auth user (or find the existing one) and return its id. Also (re)sets the password. */
-async function ensureAuthUser(email: string, password: string): Promise<string> {
+/** Create the auth user (or find the existing one) and return its id. Also (re)sets the password + name. */
+async function ensureAuthUser(email: string, password: string, name: string): Promise<string> {
   const create = await fetch(`${URL}/auth/v1/admin/users`, {
     method: 'POST',
     headers,
-    body: JSON.stringify({ email, password, email_confirm: true }),
+    body: JSON.stringify({ email, password, email_confirm: true, user_metadata: { name } }),
   });
   if (create.ok) {
     const u = (await create.json()) as { id: string };
     return u.id;
   }
-  // Already registered — find the id, then reset the password so the printed creds always work.
-  const list = await fetch(`${URL}/auth/v1/admin/users?per_page=200`, { headers });
-  const body = (await list.json()) as { users?: { id: string; email?: string }[] };
-  const existing = (body.users ?? []).find((u) => u.email?.toLowerCase() === email.toLowerCase());
+  // Already registered — find the id, then reset the password/name so the printed creds always work. The
+  // roster can exceed one page, so page through until we find the email.
+  const existing = await findAuthUserByEmail(email);
   if (!existing) throw new Error(`Could not create or find auth user ${email}`);
-  await fetch(`${URL}/auth/v1/admin/users/${existing.id}`, {
+  await fetch(`${URL}/auth/v1/admin/users/${existing}`, {
     method: 'PUT',
     headers,
-    body: JSON.stringify({ password, email_confirm: true }),
+    body: JSON.stringify({ password, email_confirm: true, user_metadata: { name } }),
   });
-  return existing.id;
+  return existing;
+}
+
+/** Find an auth user's id by email, paging through the admin list (the roster spans multiple pages). */
+async function findAuthUserByEmail(email: string): Promise<string | null> {
+  const target = email.toLowerCase();
+  for (let page = 1; page <= 20; page++) {
+    const list = await fetch(`${URL}/auth/v1/admin/users?per_page=200&page=${page}`, { headers });
+    const body = (await list.json()) as { users?: { id: string; email?: string }[] };
+    const users = body.users ?? [];
+    const hit = users.find((u) => u.email?.toLowerCase() === target);
+    if (hit) return hit.id;
+    if (users.length < 200) break; // last page
+  }
+  return null;
 }
 
 async function main(): Promise<void> {
@@ -67,17 +95,21 @@ async function main(): Promise<void> {
     });
 
     for (const acc of ACCOUNTS) {
-      const userId = await ensureAuthUser(acc.email, acc.password);
+      const userId = await ensureAuthUser(acc.email, acc.password, acc.name);
       await db.membership.upsert({
         where: { tenantId_userId: { tenantId: TENANT_ID, userId } },
         create: { tenantId: TENANT_ID, userId, role: acc.role },
         update: { role: acc.role },
       });
       // eslint-disable-next-line no-console
-      console.log(`✅ ${acc.role.padEnd(5)}  ${acc.email}  /  ${acc.password}   (user ${userId})`);
+      console.log(
+        `✅ ${acc.role.padEnd(5)}  ${acc.name.padEnd(10)}  ${acc.email}   (user ${userId})`,
+      );
     }
     // eslint-disable-next-line no-console
-    console.log(`\nLinked to tenant ${TENANT_ID}. Use these on the sign-in page.`);
+    console.log(
+      `\nSeeded ${ACCOUNTS.length} accounts to tenant ${TENANT_ID}. Use these on the sign-in page.`,
+    );
   } finally {
     await db.$disconnect();
   }
