@@ -2,9 +2,8 @@
 
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
-import { MoreHorizontal, Plus } from 'lucide-react';
+import { MoreHorizontal } from 'lucide-react';
 import { navFor, type NavItem } from '@/lib/nav';
-import { INOUT_TABS } from '@/lib/inout';
 
 /**
  * The bottom tab bar, shown only on phones.
@@ -33,48 +32,10 @@ export function MobileTabBar({
 }) {
   const pathname = usePathname();
 
-  // The sign-in screen is not part of the shell — a tab bar over a login form looks broken.
+  // The sign-in screen is not part of the shell — a tab bar over a login form looks broken. STAFF and
+  // TOW never render this at all (they get the Auto Tech phone shell), so only OWNER reaches the
+  // derived tabs below.
   if (pathname?.startsWith('/login')) return null;
-
-  // Shop-floor STAFF get the In N Out tab bar: Home · Cars · ＋ · Today · Search. OWNER and TOW are
-  // left on the OneStack-derived tabs below.
-  if (role === 'STAFF') {
-    const isOn = (href: string) => (href === '/' ? pathname === '/' : pathname?.startsWith(href));
-    return (
-      <nav className="tabbar" aria-label="Primary">
-        {INOUT_TABS.slice(0, 2).map(({ href, label, Icon }) => (
-          <Link key={href} href={href} className={`tabbar-item${isOn(href) ? ' is-active' : ''}`}>
-            <Icon size={22} strokeWidth={isOn(href) ? 2.4 : 1.9} aria-hidden />
-            <span>{label}</span>
-          </Link>
-        ))}
-        <Link href="/inout/add" className="tabbar-item" aria-label="Quick add">
-          <span
-            style={{
-              width: 44,
-              height: 44,
-              marginTop: -8,
-              borderRadius: '50%',
-              background: 'var(--brand)',
-              color: '#fff',
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center',
-              boxShadow: '0 4px 14px rgba(0,0,0,0.22)',
-            }}
-          >
-            <Plus size={26} strokeWidth={2.6} aria-hidden />
-          </span>
-        </Link>
-        {INOUT_TABS.slice(2).map(({ href, label, Icon }) => (
-          <Link key={href} href={href} className={`tabbar-item${isOn(href) ? ' is-active' : ''}`}>
-            <Icon size={22} strokeWidth={isOn(href) ? 2.4 : 1.9} aria-hidden />
-            <span>{label}</span>
-          </Link>
-        ))}
-      </nav>
-    );
-  }
 
   const allowed = navFor(role, { canViewFinance }).filter((r): r is NavItem => !('section' in r));
   const byHref = new Map(allowed.map((r) => [r.href, r]));

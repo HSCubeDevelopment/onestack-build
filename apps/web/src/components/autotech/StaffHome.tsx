@@ -1,0 +1,43 @@
+'use client';
+import Link from 'next/link';
+import { Car, Clock } from 'lucide-react';
+import { AtLogo, SignOutButton } from '@/components/autotech/kit';
+
+/**
+ * The employee home — two big buttons and nothing else, exactly like the Auto Tech demo. Cars In / Out
+ * opens the car flows; Clock In / Out opens the shift clock.
+ */
+export function StaffHome() {
+  return (
+    <>
+      <div className="at-topbar">
+        <span />
+        <SignOutButton />
+      </div>
+
+      <div className="at-brand">
+        <AtLogo />
+        <div>
+          <h1>Auto Tech</h1>
+          <p>Cars in &amp; out · your shift</p>
+        </div>
+      </div>
+
+      <Link href="/inout" className="at-bigbtn at-grad-cars">
+        <span className="circ">
+          <Car size={54} strokeWidth={2} />
+        </span>
+        <span className="lab">Cars In / Out</span>
+        <span className="sub">Car in for repair · loan car out</span>
+      </Link>
+
+      <Link href="/inout/clock" className="at-bigbtn at-grad-clock">
+        <span className="circ">
+          <Clock size={54} strokeWidth={2} />
+        </span>
+        <span className="lab">Clock In / Out</span>
+        <span className="sub">Start &amp; finish your shift</span>
+      </Link>
+    </>
+  );
+}
