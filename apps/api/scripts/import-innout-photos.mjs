@@ -46,17 +46,28 @@ async function fetchRetry(url, opts, tries = 5) {
   throw last ?? new Error('fetch failed');
 }
 
-const all = readFileSync(PHOTOS, 'utf8').split('\n').filter(Boolean).map((l) => JSON.parse(l));
+const all = readFileSync(PHOTOS, 'utf8')
+  .split('\n')
+  .filter(Boolean)
+  .map((l) => JSON.parse(l));
 let done = new Set();
 try {
-  done = new Set(readFileSync(OUT, 'utf8').split('\n').filter(Boolean).map((l) => JSON.parse(l).id));
+  done = new Set(
+    readFileSync(OUT, 'utf8')
+      .split('\n')
+      .filter(Boolean)
+      .map((l) => JSON.parse(l).id),
+  );
 } catch {
   writeFileSync(OUT, '');
 }
 const rows = all.filter((p) => p.storage_path && !done.has(p.id));
 console.log(`Total ${all.length}, already done ${done.size}, remaining ${rows.length}`);
 
-let ok = 0, fail = 0, n = 0, idx = 0;
+let ok = 0,
+  fail = 0,
+  n = 0,
+  idx = 0;
 const failures = [];
 async function worker() {
   while (idx < rows.length) {
@@ -72,16 +83,28 @@ async function worker() {
       const path = `${TENANT}/${p.id}`;
       const up = await fetchRetry(`${TGT_URL}/storage/v1/object/${BUCKET}/${path}`, {
         method: 'POST',
-        headers: { Authorization: `Bearer ${TGT_KEY}`, apikey: TGT_KEY, 'Content-Type': ct, 'x-upsert': 'true' },
+        headers: {
+          Authorization: `Bearer ${TGT_KEY}`,
+          apikey: TGT_KEY,
+          'Content-Type': ct,
+          'x-upsert': 'true',
+        },
         body: new Uint8Array(buf),
       });
       if (!up.ok) throw new Error(`upload ${up.status}`);
       appendFileSync(
         OUT,
         JSON.stringify({
-          id: p.id, vehicle_id: p.vehicle_id, movement_id: p.movement_id, return_id: p.return_id,
-          booking_id: p.booking_id, photo_type: p.photo_type, storage_path: path, content_type: ct,
-          notes: p.notes ?? '', uploaded_at: p.uploaded_at,
+          id: p.id,
+          vehicle_id: p.vehicle_id,
+          movement_id: p.movement_id,
+          return_id: p.return_id,
+          booking_id: p.booking_id,
+          photo_type: p.photo_type,
+          storage_path: path,
+          content_type: ct,
+          notes: p.notes ?? '',
+          uploaded_at: p.uploaded_at,
         }) + '\n',
       );
       ok++;
