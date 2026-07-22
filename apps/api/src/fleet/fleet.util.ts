@@ -75,7 +75,14 @@ const tzOffsetMs = (at: Date): number => {
       return a;
     }, {});
   const n = (k: string): number => Number(p[k] ?? 0);
-  const asIfUtc = Date.UTC(n('year'), n('month') - 1, n('day'), n('hour'), n('minute'), n('second'));
+  const asIfUtc = Date.UTC(
+    n('year'),
+    n('month') - 1,
+    n('day'),
+    n('hour'),
+    n('minute'),
+    n('second'),
+  );
   return asIfUtc - at.getTime();
 };
 
