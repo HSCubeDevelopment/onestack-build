@@ -525,6 +525,46 @@ textarea.at-input {
   color: var(--at-gray);
 }
 
+/* ---- status filter chips (cars list) — label + a clearly-visible count ---- */
+.at-chips {
+  display: flex;
+  gap: 8px;
+  overflow-x: auto;
+  padding: 2px 0 10px;
+  -webkit-overflow-scrolling: touch;
+  scrollbar-width: none;
+}
+.at-chips::-webkit-scrollbar {
+  display: none;
+}
+.at-chip {
+  flex: 0 0 auto;
+  border: none;
+  cursor: pointer;
+  font-family: inherit;
+  background: #e9e9ee;
+  color: var(--at-label);
+  border-radius: 20px;
+  padding: 9px 15px;
+  font-size: 14px;
+  font-weight: 700;
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  white-space: nowrap;
+}
+.at-chip .n {
+  font-weight: 800;
+  color: var(--at-blue);
+}
+.at-chip.on {
+  background: var(--at-blue);
+  color: #fff;
+}
+.at-chip.on .n {
+  color: #fff;
+}
+
 /* ---- clock ---- */
 .at-clockwrap {
   display: flex;
