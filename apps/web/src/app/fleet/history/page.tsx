@@ -25,7 +25,11 @@ function CarRecord() {
   const rego = (useSearchParams().get('rego') ?? '').toUpperCase();
 
   const vehicle = useAsync(
-    () => api.getOr<FleetVehicle | null>(`/fleet/vehicles/lookup?rego=${encodeURIComponent(rego)}`, null),
+    () =>
+      api.getOr<FleetVehicle | null>(
+        `/fleet/vehicles/lookup?rego=${encodeURIComponent(rego)}`,
+        null,
+      ),
     [rego],
   );
   const history = useAsync(
@@ -189,7 +193,12 @@ function VehicleNotes({
               <button className="btn" style={{ flex: 1 }} onClick={() => setEditing(false)}>
                 Cancel
               </button>
-              <button className="btn primary" style={{ flex: 1 }} disabled={saving} onClick={() => void save()}>
+              <button
+                className="btn primary"
+                style={{ flex: 1 }}
+                disabled={saving}
+                onClick={() => void save()}
+              >
                 {saving ? 'Saving…' : 'Save'}
               </button>
             </div>
@@ -233,10 +242,20 @@ function RentalRow({ p, onOpen }: { p: RentalPeriod; onOpen: () => void }) {
           {dates}
           {dur ? ` · ${dur}` : ''}
         </div>
-        {p.driverPhone ? <div className="muted" style={{ fontSize: 12 }}>{p.driverPhone}</div> : null}
-        {p.notes ? <div className="muted" style={{ fontSize: 12 }}>Note: {p.notes}</div> : null}
+        {p.driverPhone ? (
+          <div className="muted" style={{ fontSize: 12 }}>
+            {p.driverPhone}
+          </div>
+        ) : null}
+        {p.notes ? (
+          <div className="muted" style={{ fontSize: 12 }}>
+            Note: {p.notes}
+          </div>
+        ) : null}
         {p.returnNotes ? (
-          <div className="muted" style={{ fontSize: 12 }}>Return note: {p.returnNotes}</div>
+          <div className="muted" style={{ fontSize: 12 }}>
+            Return note: {p.returnNotes}
+          </div>
         ) : null}
       </div>
       <span className={`badge ${badge[0]}`}>{badge[1]}</span>
@@ -258,7 +277,9 @@ function VehiclePhotos({ vehicleId, isCompanyCar }: { vehicleId: string; isCompa
         {loading ? (
           <Loading />
         ) : photos.length === 0 ? (
-          <span className="muted" style={{ fontSize: 13 }}>No photos yet.</span>
+          <span className="muted" style={{ fontSize: 13 }}>
+            No photos yet.
+          </span>
         ) : (
           <div className="photo-grid">
             {photos.map((ph) => (
