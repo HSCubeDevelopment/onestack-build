@@ -9,10 +9,12 @@ import {
   vehicleStatusColor,
   vehicleStatusLabel,
 } from '@/lib/fleet';
+import { isActiveFleet } from '@/lib/active-fleet';
 import { useAsync } from '@/components/ui';
 import { AtTopbar } from '@/components/autotech/kit';
 
 type Filter = 'all' | 'returned' | FleetVehicleStatus;
+type Scope = 'fleet' | 'all';
 const CHIPS: { key: Filter; label: string }[] = [
   { key: 'all', label: 'All' },
   { key: 'available', label: 'Available' },
@@ -27,7 +29,11 @@ interface TodayResp {
   returns: { returnedRego: string }[];
 }
 
-/** All cars — rego search + status filter chips with live counts. From /fleet/vehicles. */
+/**
+ * All cars — Active-fleet/All scope + rego search + status chips with live counts. Mirrors the source
+ * In N Out cars screen: "Active fleet" = a company car in the curated allowlist, so the counts match the
+ * old system 1:1. From /fleet/vehicles (+ /fleet/today for "Returned today").
+ */
 export function CarsList() {
   const router = useRouter();
   const { data, loading, error } = useAsync(
@@ -39,6 +45,7 @@ export function CarsList() {
     [],
   );
   const [q, setQ] = useState('');
+  const [scope, setScope] = useState<Scope>('fleet');
   const [filter, setFilter] = useState<Filter>('all');
 
   const vehicles = data?.[0] ?? [];
@@ -46,21 +53,32 @@ export function CarsList() {
     () => new Set((data?.[1]?.returns ?? []).map((r) => r.returnedRego).filter(Boolean)),
     [data],
   );
+
+  const fleetCount = useMemo(
+    () => vehicles.filter((v) => v.isCompanyCar && isActiveFleet(v.rego)).length,
+    [vehicles],
+  );
+  const scoped = useMemo(
+    () =>
+      scope === 'all' ? vehicles : vehicles.filter((v) => v.isCompanyCar && isActiveFleet(v.rego)),
+    [vehicles, scope],
+  );
+
   const counts = useMemo(() => {
     const c: Record<string, number> = {};
-    for (const v of vehicles) c[v.status] = (c[v.status] ?? 0) + 1;
+    for (const v of scoped) c[v.status] = (c[v.status] ?? 0) + 1;
     return c;
-  }, [vehicles]);
+  }, [scoped]);
   const returnedTodayCount = useMemo(
-    () => vehicles.filter((v) => returnedToday.has(v.rego)).length,
-    [vehicles, returnedToday],
+    () => scoped.filter((v) => returnedToday.has(v.rego)).length,
+    [scoped, returnedToday],
   );
   const countFor = (k: Filter) =>
-    k === 'all' ? vehicles.length : k === 'returned' ? returnedTodayCount : (counts[k] ?? 0);
+    k === 'all' ? scoped.length : k === 'returned' ? returnedTodayCount : (counts[k] ?? 0);
 
   const shown = useMemo(() => {
     const term = q.trim().toUpperCase();
-    return vehicles
+    return scoped
       .filter((v) =>
         filter === 'all'
           ? true
@@ -75,7 +93,7 @@ export function CarsList() {
             v.model.toUpperCase().includes(term)
           : true,
       );
-  }, [vehicles, filter, q, returnedToday]);
+  }, [scoped, filter, q, returnedToday]);
 
   return (
     <>
@@ -91,22 +109,50 @@ export function CarsList() {
         style={{ margin: '14px 0 12px' }}
       />
 
-      {/* Status filter chips — each shows its count (All + any status present). */}
       {!loading && vehicles.length > 0 ? (
-        <div className="at-chips" role="tablist" aria-label="Filter by status">
-          {CHIPS.filter((c) => c.key === 'all' || countFor(c.key) > 0).map((c) => (
+        <>
+          {/* Scope: the shop's live active fleet vs every car on record. */}
+          <div className="at-chips" role="tablist" aria-label="Scope">
             <button
-              key={c.key}
               type="button"
-              role="tab"
-              aria-selected={filter === c.key}
-              className={`at-chip${filter === c.key ? ' on' : ''}`}
-              onClick={() => setFilter(c.key)}
+              className={`at-chip${scope === 'fleet' ? ' on' : ''}`}
+              aria-selected={scope === 'fleet'}
+              onClick={() => {
+                setScope('fleet');
+                setFilter('all');
+              }}
             >
-              {c.label} <span className="n">{countFor(c.key)}</span>
+              Active fleet <span className="n">{fleetCount}</span>
             </button>
-          ))}
-        </div>
+            <button
+              type="button"
+              className={`at-chip${scope === 'all' ? ' on' : ''}`}
+              aria-selected={scope === 'all'}
+              onClick={() => {
+                setScope('all');
+                setFilter('all');
+              }}
+            >
+              All <span className="n">{vehicles.length}</span>
+            </button>
+          </div>
+
+          {/* Status filters, counted within the chosen scope. */}
+          <div className="at-chips" role="tablist" aria-label="Filter by status">
+            {CHIPS.filter((c) => c.key === 'all' || countFor(c.key) > 0).map((c) => (
+              <button
+                key={c.key}
+                type="button"
+                role="tab"
+                aria-selected={filter === c.key}
+                className={`at-chip${filter === c.key ? ' on' : ''}`}
+                onClick={() => setFilter(c.key)}
+              >
+                {c.label} <span className="n">{countFor(c.key)}</span>
+              </button>
+            ))}
+          </div>
+        </>
       ) : null}
 
       {error && <div className="at-errbanner">Could not load cars.</div>}
