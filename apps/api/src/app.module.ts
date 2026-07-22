@@ -56,6 +56,7 @@ import { TerminologyModule } from './terminology/terminology.module';
 import { PipelineModule } from './pipeline/pipeline.module';
 import { VehicleProfileModule } from './vehicle-profile/vehicle-profile.module';
 import { WorkItemModule } from './work-items/work-item.module';
+import { TrackingModule } from './tracking/tracking.module';
 
 @Module({
   imports: [
@@ -112,6 +113,7 @@ import { WorkItemModule } from './work-items/work-item.module';
     PosModule,
     WebhooksModule,
     FleetModule, // fleet & courtesy cars: loan-car movements/returns/bookings/photos (migrated 1:1 from "In N Out")
+    TrackingModule, // fleet live-location via CityTag (In N Out migration §9, Phase 2; per-tenant secrets)
     YardsModule, // yards & vehicle logistics: park an incoming car at a yard before a job exists (YRD-1)
     SitesModule, // multi-site: a shop's locations/branches; a job optionally belongs to a site (SITE-1)
     MarketplaceModule, // integration marketplace: catalogue + per-tenant connections (Phase 4; vendor wiring deferred) // public API & webhooks: signed outbound event delivery (Phase 4; partner API keys deferred) // point of sale: walk-in checkout (Phase 4; card payment deferred) // referral engine: codes + trackable referrals/incentives (Phase 4) // loyalty, rewards & gift cards: points + gift-card ledgers (Phase 4) // inventory & stock: levels, usage, reorder signal (Phase 4) // roster & staff management: shifts, availability, time-off (Phase 4) // waitlist & auto-fill: fill cancellations to protect utilisation (Phase 4) // onboarding & data migration: CSV customer import + setup checklist (Phase 3)

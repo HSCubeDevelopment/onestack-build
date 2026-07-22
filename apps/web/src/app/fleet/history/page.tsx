@@ -4,6 +4,7 @@ import { useSearchParams } from 'next/navigation';
 import { api } from '@/lib/api';
 import { EmptyState, ErrorBanner, Loading, PageHead, useAsync } from '@/components/ui';
 import { RentalPeriod, formatDateTime, purposeLabel } from '@/lib/fleet';
+import { LiveLocation } from '@/components/LiveLocation';
 
 function HistoryInner() {
   const rego = (useSearchParams().get('rego') ?? '').toUpperCase();
@@ -19,6 +20,7 @@ function HistoryInner() {
         sub="Every period this fleet car was out to a client"
       />
       <ErrorBanner message={error} />
+      {rego ? <LiveLocation rego={rego} /> : null}
       <div className="card pad0">
         {loading ? (
           <Loading />
