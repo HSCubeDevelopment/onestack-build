@@ -12,35 +12,62 @@ import {
 import { useAsync } from '@/components/ui';
 import { AtTopbar } from '@/components/autotech/kit';
 
-type Filter = 'all' | FleetVehicleStatus;
+type Filter = 'all' | 'returned' | FleetVehicleStatus;
 const CHIPS: { key: Filter; label: string }[] = [
   { key: 'all', label: 'All' },
   { key: 'available', label: 'Available' },
   { key: 'out', label: 'Out' },
+  { key: 'returned', label: 'Returned today' },
   { key: 'booked', label: 'Booked' },
   { key: 'repair', label: 'In repair' },
   { key: 'unknown', label: 'Review' },
 ];
 
+interface TodayResp {
+  returns: { returnedRego: string }[];
+}
+
 /** All cars — rego search + status filter chips with live counts. From /fleet/vehicles. */
 export function CarsList() {
   const router = useRouter();
-  const { data, loading, error } = useAsync(() => api.get<FleetVehicle[]>('/fleet/vehicles'), []);
+  const { data, loading, error } = useAsync(
+    () =>
+      Promise.all([
+        api.get<FleetVehicle[]>('/fleet/vehicles'),
+        api.getOr<TodayResp>('/fleet/today', { returns: [] }),
+      ]),
+    [],
+  );
   const [q, setQ] = useState('');
   const [filter, setFilter] = useState<Filter>('all');
 
-  const vehicles = data ?? [];
+  const vehicles = data?.[0] ?? [];
+  const returnedToday = useMemo(
+    () => new Set((data?.[1]?.returns ?? []).map((r) => r.returnedRego).filter(Boolean)),
+    [data],
+  );
   const counts = useMemo(() => {
     const c: Record<string, number> = {};
     for (const v of vehicles) c[v.status] = (c[v.status] ?? 0) + 1;
     return c;
   }, [vehicles]);
-  const countFor = (k: Filter) => (k === 'all' ? vehicles.length : (counts[k] ?? 0));
+  const returnedTodayCount = useMemo(
+    () => vehicles.filter((v) => returnedToday.has(v.rego)).length,
+    [vehicles, returnedToday],
+  );
+  const countFor = (k: Filter) =>
+    k === 'all' ? vehicles.length : k === 'returned' ? returnedTodayCount : (counts[k] ?? 0);
 
   const shown = useMemo(() => {
     const term = q.trim().toUpperCase();
     return vehicles
-      .filter((v) => (filter === 'all' ? true : v.status === filter))
+      .filter((v) =>
+        filter === 'all'
+          ? true
+          : filter === 'returned'
+            ? returnedToday.has(v.rego)
+            : v.status === filter,
+      )
       .filter((v) =>
         term
           ? v.rego.includes(term) ||
@@ -48,7 +75,7 @@ export function CarsList() {
             v.model.toUpperCase().includes(term)
           : true,
       );
-  }, [vehicles, filter, q]);
+  }, [vehicles, filter, q, returnedToday]);
 
   return (
     <>
