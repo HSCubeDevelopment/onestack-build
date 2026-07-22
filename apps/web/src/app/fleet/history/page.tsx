@@ -1,5 +1,5 @@
 'use client';
-import { Suspense, useState } from 'react';
+import { Suspense, useRef, useState } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { ChevronLeft } from 'lucide-react';
 import { api, ApiError } from '@/lib/api';
@@ -264,21 +264,62 @@ function RentalRow({ p, onOpen }: { p: RentalPeriod; onOpen: () => void }) {
 }
 
 function VehiclePhotos({ vehicleId, isCompanyCar }: { vehicleId: string; isCompanyCar: boolean }) {
-  const { data, loading } = useAsync(
+  const { data, loading, reload } = useAsync(
     () => api.getOr<FleetPhoto[]>(`/fleet/photos?vehicleId=${vehicleId}`, []),
     [vehicleId],
   );
   const photos = data ?? [];
   const title = isCompanyCar ? 'Photos' : 'Report card';
+  const inputRef = useRef<HTMLInputElement>(null);
+  const [uploading, setUploading] = useState(false);
+  const [err, setErr] = useState<string | null>(null);
+
+  async function onFile(file: File) {
+    setUploading(true);
+    setErr(null);
+    try {
+      const { dataBase64, contentType } = await compressToBase64(file);
+      await api.post('/fleet/photos', { vehicleId, photoType: 'other', dataBase64, contentType });
+      await reload();
+    } catch (e) {
+      setErr(e instanceof ApiError ? e.message : 'Could not add photo');
+    } finally {
+      setUploading(false);
+      if (inputRef.current) inputRef.current.value = '';
+    }
+  }
+
   return (
     <>
-      <SectionHeader>{title}</SectionHeader>
+      <div className="recdet-section" style={{ display: 'flex', justifyContent: 'space-between' }}>
+        <span>{title}</span>
+        <button
+          type="button"
+          className="link-btn"
+          disabled={uploading}
+          onClick={() => inputRef.current?.click()}
+        >
+          {uploading ? 'Adding…' : 'Add photo'}
+        </button>
+      </div>
+      <input
+        ref={inputRef}
+        type="file"
+        accept="image/*"
+        capture="environment"
+        style={{ display: 'none' }}
+        onChange={(e) => {
+          const f = e.target.files?.[0];
+          if (f) void onFile(f);
+        }}
+      />
       <div className="card" style={{ marginBottom: 12 }}>
+        <ErrorBanner message={err} />
         {loading ? (
           <Loading />
         ) : photos.length === 0 ? (
           <span className="muted" style={{ fontSize: 13 }}>
-            No photos yet.
+            No photos yet — tap “Add photo”.
           </span>
         ) : (
           <div className="photo-grid">
@@ -297,6 +338,42 @@ function VehiclePhotos({ vehicleId, isCompanyCar }: { vehicleId: string; isCompa
       </div>
     </>
   );
+}
+
+/** Downscale (max 1600px) + JPEG-encode a picked photo to base64, so uploads stay small. */
+async function compressToBase64(file: File): Promise<{ dataBase64: string; contentType: string }> {
+  const dataUrl = await new Promise<string>((res, rej) => {
+    const r = new FileReader();
+    r.onload = () => res(String(r.result));
+    r.onerror = () => rej(new Error('Could not read the file'));
+    r.readAsDataURL(file);
+  });
+  try {
+    const img = await new Promise<HTMLImageElement>((res, rej) => {
+      const i = new Image();
+      i.onload = () => res(i);
+      i.onerror = () => rej(new Error('image'));
+      i.src = dataUrl;
+    });
+    const max = 1600;
+    let { width: w, height: h } = img;
+    if (w > max || h > max) {
+      const s = Math.min(max / w, max / h);
+      w = Math.round(w * s);
+      h = Math.round(h * s);
+    }
+    const canvas = document.createElement('canvas');
+    canvas.width = w;
+    canvas.height = h;
+    const ctx = canvas.getContext('2d');
+    if (!ctx) throw new Error('no canvas');
+    ctx.drawImage(img, 0, 0, w, h);
+    const out = canvas.toDataURL('image/jpeg', 0.82);
+    return { dataBase64: out.split(',')[1] ?? '', contentType: 'image/jpeg' };
+  } catch {
+    // Fall back to the raw bytes if canvas isn't available.
+    return { dataBase64: dataUrl.split(',')[1] ?? '', contentType: file.type || 'image/jpeg' };
+  }
 }
 
 function formatDate(iso: string | null | undefined): string {
