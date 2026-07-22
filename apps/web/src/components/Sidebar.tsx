@@ -20,21 +20,12 @@ import {
   ScanLine,
   Webhook,
   Blocks,
-  Car,
   type LucideIcon,
 } from 'lucide-react';
 import { ThemeToggle } from '@/components/ThemeToggle';
-import { navFor, type NavRow } from '@/lib/nav';
-import { INOUT_TABS } from '@/lib/inout';
-import { Plus } from 'lucide-react';
+import { navFor } from '@/lib/nav';
 
-// Shop-floor STAFF get the In N Out destinations (matching their tab bar); OWNER/TOW keep the app nav.
-const INOUT_SIDEBAR: NavRow[] = [
-  { section: 'In N Out' },
-  ...INOUT_TABS,
-  { href: '/inout/add', label: 'New movement', Icon: Plus },
-];
-
+// Only OWNER renders the sidebar now — STAFF and TOW get the Auto Tech phone shell (no sidebar).
 export function Sidebar({
   role = 'OWNER',
   canViewFinance = false,
@@ -44,7 +35,7 @@ export function Sidebar({
 }) {
   const path = usePathname();
   const isActive = (href: string) => (href === '/' ? path === '/' : path.startsWith(href));
-  const nav = role === 'STAFF' ? INOUT_SIDEBAR : navFor(role, { canViewFinance });
+  const nav = navFor(role, { canViewFinance });
   return (
     <aside className="sidebar">
       <div className="brand">

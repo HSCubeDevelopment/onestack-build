@@ -1,4 +1,5 @@
 import './globals.css';
+import './autotech.css';
 import type { Metadata, Viewport } from 'next';
 import { cookies } from 'next/headers';
 import { AppShell } from '@/components/AppShell';

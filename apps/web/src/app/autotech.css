@@ -1,0 +1,650 @@
+/*
+ * Auto Tech — the employee (STAFF) + tow-worker phone surface.
+ *
+ * A self-contained iOS-style skin, faithful to AutoTech_TwoButton_Demo: big tap targets, icon-first,
+ * SF system font, #007AFF blue. EVERYTHING is scoped under `.at-shell` so the OWNER admin (which never
+ * gets that wrapper) is completely untouched.
+ *
+ * Two jobs:
+ *   1. Re-map the app's design tokens (--brand, --bg, --panel…) to the iOS palette, so the shared
+ *      screens a tow worker still uses (/jobs, /yards, /time-clock) adopt the "similar kind of UI"
+ *      for free — same functionality, new coat of paint.
+ *   2. Provide the `at-*` component classes the rebuilt STAFF screens are built from.
+ *
+ * The surface is deliberately light-only (like the demo). Because these custom properties are set on
+ * `.at-shell` itself, they win over `html.dark` for everything inside — the employee app stays iOS-light
+ * even when the owner has dark mode on.
+ */
+.at-shell {
+  --at-blue: #007aff;
+  --at-blue-d: #0a5bd6;
+  --at-green: #34c759;
+  --at-green-d: #1f9e46;
+  --at-red: #ff3b30;
+  --at-orange: #ff9500;
+  --at-purple: #af52de;
+  --at-teal: #12a594;
+  --at-gray: #8e8e93;
+  --at-bg: #f2f2f7;
+  --at-card: #ffffff;
+  --at-sep: #e4e4e8;
+  --at-label: #1c1c1e;
+  --at-label2: #8a8a8e;
+  --at-green-text: #1d7a35;
+
+  /* Re-skin the shared OneStack tokens to iOS so tow's shared pages match. */
+  --bg: #f2f2f7;
+  --panel: #ffffff;
+  --panel-2: #eceef3;
+  --border: #e4e4e8;
+  --border-strong: #d5d7dd;
+  --text: #1c1c1e;
+  --text-dim: #6b6b70;
+  --text-faint: #8e8e93;
+  --ink: #1c1c1e;
+  --brand: #007aff;
+  --brand-2: #0a5bd6;
+  --brand-soft: #e3f0ff;
+  --blue: #007aff;
+  --blue-soft: #e3f0ff;
+  --green: #34c759;
+  --green-soft: #e3f8e9;
+  --red: #ff3b30;
+  --red-soft: #ffe5e3;
+  --amber: #ff9500;
+  --amber-soft: #fff0db;
+  --purple: #af52de;
+  --purple-soft: #f5e9fb;
+  --radius: 18px;
+  --radius-sm: 12px;
+
+  min-height: 100vh;
+  min-height: 100dvh;
+  background: var(--at-bg);
+  color: var(--at-label);
+  font-family: -apple-system, BlinkMacSystemFont, 'SF Pro Text', 'Segoe UI', Roboto, sans-serif;
+  -webkit-tap-highlight-color: transparent;
+}
+
+/* The centred phone-width column. On desktop it reads as an installed app, not a stretched web page. */
+.at-frame {
+  max-width: 440px;
+  margin: 0 auto;
+  padding: calc(10px + env(safe-area-inset-top)) 20px calc(28px + env(safe-area-inset-bottom));
+}
+
+/* ---- top bar (back + optional right slot) ---- */
+.at-topbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  min-height: 44px;
+  margin: 2px 0 6px;
+}
+.at-back {
+  appearance: none;
+  border: none;
+  background: transparent;
+  color: var(--at-blue);
+  font-size: 30px;
+  line-height: 1;
+  padding: 4px 6px 4px 0;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  font-family: inherit;
+}
+.at-back .lbl {
+  font-size: 17px;
+  font-weight: 600;
+}
+.at-signout {
+  appearance: none;
+  border: none;
+  background: #e9e9ee;
+  color: var(--at-label);
+  border-radius: 22px;
+  padding: 8px 15px;
+  font-size: 14px;
+  font-weight: 700;
+  cursor: pointer;
+  font-family: inherit;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+
+/* ---- brand header (home) ---- */
+.at-brand {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin: 8px 2px 2px;
+}
+.at-brand .logo {
+  width: 48px;
+  height: 48px;
+  border-radius: 13px;
+  background: linear-gradient(135deg, #0f2340, #1b3a63);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+.at-brand .logo svg {
+  width: 27px;
+  height: 27px;
+  stroke: #fff;
+  stroke-width: 2;
+  fill: none;
+}
+.at-brand h1 {
+  font-size: 25px;
+  font-weight: 800;
+  margin: 0;
+  letter-spacing: -0.3px;
+  color: var(--at-label);
+}
+.at-brand p {
+  margin: 2px 0 0;
+  font-size: 14px;
+  color: var(--at-gray);
+}
+
+/* ---- two big home buttons ---- */
+.at-bigbtn {
+  width: 100%;
+  border: none;
+  border-radius: 28px;
+  padding: 34px 24px;
+  margin-top: 20px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 14px;
+  cursor: pointer;
+  color: #fff;
+  font-family: inherit;
+  box-shadow: 0 10px 24px rgba(0, 0, 0, 0.16);
+  text-decoration: none;
+}
+.at-bigbtn .circ {
+  width: 96px;
+  height: 96px;
+  border-radius: 50%;
+  background: rgba(255, 255, 255, 0.2);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+.at-bigbtn .circ svg {
+  width: 54px;
+  height: 54px;
+  stroke: #fff;
+  stroke-width: 2;
+  fill: none;
+}
+.at-bigbtn .lab {
+  font-size: 27px;
+  font-weight: 800;
+  letter-spacing: -0.2px;
+}
+.at-bigbtn .sub {
+  font-size: 15px;
+  font-weight: 600;
+  opacity: 0.92;
+  margin-top: -6px;
+}
+.at-grad-cars {
+  background: linear-gradient(140deg, #007aff, #0a5bd6);
+}
+.at-grad-clock {
+  background: linear-gradient(140deg, #12a594, #0d7d70);
+}
+.at-grad-tow {
+  background: linear-gradient(140deg, #ff9500, #e07600);
+}
+.at-grad-jobs {
+  background: linear-gradient(140deg, #5856d6, #3b39b0);
+}
+
+/* ---- action tiles (cars menu) ---- */
+.at-h2 {
+  font-size: 26px;
+  font-weight: 800;
+  margin: 8px 2px 2px;
+  color: var(--at-label);
+}
+.at-sub {
+  color: var(--at-gray);
+  font-size: 14.5px;
+  margin: 2px 2px 0;
+}
+.at-tiles {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 14px;
+  margin-top: 18px;
+}
+.at-tile {
+  border: none;
+  border-radius: 22px;
+  background: var(--at-card);
+  padding: 22px 14px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 12px;
+  cursor: pointer;
+  font-family: inherit;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.07);
+  text-decoration: none;
+}
+.at-tile .ti-ic {
+  width: 64px;
+  height: 64px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+.at-tile .ti-ic svg {
+  width: 33px;
+  height: 33px;
+  stroke: #fff;
+  stroke-width: 2;
+  fill: none;
+}
+.at-tile .ti-lab {
+  font-size: 17px;
+  font-weight: 800;
+  text-align: center;
+  line-height: 1.15;
+  color: var(--at-label);
+}
+.at-tile .ti-sub {
+  font-size: 12.5px;
+  color: var(--at-label2);
+  text-align: center;
+  margin-top: -6px;
+  line-height: 1.2;
+}
+.at-tile.wide {
+  grid-column: 1 / -1;
+  flex-direction: row;
+  justify-content: center;
+  gap: 14px;
+  padding: 16px;
+}
+.at-tile.wide .ti-ic {
+  width: 46px;
+  height: 46px;
+}
+.at-tile.wide .ti-ic svg {
+  width: 24px;
+  height: 24px;
+}
+
+/* ---- forms ---- */
+.at-field {
+  margin-bottom: 16px;
+}
+.at-flabel {
+  font-size: 13px;
+  font-weight: 700;
+  color: var(--at-label2);
+  text-transform: uppercase;
+  letter-spacing: 0.4px;
+  margin: 0 2px 7px;
+}
+.at-input {
+  width: 100%;
+  background: var(--at-card);
+  border: 1px solid var(--at-sep);
+  border-radius: 14px;
+  padding: 16px;
+  font-size: 18px;
+  font-family: inherit;
+  color: var(--at-label);
+}
+.at-input::placeholder {
+  color: #b7b7bd;
+}
+.at-input:focus {
+  outline: none;
+  border-color: var(--at-blue);
+  box-shadow: 0 0 0 4px rgba(0, 122, 255, 0.12);
+}
+.at-input.rego {
+  font-weight: 800;
+  letter-spacing: 2px;
+  text-transform: uppercase;
+}
+textarea.at-input {
+  min-height: 74px;
+  resize: none;
+}
+.at-seg {
+  display: flex;
+  flex-wrap: wrap;
+  background: #e9e9ee;
+  border-radius: 13px;
+  padding: 4px;
+  gap: 4px;
+}
+.at-seg button {
+  flex: 1;
+  min-width: 28%;
+  border: none;
+  background: transparent;
+  border-radius: 10px;
+  padding: 11px 4px;
+  font-size: 14px;
+  font-weight: 700;
+  color: var(--at-label);
+  cursor: pointer;
+  font-family: inherit;
+}
+.at-seg button.on {
+  background: var(--at-blue);
+  color: #fff;
+}
+
+.at-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  border: none;
+  border-radius: 16px;
+  font-size: 19px;
+  font-weight: 800;
+  padding: 18px;
+  width: 100%;
+  cursor: pointer;
+  font-family: inherit;
+}
+.at-btn:disabled {
+  opacity: 0.5;
+}
+.at-btn.primary {
+  background: var(--at-blue);
+  color: #fff;
+}
+.at-btn.green {
+  background: var(--at-green);
+  color: #fff;
+}
+.at-btn.ghost {
+  background: #e9e9ee;
+  color: var(--at-label);
+}
+
+.at-warn {
+  border: 1px solid rgba(255, 149, 0, 0.4);
+  background: rgba(255, 149, 0, 0.12);
+  border-radius: 16px;
+  padding: 16px;
+  font-size: 15px;
+  display: flex;
+  gap: 10px;
+  margin-top: 12px;
+}
+.at-warn .wsym {
+  color: var(--at-orange);
+  font-size: 20px;
+  line-height: 1;
+}
+.at-warn .wt {
+  font-weight: 800;
+  margin-bottom: 2px;
+}
+.at-okline {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  color: var(--at-green-text);
+  font-size: 15px;
+  font-weight: 800;
+  margin-top: 10px;
+  padding: 0 2px;
+}
+.at-faintline {
+  color: var(--at-gray);
+  font-size: 15px;
+  font-weight: 700;
+  margin-top: 10px;
+  padding: 0 2px;
+}
+.at-photorow {
+  display: flex;
+  gap: 12px;
+  margin-top: 6px;
+}
+.at-photobox {
+  width: 82px;
+  height: 82px;
+  border-radius: 14px;
+  border: 2px dashed var(--at-sep);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  color: var(--at-gray);
+  background: var(--at-card);
+  font-size: 12px;
+  gap: 3px;
+  font-weight: 700;
+  cursor: pointer;
+}
+.at-photobox svg {
+  width: 28px;
+  height: 28px;
+  stroke: currentColor;
+  stroke-width: 2;
+  fill: none;
+}
+
+/* ---- list rows (cars list) ---- */
+.at-list {
+  border-radius: 16px;
+  overflow: hidden;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.06);
+}
+.at-lrow {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  padding: 15px 16px;
+  border-bottom: 1px solid var(--at-sep);
+  cursor: pointer;
+  background: var(--at-card);
+}
+.at-lrow:last-child {
+  border-bottom: none;
+}
+.at-lrow .ic {
+  width: 44px;
+  height: 44px;
+  border-radius: 50%;
+  background: var(--at-gray);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+.at-lrow .ic svg {
+  width: 22px;
+  height: 22px;
+  stroke: #fff;
+  stroke-width: 2;
+  fill: none;
+}
+.at-lrow .body {
+  flex: 1;
+  min-width: 0;
+}
+.at-lrow .ti {
+  font-size: 18px;
+  font-weight: 800;
+  letter-spacing: 0.4px;
+  color: var(--at-label);
+}
+.at-lrow .st {
+  font-size: 13px;
+  color: var(--at-label2);
+  margin-top: 1px;
+}
+.at-badge {
+  font-size: 13px;
+  font-weight: 800;
+  padding: 4px 11px;
+  border-radius: 20px;
+  white-space: nowrap;
+}
+.at-badge.green {
+  background: rgba(52, 199, 89, 0.16);
+  color: var(--at-green-text);
+}
+.at-badge.red {
+  background: rgba(255, 59, 48, 0.13);
+  color: var(--at-red);
+}
+.at-badge.amber {
+  background: rgba(255, 149, 0, 0.16);
+  color: #b06a00;
+}
+.at-badge.purple {
+  background: rgba(175, 82, 222, 0.14);
+  color: var(--at-purple);
+}
+.at-badge.gray {
+  background: rgba(142, 142, 147, 0.16);
+  color: var(--at-gray);
+}
+
+/* ---- clock ---- */
+.at-clockwrap {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  margin-top: 14px;
+}
+.at-clockday {
+  font-size: 16px;
+  color: var(--at-label2);
+  font-weight: 700;
+  margin-bottom: 4px;
+}
+.at-clocktime {
+  font-size: 52px;
+  font-weight: 800;
+  letter-spacing: -1px;
+  color: var(--at-label);
+}
+.at-bigcirc {
+  width: 230px;
+  height: 230px;
+  border-radius: 50%;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  color: #fff;
+  cursor: pointer;
+  margin: 26px 0;
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.18);
+  user-select: none;
+  border: none;
+  font-family: inherit;
+}
+.at-bigcirc:disabled {
+  opacity: 0.7;
+}
+.at-bigcirc svg {
+  width: 66px;
+  height: 66px;
+  stroke: #fff;
+  stroke-width: 2;
+  fill: none;
+}
+.at-bigcirc .ct {
+  font-size: 26px;
+  font-weight: 800;
+}
+.at-circ-in {
+  background: linear-gradient(140deg, #34c759, #1f9e46);
+}
+.at-circ-out {
+  background: linear-gradient(140deg, #ff3b30, #c92a21);
+}
+.at-statusline {
+  font-size: 16px;
+  font-weight: 700;
+  color: var(--at-label);
+  text-align: center;
+}
+.at-statusline b {
+  color: var(--at-green-text);
+}
+.at-hoursbox {
+  background: var(--at-card);
+  border-radius: 18px;
+  padding: 6px 18px;
+  margin-top: 22px;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.06);
+}
+.at-hoursrow {
+  display: flex;
+  justify-content: space-between;
+  font-size: 16px;
+  padding: 12px 2px;
+  border-bottom: 1px solid var(--at-sep);
+  color: var(--at-label);
+}
+.at-hoursrow:last-child {
+  border-bottom: none;
+  font-weight: 800;
+}
+
+/* ---- toast + misc ---- */
+.at-toast {
+  position: fixed;
+  left: 50%;
+  bottom: calc(40px + env(safe-area-inset-bottom));
+  transform: translateX(-50%);
+  background: rgba(20, 20, 22, 0.92);
+  color: #fff;
+  padding: 14px 22px;
+  border-radius: 16px;
+  font-size: 15px;
+  font-weight: 700;
+  z-index: 80;
+  text-align: center;
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.3);
+}
+.at-empty {
+  text-align: center;
+  color: var(--at-gray);
+  font-weight: 700;
+  padding: 40px 0;
+}
+.at-errbanner {
+  background: rgba(255, 59, 48, 0.1);
+  border: 1px solid rgba(255, 59, 48, 0.3);
+  color: #b3261e;
+  border-radius: 14px;
+  padding: 14px 16px;
+  font-size: 14.5px;
+  font-weight: 600;
+  margin-bottom: 12px;
+}
+.at-spin {
+  text-align: center;
+  color: var(--at-gray);
+  padding: 30px 0;
+  font-weight: 700;
+}
