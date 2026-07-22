@@ -11,8 +11,11 @@ import { SESSION_COOKIE } from '@/lib/session';
  * Allowlist rather than blocklist, mirroring the API's @AllowStaff() routes — a page added later is
  * off-limits to employees until someone decides otherwise, instead of quietly appearing.
  */
-const STAFF_PREFIXES = ['/jobs', '/roster', '/time-clock', '/customers'];
-const STAFF_HOME = '/jobs';
+// The shop-floor STAFF surface = the In N Out employee app (home at `/`, the `/inout/*` flows, and the
+// `/fleet/*` detail pages they link to). The other staff-allowlisted routes stay reachable by URL even
+// though the In N Out nav no longer surfaces them. TOW is not STAFF, so this middleware never touches it.
+const STAFF_PREFIXES = ['/', '/inout', '/fleet', '/jobs', '/roster', '/time-clock', '/customers'];
+const STAFF_HOME = '/';
 
 /** Decode the JWT payload without verifying — the API verifies the signature; we only need the role. */
 function roleOf(token: string | undefined): string | undefined {

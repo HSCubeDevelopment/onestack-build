@@ -15,6 +15,7 @@ import type { Response } from 'express';
 import { AuthContext } from '../auth/auth.types';
 import { CurrentUser } from '../auth/current-user.decorator';
 import { JwtAuthGuard } from '../auth/jwt-auth.guard';
+import { AllowStaff } from '../auth/roles.decorator';
 import { RolesGuard } from '../auth/roles.guard';
 import {
   AddFleetPhotoDto,
@@ -48,6 +49,10 @@ import {
  */
 @Controller('fleet')
 @UseGuards(JwtAuthGuard, RolesGuard)
+// The whole In N Out surface is a shop-floor STAFF activity (the legacy app had one flat access level).
+// Applied at the class level so every fleet route admits OWNER + STAFF (+ TOW); reads/writes stay
+// tenant-scoped by the service. Money/roles remain owner-only on their own controllers.
+@AllowStaff()
 export class FleetController {
   constructor(
     private readonly fleet: FleetService,

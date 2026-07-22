@@ -27,8 +27,22 @@ import { Hero, PipelineStrip, QuickActions, TodaysBoard } from '@/components/Own
 import { ErrorBanner, humanize, Loading, StatusBadge, useAsync } from '@/components/ui';
 import { StateIcon, stateColor } from '@/components/Icon';
 import { setActiveSite } from '@/lib/active-site';
+import { InOutHome } from '@/components/InOutHome';
+import { useRole } from '@/lib/use-role';
 
-export default function DashboardPage() {
+/**
+ * The home screen forks by role: a shop-floor STAFF member gets the In N Out employee app; the OWNER
+ * (and TOW, left untouched) get the OneStack dashboard. Kept as two components so neither one's hooks
+ * run for the other role.
+ */
+export default function HomePage() {
+  const { role } = useRole();
+  if (role === undefined) return <Loading />;
+  if (role === 'STAFF') return <InOutHome />;
+  return <OwnerDashboard />;
+}
+
+function OwnerDashboard() {
   const today = new Date();
   const to = new Date(today.getTime() + 30 * 864e5).toISOString();
   const from = new Date(today.getTime() - 864e5).toISOString();
