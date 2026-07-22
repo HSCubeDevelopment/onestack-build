@@ -14,6 +14,7 @@ import { IsBoolean, IsEmail, IsString, MinLength } from 'class-validator';
 import * as jwt from 'jsonwebtoken';
 import { PrismaService } from '../prisma/prisma.service';
 import { AppRole, AuthContext } from './auth.types';
+import { EMPLOYEE_ROSTER } from './employee-roster';
 import { AllowStaff } from './roles.decorator';
 import { CurrentUser } from './current-user.decorator';
 import { JwtAuthGuard } from './jwt-auth.guard';
@@ -103,6 +104,7 @@ export class LoginController {
   @Get('demo-credentials')
   demoCredentials(): {
     accounts: { label: string; email: string; password: string; role: AppRole }[];
+    employees: { name: string; email: string; site: string; password: string }[];
   } {
     if (process.env.DEV_LOGIN_ENABLED !== 'true') {
       throw new ForbiddenException('Demo credentials are not available');
@@ -120,7 +122,18 @@ export class LoginController {
     if (staff && staffPw)
       accounts.push({ label: 'Staff', email: staff, password: staffPw, role: 'STAFF' });
     if (tow && towPw) accounts.push({ label: 'Tow', email: tow, password: towPw, role: 'TOW' });
-    return { accounts };
+
+    // The workshop's real employees (attendance sheet), so the sign-in page's "sign in as <employee>"
+    // dropdown can log in as any of them. All share the STAFF demo password — same contained,
+    // demo-tenant-only exposure as the accounts above, and RLS keeps them off any other tenant's data.
+    const employeePw = staffPw ?? 'Staff!2345';
+    const employees = EMPLOYEE_ROSTER.map((e) => ({
+      name: e.name,
+      email: e.email,
+      site: e.site,
+      password: employeePw,
+    }));
+    return { accounts, employees };
   }
 
   /**
