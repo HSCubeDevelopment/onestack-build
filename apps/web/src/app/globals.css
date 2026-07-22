@@ -1727,3 +1727,62 @@ textarea.input {
   letter-spacing: 0.3px;
   color: rgba(255, 255, 255, 0.7);
 }
+
+/* ---- car (vehicle) record detail ---- */
+.recdet-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  padding: 12px 16px;
+  border-bottom: 1px solid var(--border);
+}
+.rego-big {
+  font-size: 24px;
+  font-weight: 800;
+  letter-spacing: 1px;
+  color: var(--ink);
+}
+.recdet-row {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 14px;
+  padding: 11px 16px;
+  border-bottom: 1px solid var(--border);
+  font-size: 14px;
+}
+.recdet-row:last-child {
+  border-bottom: none;
+}
+.recdet-label {
+  color: var(--text-dim);
+  flex-shrink: 0;
+}
+.recdet-value {
+  text-align: right;
+  font-weight: 550;
+  color: var(--ink);
+}
+.recdet-section {
+  font-size: 12px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: var(--text-faint);
+  margin: 6px 4px 8px;
+}
+.photo-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(96px, 1fr));
+  gap: 8px;
+}
+.photo-thumb {
+  width: 100%;
+  aspect-ratio: 1;
+  object-fit: cover;
+  border-radius: 12px;
+  border: 1px solid var(--border);
+  background: var(--panel-2);
+  cursor: pointer;
+}
