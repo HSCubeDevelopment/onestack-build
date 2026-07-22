@@ -3,27 +3,52 @@ import { useMemo, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { Car } from 'lucide-react';
 import { api } from '@/lib/api';
-import { FleetVehicle, vehicleStatusColor, vehicleStatusLabel } from '@/lib/fleet';
+import {
+  FleetVehicle,
+  FleetVehicleStatus,
+  vehicleStatusColor,
+  vehicleStatusLabel,
+} from '@/lib/fleet';
 import { useAsync } from '@/components/ui';
 import { AtTopbar } from '@/components/autotech/kit';
 
-/** All cars + a rego search — the screen behind "View all cars & search rego". From /fleet/vehicles. */
+type Filter = 'all' | FleetVehicleStatus;
+const CHIPS: { key: Filter; label: string }[] = [
+  { key: 'all', label: 'All' },
+  { key: 'available', label: 'Available' },
+  { key: 'out', label: 'Out' },
+  { key: 'booked', label: 'Booked' },
+  { key: 'repair', label: 'In repair' },
+  { key: 'unknown', label: 'Review' },
+];
+
+/** All cars — rego search + status filter chips with live counts. From /fleet/vehicles. */
 export function CarsList() {
   const router = useRouter();
   const { data, loading, error } = useAsync(() => api.get<FleetVehicle[]>('/fleet/vehicles'), []);
   const [q, setQ] = useState('');
+  const [filter, setFilter] = useState<Filter>('all');
 
   const vehicles = data ?? [];
+  const counts = useMemo(() => {
+    const c: Record<string, number> = {};
+    for (const v of vehicles) c[v.status] = (c[v.status] ?? 0) + 1;
+    return c;
+  }, [vehicles]);
+  const countFor = (k: Filter) => (k === 'all' ? vehicles.length : (counts[k] ?? 0));
+
   const shown = useMemo(() => {
     const term = q.trim().toUpperCase();
-    if (!term) return vehicles;
-    return vehicles.filter(
-      (v) =>
-        v.rego.includes(term) ||
-        v.make.toUpperCase().includes(term) ||
-        v.model.toUpperCase().includes(term),
-    );
-  }, [vehicles, q]);
+    return vehicles
+      .filter((v) => (filter === 'all' ? true : v.status === filter))
+      .filter((v) =>
+        term
+          ? v.rego.includes(term) ||
+            v.make.toUpperCase().includes(term) ||
+            v.model.toUpperCase().includes(term)
+          : true,
+      );
+  }, [vehicles, filter, q]);
 
   return (
     <>
@@ -34,10 +59,28 @@ export function CarsList() {
         className="at-input rego"
         value={q}
         onChange={(e) => setQ(e.target.value)}
-        placeholder="Search rego"
+        placeholder="Search rego or make"
         autoCapitalize="characters"
-        style={{ margin: '14px 0' }}
+        style={{ margin: '14px 0 12px' }}
       />
+
+      {/* Status filter chips — each shows its count (All + any status present). */}
+      {!loading && vehicles.length > 0 ? (
+        <div className="at-chips" role="tablist" aria-label="Filter by status">
+          {CHIPS.filter((c) => c.key === 'all' || countFor(c.key) > 0).map((c) => (
+            <button
+              key={c.key}
+              type="button"
+              role="tab"
+              aria-selected={filter === c.key}
+              className={`at-chip${filter === c.key ? ' on' : ''}`}
+              onClick={() => setFilter(c.key)}
+            >
+              {c.label} <span className="n">{countFor(c.key)}</span>
+            </button>
+          ))}
+        </div>
+      ) : null}
 
       {error && <div className="at-errbanner">Could not load cars.</div>}
       {loading ? (
