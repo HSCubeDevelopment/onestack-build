@@ -560,6 +560,29 @@ textarea.at-input {
   color: #fff;
 }
 
+/* ---- sort select (cars list) ---- */
+.at-sortrow {
+  display: flex;
+  justify-content: flex-end;
+  margin: 0 0 10px;
+}
+.at-sortsel {
+  appearance: none;
+  -webkit-appearance: none;
+  border: none;
+  background-color: #e9e9ee;
+  color: var(--at-label);
+  border-radius: 20px;
+  padding: 8px 32px 8px 14px;
+  font-size: 14px;
+  font-weight: 700;
+  font-family: inherit;
+  cursor: pointer;
+  background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='%238a8a8e' stroke-width='3'><path d='M6 9l6 6 6-6'/></svg>");
+  background-repeat: no-repeat;
+  background-position: right 12px center;
+}
+
 /* ---- clock ---- */
 .at-clockwrap {
   display: flex;

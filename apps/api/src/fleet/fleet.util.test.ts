@@ -23,15 +23,33 @@ describe('fleet.util', () => {
     expect(isFleetVehicleStatus('nonsense')).toBe(false);
   });
 
-  it('startOfToday/endOfToday bound the same calendar day', () => {
-    const now = new Date('2026-07-15T13:45:00');
+  it('startOfToday/endOfToday bound the Melbourne calendar day (not UTC)', () => {
+    // 03:00Z on 15 Jul is 13:00 in Melbourne (AEST, UTC+10) → the Melbourne day is the 15th.
+    const now = new Date('2026-07-15T03:00:00Z');
     const s = startOfToday(now);
     const e = endOfToday(now);
-    expect(s.getHours()).toBe(0);
-    expect(s.getMinutes()).toBe(0);
-    expect(e.getHours()).toBe(23);
-    expect(e.getMinutes()).toBe(59);
+    const wall = (d: Date) =>
+      new Intl.DateTimeFormat('en-CA', {
+        timeZone: 'Australia/Melbourne',
+        hourCycle: 'h23',
+        year: 'numeric',
+        month: '2-digit',
+        day: '2-digit',
+        hour: '2-digit',
+        minute: '2-digit',
+      })
+        .formatToParts(d)
+        .reduce<Record<string, string>>((a, x) => {
+          if (x.type !== 'literal') a[x.type] = x.value;
+          return a;
+        }, {});
+    const ws = wall(s);
+    expect(`${ws.year}-${ws.month}-${ws.day} ${ws.hour}:${ws.minute}`).toBe('2026-07-15 00:00');
+    // Melbourne midnight on 15 Jul (AEST) is 14:00Z on the 14th.
+    expect(s.toISOString()).toBe('2026-07-14T14:00:00.000Z');
     expect(s.getTime()).toBeLessThan(e.getTime());
-    expect(e.getTime() - s.getTime()).toBeLessThan(24 * 3600 * 1000);
+    const span = e.getTime() - s.getTime();
+    expect(span).toBeGreaterThan(23 * 3600 * 1000);
+    expect(span).toBeLessThan(24 * 3600 * 1000);
   });
 });
