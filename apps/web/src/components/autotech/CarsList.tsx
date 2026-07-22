@@ -29,6 +29,14 @@ interface TodayResp {
   returns: { returnedRego: string }[];
 }
 
+type SortKey = 'rego' | 'make' | 'status' | 'added';
+const SORTS: { value: SortKey; label: string }[] = [
+  { value: 'rego', label: 'Rego (A–Z)' },
+  { value: 'make', label: 'Make (A–Z)' },
+  { value: 'status', label: 'Status' },
+  { value: 'added', label: 'Recently added' },
+];
+
 /**
  * All cars — Active-fleet/All scope + rego search + status chips with live counts. Mirrors the source
  * In N Out cars screen: "Active fleet" = a company car in the curated allowlist, so the counts match the
@@ -47,6 +55,7 @@ export function CarsList() {
   const [q, setQ] = useState('');
   const [scope, setScope] = useState<Scope>('fleet');
   const [filter, setFilter] = useState<Filter>('all');
+  const [sort, setSort] = useState<SortKey>('rego');
 
   const vehicles = data?.[0] ?? [];
   const returnedToday = useMemo(
@@ -94,6 +103,23 @@ export function CarsList() {
           : true,
       );
   }, [scoped, filter, q, returnedToday]);
+
+  const sortedShown = useMemo(() => {
+    const makeStr = (x: FleetVehicle) => [x.make, x.model].filter(Boolean).join(' ');
+    const arr = [...shown];
+    switch (sort) {
+      case 'make':
+        return arr.sort(
+          (a, b) => makeStr(a).localeCompare(makeStr(b)) || a.rego.localeCompare(b.rego),
+        );
+      case 'status':
+        return arr.sort((a, b) => a.status.localeCompare(b.status) || a.rego.localeCompare(b.rego));
+      case 'added':
+        return arr.sort((a, b) => (b.createdAt || '').localeCompare(a.createdAt || ''));
+      default:
+        return arr.sort((a, b) => a.rego.localeCompare(b.rego));
+    }
+  }, [shown, sort]);
 
   return (
     <>
@@ -152,17 +178,33 @@ export function CarsList() {
               </button>
             ))}
           </div>
+
+          {/* Sort */}
+          <div className="at-sortrow">
+            <select
+              className="at-sortsel"
+              value={sort}
+              onChange={(e) => setSort(e.target.value as SortKey)}
+              aria-label="Sort cars"
+            >
+              {SORTS.map((s) => (
+                <option key={s.value} value={s.value}>
+                  Sort: {s.label}
+                </option>
+              ))}
+            </select>
+          </div>
         </>
       ) : null}
 
       {error && <div className="at-errbanner">Could not load cars.</div>}
       {loading ? (
         <div className="at-spin">Loading…</div>
-      ) : shown.length === 0 ? (
+      ) : sortedShown.length === 0 ? (
         <div className="at-empty">No cars match.</div>
       ) : (
         <div className="at-list">
-          {shown.map((v) => (
+          {sortedShown.map((v) => (
             <div
               key={v.id}
               className="at-lrow"
