@@ -72,11 +72,11 @@ describe('checkGeofence', () => {
     expect(checkGeofence(northOf(149)).allowed).toBe(true);
   });
 
-  it('refuses just outside, and says how far', () => {
-    const r = checkGeofence(northOf(400));
+  it('refuses well outside the 3 km catchment, and says how far', () => {
+    const r = checkGeofence(northOf(3500));
     expect(r.verdict).toBe('outside');
     expect(r.allowed).toBe(false);
-    expect(r.distanceMetres).toBeGreaterThan(390);
+    expect(r.distanceMetres).toBeGreaterThan(3400);
     expect(r.reason).toMatch(/Lipton Drive/);
   });
 
@@ -130,7 +130,7 @@ describe('readWorkshopFromEnv', () => {
     const { fence, problems } = readWorkshopFromEnv({});
     expect(problems).toEqual([]);
     expect(fence.label).toMatch(/Lipton Drive/);
-    expect(fence.radiusMetres).toBe(150);
+    expect(fence.radiusMetres).toBe(3000);
   });
 
   it('takes a corrected centre from the environment — no code change, no deploy', () => {
@@ -154,8 +154,8 @@ describe('readWorkshopFromEnv', () => {
     // plausible-looking fence centred somewhere nobody works.
     const { fence, problems } = readWorkshopFromEnv({ WORKSHOP_LATITUDE: '-37.68' });
     expect(problems.join(' ')).toMatch(/BOTH/);
-    expect(fence.latitude).toBe(-37.6829);
-    expect(fence.longitude).toBe(145.0169);
+    expect(fence.latitude).toBe(-37.6894934);
+    expect(fence.longitude).toBe(144.9976091);
   });
 
   it('rejects an impossible coordinate instead of fencing the ocean', () => {
@@ -164,7 +164,7 @@ describe('readWorkshopFromEnv', () => {
       WORKSHOP_LONGITUDE: '145',
     });
     expect(problems.join(' ')).toMatch(/not a valid coordinate/);
-    expect(fence.latitude).toBe(-37.6829);
+    expect(fence.latitude).toBe(-37.6894934);
   });
 
   it('rejects a radius tighter than GPS error, or wider than a suburb', () => {
@@ -175,7 +175,7 @@ describe('readWorkshopFromEnv', () => {
       /between 20 and 5000/,
     );
     // …and keeps the safe default rather than applying the nonsense value.
-    expect(readWorkshopFromEnv({ WORKSHOP_RADIUS_METRES: '5' }).fence.radiusMetres).toBe(150);
+    expect(readWorkshopFromEnv({ WORKSHOP_RADIUS_METRES: '5' }).fence.radiusMetres).toBe(3000);
   });
 
   it('treats blank and non-numeric values as unset, never as NaN', () => {
@@ -187,8 +187,8 @@ describe('readWorkshopFromEnv', () => {
       WORKSHOP_LABEL: '   ',
     });
     expect(problems).toEqual([]);
-    expect(fence.latitude).toBe(-37.6829);
-    expect(fence.radiusMetres).toBe(150);
+    expect(fence.latitude).toBe(-37.6894934);
+    expect(fence.radiusMetres).toBe(3000);
     expect(fence.label).toMatch(/Lipton Drive/);
   });
 });
