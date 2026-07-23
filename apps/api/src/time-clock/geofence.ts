@@ -27,23 +27,21 @@ export interface Geofence {
 }
 
 /**
- * Fallback centre for the workshop: 15 Lipton Drive, Thomastown VIC 3074.
+ * Fallback centre for the workshop: 19 Lipton Drive, Thomastown VIC 3074.
  *
- * ⚠️ THESE ARE GEOCODED FROM THE STREET ADDRESS, NOT SURVEYED. They are a starting point, not a
- * measurement. A centre 50 m out puts the far end of the yard outside the fence and refuses a worker
- * standing at their own bench.
- *
- * They are the DEFAULT, not the value — see `readWorkshopFromEnv`. Correcting them is a config
- * change, not a code change: stand in the workshop, read the phone's coordinates, set
- * WORKSHOP_LATITUDE / WORKSHOP_LONGITUDE, restart. No deploy, no developer.
+ * ⚠️ GEOCODED FROM THE STREET ADDRESS, NOT SURVEYED — a starting point, not a measurement. They are the
+ * DEFAULT, not the value: to move the fence, set WORKSHOP_LATITUDE / WORKSHOP_LONGITUDE and restart (no
+ * deploy). The previous default (15 Lipton Dr, -37.6829/145.0169) was ~1.1 km off, so a worker standing
+ * in the shop read as "1.1 km away". Corrected to the geocoded 19 Lipton Drive.
  */
 const DEFAULT_WORKSHOP: Geofence = {
-  label: '15 Lipton Drive, Thomastown VIC',
-  latitude: -37.6829,
-  longitude: 145.0169,
-  // Covers an industrial lot plus its street parking. Tighten once the centre is accurate — a radius
-  // smaller than the site is how you get false refusals every morning; larger is merely generous.
-  radiusMetres: 150,
+  label: '19 Lipton Drive, Thomastown VIC',
+  latitude: -37.6894934,
+  longitude: 144.9976091,
+  // 3 km catchment: a worker anywhere within 3 km of the shop can check in. Deliberately generous (the
+  // point is to stop obviously-off-site check-ins, not to pin someone to a bench) and never shown to the
+  // employee — it's a silent gate on the server.
+  radiusMetres: 3000,
 };
 
 /** A finite number from the environment, or null. Rejects '', 'abc' and a missing variable alike. */
