@@ -208,6 +208,9 @@
 .at-grad-jobs {
   background: linear-gradient(140deg, #5856d6, #3b39b0);
 }
+.at-grad-yards {
+  background: linear-gradient(140deg, #af52de, #7c3aed);
+}
 
 /* ---- action tiles (cars menu) ---- */
 .at-h2 {
@@ -380,6 +383,65 @@ textarea.at-input {
 .at-btn.ghost {
   background: #e9e9ee;
   color: var(--at-label);
+}
+
+/* Compact action button that sits inside a list row (at-lrow), e.g. "To workshop". */
+.at-rowbtn {
+  flex: none;
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  border: none;
+  border-radius: 11px;
+  padding: 9px 13px;
+  font-size: 14px;
+  font-weight: 800;
+  white-space: nowrap;
+  background: var(--at-green);
+  color: #fff;
+  cursor: pointer;
+  font-family: inherit;
+}
+.at-rowbtn:disabled {
+  opacity: 0.5;
+}
+
+/* Small helpers for the yards forms (tow-in / park). */
+.at-note {
+  color: var(--at-gray);
+  font-size: 14px;
+  font-weight: 600;
+  margin: 6px 2px 14px;
+  line-height: 1.4;
+}
+.at-lbl {
+  font-size: 12.5px;
+  font-weight: 800;
+  color: var(--at-gray);
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  margin: 18px 2px 8px;
+}
+.at-done {
+  text-align: center;
+  padding: 44px 12px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+}
+.at-done-t {
+  font-size: 22px;
+  font-weight: 800;
+  margin-top: 14px;
+  color: var(--at-label);
+}
+.at-done-s {
+  color: var(--at-gray);
+  font-size: 15px;
+  font-weight: 600;
+  margin-top: 6px;
+  line-height: 1.4;
+  max-width: 20rem;
 }
 
 .at-warn {
