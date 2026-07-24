@@ -6,6 +6,8 @@ import { AnthropicDamageAnalyzer } from './anthropic-damage-analyzer';
 import { DAMAGE_ANALYZER, DamageAnalyzer } from './damage-analyzer';
 import { DamageScopeController } from './damage-scope.controller';
 import { DamageScopeService } from './damage-scope.service';
+import { EstimateController } from './estimate.controller';
+import { EstimateService } from './estimate.service';
 import { EMBEDDER, Embedder } from './embedder';
 import { EmbeddingIndexService } from './embedding-index.service';
 import { SimilarJobsService } from './similar-jobs.service';
@@ -36,11 +38,17 @@ import { StubEmbedder } from './stub-embedder';
  */
 @Module({
   imports: [WorkItemModule, PriceBookModule, QuotesModule],
-  controllers: [DamageScopeController, ScopePartController, PurchaseOrderController],
+  controllers: [
+    DamageScopeController,
+    ScopePartController,
+    PurchaseOrderController,
+    EstimateController,
+  ],
   providers: [
     DamageScopeService,
     ScopePartService,
     PurchaseOrderService,
+    EstimateService,
     {
       provide: DAMAGE_ANALYZER,
       useFactory: (): DamageAnalyzer => {
