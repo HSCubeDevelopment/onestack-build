@@ -10,6 +10,7 @@ import {
   Mail,
   ArrowUpRight,
   ArrowDownRight,
+  RotateCcw,
   Dot,
   type LucideIcon,
 } from 'lucide-react';
@@ -23,6 +24,8 @@ import {
   WorkItem,
   money,
 } from '@/lib/api';
+import { FleetSearchResults } from '@/lib/fleet';
+import { YardDrop, timeSince } from '@/lib/yards';
 import { Hero, PipelineStrip, QuickActions, TodaysBoard } from '@/components/OwnerHome';
 import { ErrorBanner, humanize, Loading, StatusBadge, useAsync } from '@/components/ui';
 import { StateIcon, stateColor } from '@/components/Icon';
@@ -60,6 +63,16 @@ function OwnerDashboard() {
         // Card 52.3. Tolerated as null rather than failing the whole dashboard — the pipeline is one
         // panel, and losing it should not blank the owner's home screen.
         api.get<PipelineView>('/pipeline').catch(() => null),
+        // What the shop floor did today (movements + returns, each attributed to the staff member) and
+        // the cars currently parked in yards — so the owner sees the employee/tow activity, not just jobs.
+        // getOr keeps a fetch hiccup from blanking the whole dashboard.
+        api.getOr<FleetSearchResults>('/fleet/today', {
+          movements: [],
+          returns: [],
+          vehicles: [],
+          bookings: [],
+        }),
+        api.getOr<YardDrop[]>('/yards/awaiting', []),
       ]),
     [],
   );
@@ -104,7 +117,123 @@ function OwnerDashboard() {
           bookings={data[4]}
         />
       )}
+
+      {data && <TeamActivity today={data[6]} drops={data[7]} />}
     </>
+  );
+}
+
+type FloorKind = 'in' | 'out' | 'return' | 'yard';
+interface FloorEvent {
+  at: string;
+  who: string;
+  rego: string;
+  label: string;
+  kind: FloorKind;
+}
+const FLOOR_META: Record<FloorKind, { Icon: LucideIcon; color: string }> = {
+  in: { Icon: ArrowDownRight, color: '#ff3b30' }, // customer car in for repair
+  out: { Icon: ArrowUpRight, color: '#007aff' }, // courtesy/loan car out
+  return: { Icon: RotateCcw, color: '#34c759' }, // loan car back
+  yard: { Icon: Warehouse, color: '#af52de' }, // parked at a yard
+};
+
+/**
+ * Team activity today — surfaces what the shop-floor STAFF and TOW users actually did (cars in, loan
+ * cars out, returns, and cars parked in yards), each attributed to the staff member who recorded it and
+ * time-ordered. The owner dashboard is otherwise jobs/money-centric; this is where the employee/tow
+ * operational activity shows up. Sourced from /fleet/today + /yards/awaiting — both already owner-readable.
+ */
+function TeamActivity({ today, drops }: { today: FleetSearchResults; drops: YardDrop[] }) {
+  const events: FloorEvent[] = [];
+  for (const m of today.movements) {
+    const primary = m.carsInRego || m.carsOutRego;
+    if (!primary) continue;
+    events.push({
+      at: m.movedAt || m.createdAt,
+      who: m.staffName || '',
+      rego: primary,
+      label:
+        m.carsInRego && m.carsOutRego
+          ? `Car in · loan ${m.carsOutRego} out`
+          : m.carsInRego
+            ? 'Car in for repair'
+            : 'Loan car out',
+      kind: m.carsInRego ? 'in' : 'out',
+    });
+  }
+  for (const r of today.returns) {
+    events.push({
+      at: r.returnedAt || r.createdAt,
+      who: r.staffName || '',
+      rego: r.returnedRego,
+      label: 'Loan car returned',
+      kind: 'return',
+    });
+  }
+  for (const d of drops) {
+    events.push({
+      at: d.droppedAt,
+      who: '', // a yard drop carries no staff name on the row
+      rego: d.rego,
+      label: `Parked at ${d.yardName}`,
+      kind: 'yard',
+    });
+  }
+  const total = events.length;
+  const shown = events.sort((a, b) => (b.at || '').localeCompare(a.at || '')).slice(0, 12);
+
+  return (
+    <div className="card" style={{ marginTop: 16 }}>
+      <div className="card-head">
+        <div>
+          <h2>Team activity today</h2>
+          <div className="faint" style={{ fontSize: 12, marginTop: 2 }}>
+            {total > 0
+              ? `${total} car ${total === 1 ? 'action' : 'actions'} from the shop floor — in, out, returned & parked`
+              : 'Cars moved, returned and parked by the shop floor'}
+          </div>
+        </div>
+        <Link href="/fleet" className="view-all">
+          Open fleet →
+        </Link>
+      </div>
+      {shown.length === 0 ? (
+        <span className="faint" style={{ fontSize: 13 }}>
+          No car activity yet today.
+        </span>
+      ) : (
+        <div>
+          {shown.map((e, i) => {
+            const { Icon, color } = FLOOR_META[e.kind];
+            return (
+              <div key={i} className="list-row">
+                <span className="list-ico" style={{ background: `${color}1a`, color }}>
+                  <Icon size={15} />
+                </span>
+                <div style={{ flex: 1, minWidth: 0 }}>
+                  <div
+                    style={{
+                      fontSize: 13,
+                      fontWeight: 550,
+                      overflow: 'hidden',
+                      textOverflow: 'ellipsis',
+                      whiteSpace: 'nowrap',
+                    }}
+                  >
+                    <b>{e.rego}</b> — {e.label}
+                  </div>
+                  <div className="faint" style={{ fontSize: 11.5 }}>
+                    {e.who ? `by ${e.who} · ` : ''}
+                    {timeSince(e.at)}
+                  </div>
+                </div>
+              </div>
+            );
+          })}
+        </div>
+      )}
+    </div>
   );
 }
 
