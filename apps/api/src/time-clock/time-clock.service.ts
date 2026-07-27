@@ -1,7 +1,9 @@
 import { BadRequestException, Injectable } from '@nestjs/common';
 import type { AppRole } from '../auth/auth.types';
 import { TenantService } from '../tenancy/tenant.service';
-import { checkGeofence, type Coords } from './geofence';
+import { AssignedSitesResolver } from './assigned-sites.resolver';
+import { checkGeofenceAny, type Coords } from './geofence';
+import { fencesForKeys } from './workshop-sites';
 
 export interface TimeEntryView {
   id: string;
@@ -56,7 +58,10 @@ function minutesBetween(a: Date, b: Date): number {
  */
 @Injectable()
 export class TimeClockService {
-  constructor(private readonly tenants: TenantService) {}
+  constructor(
+    private readonly tenants: TenantService,
+    private readonly assignedSites: AssignedSitesResolver,
+  ) {}
 
   /** Start a session. Errors if the user is already on the clock. */
   /**
@@ -74,7 +79,11 @@ export class TimeClockService {
     position?: Coords | null,
     override?: { reason: string } | null,
   ): Promise<ClockStatus> {
-    const fence = checkGeofence(position);
+    // Judge the position against the worker's assigned shop(s). No explicit assignment (or a failed
+    // lookup) resolves to an empty list, which checkGeofenceAny treats as the default workshop fence —
+    // so behaviour is unchanged for anyone the admin hasn't assigned a location to.
+    const siteKeys = await this.assignedSites.keysForUser(userId);
+    const fence = checkGeofenceAny(position, fencesForKeys(siteKeys));
 
     if (!fence.allowed) {
       const reason = override?.reason?.trim();
