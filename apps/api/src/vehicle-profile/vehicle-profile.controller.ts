@@ -8,6 +8,7 @@ import { RolesGuard } from '../auth/roles.guard';
 import { AttachmentView } from '../work-items/attachment.service';
 import { SubjectView } from '../subjects/subject.service';
 import { AddVehiclePhotoDto } from './dto/vehicle-photo.dto';
+import { CreateDraftVehicleDto } from './dto/create-draft.dto';
 import { SaveEstimateDto } from './dto/save-estimate.dto';
 import { VehicleProfile, VehicleProfileService } from './vehicle-profile.service';
 
@@ -47,6 +48,25 @@ export class VehicleProfileController {
     @Body() dto: AddVehiclePhotoDto,
   ): Promise<{ attachment: AttachmentView; jobId: string; jobReference: string }> {
     return this.profiles.addPhoto(user.tenantId, user.userId, id, dto);
+  }
+
+  /**
+   * Start a draft car from a registration when the plate isn't found — creates (or reuses) the vehicle
+   * and ensures it has an open job, so an estimate can be saved against it. @AllowStaff, like tow-in.
+   */
+  @AllowStaff()
+  @Post('draft')
+  createDraft(
+    @CurrentUser() user: AuthContext,
+    @Body() dto: CreateDraftVehicleDto,
+  ): Promise<{
+    vehicleId: string;
+    rego: string;
+    label: string;
+    jobId: string;
+    jobReference: string;
+  }> {
+    return this.profiles.createDraft(user.tenantId, user.userId, dto);
   }
 
   /** Save an AI photo-estimate against the car (summary note + photos on its current job). Draft only. */

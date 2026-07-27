@@ -69,8 +69,10 @@ export function EstimateFlow() {
   // Step 1: which car.
   const [rego, setRego] = useState('');
   const [matches, setMatches] = useState<SubjectView[] | null>(null);
+  const [notFound, setNotFound] = useState<string | null>(null);
   const [car, setCar] = useState<CarRef | null>(null);
   const [searching, setSearching] = useState(false);
+  const [creating, setCreating] = useState(false);
 
   // Step 2: photos → estimate.
   const inputRef = useRef<HTMLInputElement>(null);
@@ -98,15 +100,38 @@ export function EstimateFlow() {
     setSearching(true);
     setErr(null);
     setMatches(null);
+    setNotFound(null);
     try {
       const found = await api.get<SubjectView[]>(`/vehicle-profile?q=${encodeURIComponent(q)}`);
-      if (found.length === 0) setErr(`No car found for “${q}”. Check the plate and try again.`);
+      if (found.length === 0)
+        setNotFound(q.toUpperCase()); // offer to add it as a draft
       else if (found.length === 1) await loadCar(found[0]!.id);
       else setMatches(found);
     } catch (e) {
       setErr(e instanceof ApiError ? e.message : 'Could not search — try again.');
     } finally {
       setSearching(false);
+    }
+  }
+
+  /** Car not in the system → start a draft with just this rego, then estimate against it. */
+  async function addDraft(): Promise<void> {
+    if (!notFound) return;
+    setCreating(true);
+    setErr(null);
+    try {
+      const c = await api.post<{
+        vehicleId: string;
+        rego: string;
+        label: string;
+        jobReference: string;
+      }>('/vehicle-profile/draft', { rego: notFound });
+      setCar({ id: c.vehicleId, rego: c.rego, label: c.label, jobRef: c.jobReference });
+      setNotFound(null);
+    } catch (e) {
+      setErr(e instanceof ApiError ? e.message : 'Could not add the car — try again.');
+    } finally {
+      setCreating(false);
     }
   }
 
@@ -206,6 +231,25 @@ export function EstimateFlow() {
               ))}
             </div>
           </>
+        )}
+
+        {notFound && (
+          <div className="at-empty" style={{ marginTop: 16, textAlign: 'left' }}>
+            <div>
+              No car found for <b>{notFound}</b>.
+            </div>
+            <div className="at-note" style={{ marginTop: 4 }}>
+              Start a draft with this registration — make &amp; model can be filled in later.
+            </div>
+            <button
+              className="at-btn primary"
+              style={{ marginTop: 12 }}
+              disabled={creating}
+              onClick={() => void addDraft()}
+            >
+              <Plus size={18} strokeWidth={2.6} /> {creating ? 'Adding…' : `Add car ${notFound}`}
+            </button>
+          </div>
         )}
       </>
     );
