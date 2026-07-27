@@ -8,6 +8,7 @@ import { RolesGuard } from '../auth/roles.guard';
 import { AttachmentView } from '../work-items/attachment.service';
 import { SubjectView } from '../subjects/subject.service';
 import { AddVehiclePhotoDto } from './dto/vehicle-photo.dto';
+import { SaveEstimateDto } from './dto/save-estimate.dto';
 import { VehicleProfile, VehicleProfileService } from './vehicle-profile.service';
 
 /**
@@ -46,6 +47,17 @@ export class VehicleProfileController {
     @Body() dto: AddVehiclePhotoDto,
   ): Promise<{ attachment: AttachmentView; jobId: string; jobReference: string }> {
     return this.profiles.addPhoto(user.tenantId, user.userId, id, dto);
+  }
+
+  /** Save an AI photo-estimate against the car (summary note + photos on its current job). Draft only. */
+  @AllowStaff()
+  @Post(':id/estimate')
+  saveEstimate(
+    @CurrentUser() user: AuthContext,
+    @Param('id') id: string,
+    @Body() dto: SaveEstimateDto,
+  ): Promise<{ jobId: string; jobReference: string; photoCount: number }> {
+    return this.profiles.saveEstimate(user.tenantId, user.userId, id, dto);
   }
 
   /** Stream a car photo's bytes (verified to belong to one of the car's jobs). Rendered in an <img>. */
