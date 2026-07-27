@@ -1,6 +1,6 @@
 'use client';
 import Link from 'next/link';
-import { ArrowDown, ArrowUp, Car, RotateCcw, Search } from 'lucide-react';
+import { ArrowDown, ArrowUp, Camera, Car, RotateCcw, Search } from 'lucide-react';
 import { AtTopbar, SignOutButton } from '@/components/autotech/kit';
 
 /** The four car-movement flows + a "view all cars" tile — the screen behind the Cars In / Out button. */
@@ -55,6 +55,12 @@ export function CarsMenu() {
             <Search size={24} strokeWidth={2} color="#fff" />
           </span>
           <span className="ti-lab">View all cars &amp; search rego</span>
+        </Link>
+        <Link href="/inout/repair-photos" className="at-tile wide">
+          <span className="ti-ic" style={{ background: '#ff375f' }}>
+            <Camera size={24} strokeWidth={2} color="#fff" />
+          </span>
+          <span className="ti-lab">Repair photos (before / during / after)</span>
         </Link>
       </div>
     </>

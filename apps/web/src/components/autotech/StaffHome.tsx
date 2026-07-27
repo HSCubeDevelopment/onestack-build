@@ -1,6 +1,6 @@
 'use client';
 import Link from 'next/link';
-import { Car, Clock, Warehouse, Sparkles, ShieldAlert } from 'lucide-react';
+import { Camera, Car, Clock, Warehouse, Sparkles, ShieldAlert } from 'lucide-react';
 import { AtLogo, SignOutButton } from '@/components/autotech/kit';
 
 /**
@@ -37,6 +37,14 @@ export function StaffHome() {
         </span>
         <span className="lab">Instant estimate</span>
         <span className="sub">Photo the damage · AI parts &amp; price draft</span>
+      </Link>
+
+      <Link href="/inout/repair-photos" className="at-bigbtn at-grad-photos">
+        <span className="circ">
+          <Camera size={54} strokeWidth={2} />
+        </span>
+        <span className="lab">Repair photos</span>
+        <span className="sub">Rego · before, during &amp; after photos on the job</span>
       </Link>
 
       <Link href="/inout/yards" className="at-bigbtn at-grad-yards">

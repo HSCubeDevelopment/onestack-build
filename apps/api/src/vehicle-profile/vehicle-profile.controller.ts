@@ -1,10 +1,13 @@
-import { Controller, Get, Param, Query, UseGuards } from '@nestjs/common';
+import { Body, Controller, Get, Param, Post, Query, Res, UseGuards } from '@nestjs/common';
+import type { Response } from 'express';
 import { AuthContext } from '../auth/auth.types';
 import { CurrentUser } from '../auth/current-user.decorator';
 import { JwtAuthGuard } from '../auth/jwt-auth.guard';
 import { AllowStaff } from '../auth/roles.decorator';
 import { RolesGuard } from '../auth/roles.guard';
+import { AttachmentView } from '../work-items/attachment.service';
 import { SubjectView } from '../subjects/subject.service';
+import { AddVehiclePhotoDto } from './dto/vehicle-photo.dto';
 import { VehicleProfile, VehicleProfileService } from './vehicle-profile.service';
 
 /**
@@ -29,5 +32,38 @@ export class VehicleProfileController {
   @Get(':id')
   profile(@CurrentUser() user: AuthContext, @Param('id') id: string): Promise<VehicleProfile> {
     return this.profiles.profile(user.tenantId, id);
+  }
+
+  /**
+   * Add a Before / During / After photo to a car (attaches to its current job). @AllowStaff, like the
+   * rest of this "pull up a car" surface — any worker on the floor can document the car they're on.
+   */
+  @AllowStaff()
+  @Post(':id/photos')
+  addPhoto(
+    @CurrentUser() user: AuthContext,
+    @Param('id') id: string,
+    @Body() dto: AddVehiclePhotoDto,
+  ): Promise<{ attachment: AttachmentView; jobId: string; jobReference: string }> {
+    return this.profiles.addPhoto(user.tenantId, user.userId, id, dto);
+  }
+
+  /** Stream a car photo's bytes (verified to belong to one of the car's jobs). Rendered in an <img>. */
+  @AllowStaff()
+  @Get(':id/photos/:attachmentId/content')
+  async photoContent(
+    @CurrentUser() user: AuthContext,
+    @Param('id') id: string,
+    @Param('attachmentId') attachmentId: string,
+    @Res() res: Response,
+  ): Promise<void> {
+    const { bytes, contentType, fileName } = await this.profiles.photoContent(
+      user.tenantId,
+      id,
+      attachmentId,
+    );
+    res.setHeader('Content-Type', contentType);
+    res.setHeader('Content-Disposition', `inline; filename="${fileName.replace(/"/g, '')}"`);
+    res.send(bytes);
   }
 }

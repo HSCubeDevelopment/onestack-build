@@ -1,10 +1,11 @@
-import { Injectable, NotFoundException } from '@nestjs/common';
+import { BadRequestException, Injectable, NotFoundException } from '@nestjs/common';
 import { ContactsService, ContactView } from '../contacts/contacts.service';
 import { SubjectService, SubjectView } from '../subjects/subject.service';
 import { buildTimeline, TimelineEvent } from '../timeline/timeline';
 import { AttachmentService, AttachmentView } from '../work-items/attachment.service';
 import { NoteService } from '../work-items/note.service';
 import { WorkItemService, WorkItemView } from '../work-items/work-item.service';
+import { phaseCaption, RepairPhase, resolveTargetJob } from './repair-photos';
 
 /**
  * Card 11.1 — "pull up a car". The universal entry point: find a vehicle by its identifier and see it
@@ -135,6 +136,62 @@ export class VehicleProfileService {
       timeline,
       moneyHidden: true,
     };
+  }
+
+  /**
+   * Add a repair-phase photo (Before/During/After) to a car. Deliberately staff-accessible via this
+   * "pull up a car" surface: whoever is photographing the car on the floor isn't necessarily its assigned
+   * technician, and this module already exposes every car's photos to any staff member. The phase is
+   * stored in the attachment caption (there's no typed phase column). Attaches to the car's current job
+   * (or an explicitly chosen one). Tenant-scoped throughout by the underlying services.
+   */
+  async addPhoto(
+    tenantId: string,
+    userId: string,
+    vehicleId: string,
+    input: { phase: RepairPhase; dataBase64: string; contentType?: string; jobId?: string },
+  ): Promise<{ attachment: AttachmentView; jobId: string; jobReference: string }> {
+    const vehicle = await this.subjects.get(tenantId, vehicleId);
+    if (!vehicle || vehicle.type !== 'vehicle') throw new NotFoundException('Vehicle not found');
+
+    const jobs = (await this.workItems.listForSubject(tenantId, vehicleId)).map(toJobSummary);
+    const resolved = resolveTargetJob(jobs, input.jobId);
+    if ('error' in resolved) {
+      throw new BadRequestException(
+        resolved.error === 'no_jobs'
+          ? 'This car has no job to attach photos to.'
+          : 'That job is not on this car.',
+      );
+    }
+
+    const attachment = await this.attachments.add(tenantId, resolved.job.id, userId, {
+      fileName: `${input.phase}-repair.jpg`,
+      contentType: input.contentType || 'image/jpeg',
+      dataBase64: input.dataBase64,
+      caption: phaseCaption(input.phase),
+    });
+    return { attachment, jobId: resolved.job.id, jobReference: resolved.job.reference };
+  }
+
+  /**
+   * Stream a car photo's bytes, but only if the attachment really belongs to one of THIS car's jobs — so
+   * a staff member can't pull arbitrary attachment bytes by guessing an id through this open surface. All
+   * reads are tenant-scoped, so this is an intra-tenant ownership check, not a tenant boundary.
+   */
+  async photoContent(
+    tenantId: string,
+    vehicleId: string,
+    attachmentId: string,
+  ): Promise<{ bytes: Buffer; contentType: string; fileName: string }> {
+    const vehicle = await this.subjects.get(tenantId, vehicleId);
+    if (!vehicle || vehicle.type !== 'vehicle') throw new NotFoundException('Vehicle not found');
+
+    const jobs = await this.workItems.listForSubject(tenantId, vehicleId);
+    const perJob = await Promise.all(jobs.map((j) => this.attachments.list(tenantId, j.id)));
+    const belongs = perJob.some((atts) => atts.some((a) => a.id === attachmentId));
+    if (!belongs) throw new NotFoundException('Photo not found');
+
+    return this.attachments.getContent(tenantId, attachmentId);
   }
 }
 
