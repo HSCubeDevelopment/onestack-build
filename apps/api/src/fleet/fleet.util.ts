@@ -15,6 +15,7 @@ export type FleetPhotoType =
   | 'fuel'
   | 'tow_card'
   | 'invoice'
+  | 'ticket'
   | 'other';
 
 export const FLEET_VEHICLE_STATUSES: FleetVehicleStatus[] = [
@@ -38,6 +39,8 @@ export const FLEET_PHOTO_TYPES: FleetPhotoType[] = [
   'odometer',
   'fuel',
   'tow_card',
+  'invoice',
+  'ticket',
   'other',
 ];
 

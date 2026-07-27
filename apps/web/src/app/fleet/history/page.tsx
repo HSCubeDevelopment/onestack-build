@@ -108,7 +108,7 @@ function CarRecord() {
           <PhotoSection
             vehicleId={v.id}
             title={v.isCompanyCar ? 'Photos' : 'Report card'}
-            show={(t) => t !== 'invoice'}
+            show={(t) => t !== 'invoice' && t !== 'ticket'}
           />
 
           {/* Invoices — search rego → photo the invoice → save (against this car). */}
@@ -119,6 +119,16 @@ function CarRecord() {
             capturePhotoType="invoice"
             show={(t) => t === 'invoice'}
             emptyText="No invoices yet — tap “Photo invoice”."
+          />
+
+          {/* Tickets — police / infringement notices filed against this car. */}
+          <PhotoSection
+            vehicleId={v.id}
+            title="Tickets"
+            addLabel="Photo ticket"
+            capturePhotoType="ticket"
+            show={(t) => t === 'ticket'}
+            emptyText="No tickets on record."
           />
 
           {/* History (audit) */}

@@ -1,6 +1,6 @@
 'use client';
 import Link from 'next/link';
-import { Car, Clock, Warehouse, Sparkles } from 'lucide-react';
+import { Car, Clock, Warehouse, Sparkles, ShieldAlert } from 'lucide-react';
 import { AtLogo, SignOutButton } from '@/components/autotech/kit';
 
 /**
@@ -45,6 +45,14 @@ export function StaffHome() {
         </span>
         <span className="lab">Yards</span>
         <span className="sub">Cars parked in the yards · tow a car in</span>
+      </Link>
+
+      <Link href="/inout/ticket" className="at-bigbtn at-grad-ticket">
+        <span className="circ">
+          <ShieldAlert size={54} strokeWidth={2} />
+        </span>
+        <span className="lab">File a ticket</span>
+        <span className="sub">Log a police / infringement notice on a car</span>
       </Link>
 
       <Link href="/inout/clock" className="at-bigbtn at-grad-clock">
