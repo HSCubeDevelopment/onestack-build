@@ -200,10 +200,27 @@ export class VehicleProfileService {
       await this.subjects.searchAcrossFields(tenantId, 'vehicle', ['rego'], rego)
     ).find((v) => String((v.fields as Record<string, unknown>)?.rego ?? '').toUpperCase() === rego);
 
+    // A draft car has no customer yet, but the vehicle link and the job both want one — create a
+    // placeholder contact (the shop fills in real details later), reused across the car and its job.
+    let contactId = existing?.contactId ?? null;
+    const ensureContact = async (): Promise<string> => {
+      if (!contactId) {
+        const contact = await this.contacts.create(tenantId, {
+          displayName: `Draft customer (${rego})`,
+          phone: '',
+        });
+        contactId = contact.id;
+      }
+      return contactId;
+    };
+
     const displayName = [make, model].filter(Boolean).join(' ');
-    const vehicle =
-      existing ??
-      (await this.subjects.create(tenantId, {
+    let vehicle: SubjectView;
+    if (existing) {
+      vehicle = existing;
+    } else {
+      const cid = await ensureContact();
+      vehicle = await this.subjects.create(tenantId, {
         type: 'vehicle',
         label: displayName ? `${displayName} (${rego})` : rego,
         // The automotive vehicle schema requires make/model/year. For a draft the plate is all we have,
@@ -214,7 +231,9 @@ export class VehicleProfileService {
           model: model || 'Unknown',
           year: new Date().getFullYear(),
         },
-      }));
+        contactId: cid,
+      });
+    }
 
     // Ensure there's an open job to attach work to; create a draft one if the car has none open.
     const jobs = (await this.workItems.listForSubject(tenantId, vehicle.id)).map(toJobSummary);
@@ -227,7 +246,10 @@ export class VehicleProfileService {
     } else {
       const created = await this.workItems.create(tenantId, {
         type: 'job',
-        fields: { description: 'Draft job — created from an instant estimate.' },
+        fields: {
+          customerId: await ensureContact(),
+          description: 'Draft job — created from an instant estimate.',
+        },
         subjectIds: [vehicle.id],
         assignees: [userId],
       });
