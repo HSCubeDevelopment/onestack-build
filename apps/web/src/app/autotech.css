@@ -211,6 +211,60 @@
 .at-grad-yards {
   background: linear-gradient(140deg, #af52de, #7c3aed);
 }
+.at-grad-photos {
+  background: linear-gradient(140deg, #ff375f, #d61f45);
+}
+
+/* ---- repair photos: car header + phase blocks ---- */
+.at-back-link {
+  background: none;
+  border: 0;
+  color: var(--at-blue, #007aff);
+  font-size: 15px;
+  font-weight: 600;
+  padding: 6px 0;
+  margin-top: 2px;
+  cursor: pointer;
+}
+.at-carhead {
+  display: flex;
+  align-items: baseline;
+  gap: 10px;
+  margin: 6px 2px 0;
+}
+.at-carrego {
+  font-size: 28px;
+  font-weight: 800;
+  letter-spacing: 0.02em;
+}
+.at-carsub {
+  font-size: 15px;
+  font-weight: 600;
+  color: #8a8a8e;
+}
+.at-phase {
+  margin-top: 16px;
+}
+.at-phase-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin: 0 2px 8px;
+}
+.at-phase-head .t {
+  font-size: 17px;
+  font-weight: 700;
+}
+.at-phase-head .c {
+  min-width: 24px;
+  text-align: center;
+  font-size: 13px;
+  font-weight: 700;
+  color: #636366;
+  background: #f2f2f7;
+  border-radius: 12px;
+  padding: 1px 8px;
+}
 
 /* ---- action tiles (cars menu) ---- */
 .at-h2 {
