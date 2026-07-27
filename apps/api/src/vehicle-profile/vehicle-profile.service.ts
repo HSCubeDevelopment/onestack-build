@@ -174,6 +174,110 @@ export class VehicleProfileService {
   }
 
   /**
+   * Start a DRAFT car from just a registration, for when the plate isn't in the system yet — "a damaged
+   * car arriving" that needs an estimate before it's fully booked in. Creates a `vehicle` subject (reusing
+   * one if the exact rego already exists) and ensures it has an open job to hang the estimate/photos on.
+   * Staff-accessible, mirroring the tow-in flow which already lets staff create a car + job on the floor.
+   */
+  async createDraft(
+    tenantId: string,
+    userId: string,
+    input: { rego: string; make?: string; model?: string },
+  ): Promise<{
+    vehicleId: string;
+    rego: string;
+    label: string;
+    jobId: string;
+    jobReference: string;
+  }> {
+    const rego = input.rego.replace(/\s+/g, '').toUpperCase().trim();
+    if (!rego) throw new BadRequestException('Enter a registration.');
+    const make = input.make?.trim();
+    const model = input.model?.trim();
+
+    // Reuse an existing car with this EXACT rego rather than creating a duplicate.
+    const existing = (
+      await this.subjects.searchAcrossFields(tenantId, 'vehicle', ['rego'], rego)
+    ).find((v) => String((v.fields as Record<string, unknown>)?.rego ?? '').toUpperCase() === rego);
+
+    const vehicle =
+      existing ??
+      (await this.subjects.create(tenantId, {
+        type: 'vehicle',
+        label: [make, model].filter(Boolean).join(' ') ? `${make} ${model} (${rego})` : rego,
+        fields: { rego, ...(make ? { make } : {}), ...(model ? { model } : {}) },
+      }));
+
+    // Ensure there's an open job to attach work to; create a draft one if the car has none open.
+    const jobs = (await this.workItems.listForSubject(tenantId, vehicle.id)).map(toJobSummary);
+    const open = jobs.find((j) => j.isOpen);
+    let jobId: string;
+    let jobReference: string;
+    if (open) {
+      jobId = open.id;
+      jobReference = open.reference;
+    } else {
+      const created = await this.workItems.create(tenantId, {
+        type: 'job',
+        fields: { description: 'Draft job — created from an instant estimate.' },
+        subjectIds: [vehicle.id],
+        assignees: [userId],
+      });
+      jobId = created.id;
+      jobReference = created.reference;
+    }
+
+    const f = vehicle.fields as Record<string, unknown>;
+    const label = [f?.year, f?.make, f?.model].filter(Boolean).map(String).join(' ');
+    return { vehicleId: vehicle.id, rego, label, jobId, jobReference };
+  }
+
+  /**
+   * Save an AI photo-estimate against a car (its current job): the summary as a job note, and the photos
+   * as job attachments captioned "Estimate photo". Staff-accessible via this surface. It is a DRAFT the
+   * owner reviews — this never creates a money quote (that stays owner-gated).
+   */
+  async saveEstimate(
+    tenantId: string,
+    userId: string,
+    vehicleId: string,
+    input: {
+      summary: string;
+      photos: { dataBase64: string; contentType?: string }[];
+      jobId?: string;
+    },
+  ): Promise<{ jobId: string; jobReference: string; photoCount: number }> {
+    const vehicle = await this.subjects.get(tenantId, vehicleId);
+    if (!vehicle || vehicle.type !== 'vehicle') throw new NotFoundException('Vehicle not found');
+
+    const jobs = (await this.workItems.listForSubject(tenantId, vehicleId)).map(toJobSummary);
+    const resolved = resolveTargetJob(jobs, input.jobId);
+    if ('error' in resolved) {
+      throw new BadRequestException(
+        resolved.error === 'no_jobs'
+          ? 'This car has no job to save the estimate to.'
+          : 'That job is not on this car.',
+      );
+    }
+
+    for (const [i, p] of input.photos.entries()) {
+      await this.attachments.add(tenantId, resolved.job.id, userId, {
+        fileName: `estimate-${i + 1}.jpg`,
+        contentType: p.contentType || 'image/jpeg',
+        dataBase64: p.dataBase64,
+        caption: 'Estimate photo',
+      });
+    }
+    await this.notes.add(tenantId, resolved.job.id, userId, input.summary);
+
+    return {
+      jobId: resolved.job.id,
+      jobReference: resolved.job.reference,
+      photoCount: input.photos.length,
+    };
+  }
+
+  /**
    * Stream a car photo's bytes, but only if the attachment really belongs to one of THIS car's jobs — so
    * a staff member can't pull arbitrary attachment bytes by guessing an id through this open surface. All
    * reads are tenant-scoped, so this is an intra-tenant ownership check, not a tenant boundary.

@@ -1,6 +1,17 @@
 'use client';
 import { useMemo, useRef, useState } from 'react';
-import { Camera, Sparkles, Trash2, Plus, X, AlertTriangle, ShieldAlert } from 'lucide-react';
+import {
+  Camera,
+  Sparkles,
+  Trash2,
+  Plus,
+  X,
+  AlertTriangle,
+  ShieldAlert,
+  Search,
+  Save,
+  Car,
+} from 'lucide-react';
 import { api, ApiError } from '@/lib/api';
 import { compressToBase64 } from '@/lib/image';
 import {
@@ -21,24 +32,110 @@ interface Photo {
   preview: string;
 }
 
+interface SubjectView {
+  id: string;
+  label: string;
+  fields: Record<string, unknown>;
+}
+interface JobSummary {
+  id: string;
+  reference: string;
+  isOpen: boolean;
+}
+interface VehicleProfile {
+  vehicle: SubjectView;
+  currentJob: JobSummary | null;
+  jobs: JobSummary[];
+}
+interface CarRef {
+  id: string;
+  rego: string;
+  label: string;
+  jobRef: string | null;
+}
+
+const regoOf = (v: SubjectView): string =>
+  (typeof v.fields.rego === 'string' && v.fields.rego) || v.label;
+const carLine = (v: SubjectView): string =>
+  [v.fields.year, v.fields.make, v.fields.model].filter(Boolean).join(' ');
+
 /**
- * Instant estimate — the employee snaps photos of a damaged car and gets a rough, editable draft: what
- * needs fixing, the parts likely needed, and a ballpark price. The AI reads the photos (server-side,
- * Claude vision); the money is transparent arithmetic the worker adjusts before it's ever a real quote.
- * Nothing is saved or sent — this screen exists to speed up the human, not replace them.
+ * Instant estimate — start with the car's registration, snap photos of the damage, get an editable AI
+ * draft (fixes, parts, price), then SAVE it against that car (its current job) so it isn't lost. The
+ * money is transparent arithmetic the worker adjusts; saving records a draft the owner reviews — it never
+ * creates a formal quote (that stays owner-gated).
  */
 export function EstimateFlow() {
+  // Step 1: which car.
+  const [rego, setRego] = useState('');
+  const [matches, setMatches] = useState<SubjectView[] | null>(null);
+  const [notFound, setNotFound] = useState<string | null>(null);
+  const [car, setCar] = useState<CarRef | null>(null);
+  const [searching, setSearching] = useState(false);
+  const [creating, setCreating] = useState(false);
+
+  // Step 2: photos → estimate.
   const inputRef = useRef<HTMLInputElement>(null);
   const [photos, setPhotos] = useState<Photo[]>([]);
   const [notes, setNotes] = useState('');
   const [busy, setBusy] = useState(false);
   const [err, setErr] = useState<string | null>(null);
-
-  // The editable draft, once we have one. `null` = not requested yet; a result with configured:false =
-  // the AI estimator isn't wired.
   const [result, setResult] = useState<EstimateResult | null>(null);
 
-  async function addFiles(files: FileList) {
+  async function loadCar(vehicleId: string): Promise<void> {
+    const p = await api.get<VehicleProfile>(`/vehicle-profile/${vehicleId}`);
+    const job = p.currentJob ?? p.jobs[0] ?? null;
+    setCar({
+      id: p.vehicle.id,
+      rego: regoOf(p.vehicle),
+      label: carLine(p.vehicle),
+      jobRef: job?.reference ?? null,
+    });
+    setMatches(null);
+  }
+
+  async function search(): Promise<void> {
+    const q = rego.trim();
+    if (!q) return;
+    setSearching(true);
+    setErr(null);
+    setMatches(null);
+    setNotFound(null);
+    try {
+      const found = await api.get<SubjectView[]>(`/vehicle-profile?q=${encodeURIComponent(q)}`);
+      if (found.length === 0)
+        setNotFound(q.toUpperCase()); // offer to add it as a draft
+      else if (found.length === 1) await loadCar(found[0]!.id);
+      else setMatches(found);
+    } catch (e) {
+      setErr(e instanceof ApiError ? e.message : 'Could not search — try again.');
+    } finally {
+      setSearching(false);
+    }
+  }
+
+  /** Car not in the system → start a draft with just this rego, then estimate against it. */
+  async function addDraft(): Promise<void> {
+    if (!notFound) return;
+    setCreating(true);
+    setErr(null);
+    try {
+      const c = await api.post<{
+        vehicleId: string;
+        rego: string;
+        label: string;
+        jobReference: string;
+      }>('/vehicle-profile/draft', { rego: notFound });
+      setCar({ id: c.vehicleId, rego: c.rego, label: c.label, jobRef: c.jobReference });
+      setNotFound(null);
+    } catch (e) {
+      setErr(e instanceof ApiError ? e.message : 'Could not add the car — try again.');
+    } finally {
+      setCreating(false);
+    }
+  }
+
+  async function addFiles(files: FileList): Promise<void> {
     setErr(null);
     const room = MAX_PHOTOS - photos.length;
     const picked = Array.from(files).slice(0, Math.max(0, room));
@@ -56,7 +153,7 @@ export function EstimateFlow() {
     if (inputRef.current) inputRef.current.value = '';
   }
 
-  async function getEstimate() {
+  async function getEstimate(): Promise<void> {
     if (photos.length === 0) return;
     setBusy(true);
     setErr(null);
@@ -74,26 +171,116 @@ export function EstimateFlow() {
     }
   }
 
+  function reset(): void {
+    setResult(null);
+    setPhotos([]);
+    setNotes('');
+  }
+
+  // ---- Step 1: enter registration ----
+  if (!car) {
+    return (
+      <>
+        <AtTopbar backHref="/" right={<SignOutButton />} />
+        <div className="at-h2">Instant estimate</div>
+        <div className="at-note">
+          Enter the car’s registration, then photograph the damage for an AI parts &amp; price draft
+          you can save to the car.
+        </div>
+
+        {err && <div className="at-errbanner">{err}</div>}
+
+        <div className="at-field" style={{ marginTop: 10 }}>
+          <div className="at-flabel">Registration</div>
+          <input
+            className="at-input rego"
+            value={rego}
+            onChange={(e) => setRego(e.target.value.toUpperCase())}
+            onKeyDown={(e) => e.key === 'Enter' && void search()}
+            placeholder="1XY 4KP"
+            autoFocus
+            autoCapitalize="characters"
+            autoCorrect="off"
+          />
+        </div>
+        <button
+          className="at-btn primary"
+          style={{ marginTop: 12 }}
+          disabled={searching || !rego.trim()}
+          onClick={() => void search()}
+        >
+          <Search size={18} /> {searching ? 'Searching…' : 'Find car'}
+        </button>
+
+        {matches && (
+          <>
+            <div className="at-note" style={{ marginTop: 16 }}>
+              Which car?
+            </div>
+            <div className="at-list" style={{ marginTop: 6 }}>
+              {matches.map((m) => (
+                <div key={m.id} className="at-lrow" onClick={() => void loadCar(m.id)}>
+                  <span className="ic">
+                    <Car size={22} strokeWidth={2} color="#fff" />
+                  </span>
+                  <div className="body">
+                    <div className="ti">{regoOf(m)}</div>
+                    <div className="st">{carLine(m) || 'Vehicle'}</div>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </>
+        )}
+
+        {notFound && (
+          <div className="at-empty" style={{ marginTop: 16, textAlign: 'left' }}>
+            <div>
+              No car found for <b>{notFound}</b>.
+            </div>
+            <div className="at-note" style={{ marginTop: 4 }}>
+              Start a draft with this registration — make &amp; model can be filled in later.
+            </div>
+            <button
+              className="at-btn primary"
+              style={{ marginTop: 12 }}
+              disabled={creating}
+              onClick={() => void addDraft()}
+            >
+              <Plus size={18} strokeWidth={2.6} /> {creating ? 'Adding…' : `Add car ${notFound}`}
+            </button>
+          </div>
+        )}
+      </>
+    );
+  }
+
+  // ---- Step 2: photos → estimate → save ----
   return (
     <>
       <AtTopbar backHref="/" right={<SignOutButton />} />
-      <div className="at-h2">Instant estimate</div>
-      <div className="at-note">
-        Snap a few photos of the damage and get a rough draft — parts, repairs and a ballpark price
-        to speed up your quote.
+      <button
+        className="at-back-link"
+        onClick={() => {
+          setCar(null);
+          reset();
+          setErr(null);
+        }}
+      >
+        ‹ Search another rego
+      </button>
+      <div className="at-carhead">
+        <div className="at-carrego">{car.rego}</div>
+        {car.label && <div className="at-carsub">{car.label}</div>}
+      </div>
+      <div className="at-note" style={{ marginTop: 2 }}>
+        Snap a few photos of the damage for a rough draft — parts, repairs and a ballpark price.
       </div>
 
       {err && <div className="at-errbanner">{err}</div>}
 
       {result && result.configured ? (
-        <EstimateResultView
-          result={result}
-          onRestart={() => {
-            setResult(null);
-            setPhotos([]);
-            setNotes('');
-          }}
-        />
+        <EstimateResultView result={result} car={car} photos={photos} onRestart={reset} />
       ) : result && !result.configured ? (
         <div className="at-empty">
           The AI estimator isn’t connected yet — ask the owner to enable it.
@@ -105,8 +292,7 @@ export function EstimateFlow() {
         </div>
       ) : (
         <>
-          {/* Photo capture */}
-          <div className="at-photorow">
+          <div className="at-photorow" style={{ marginTop: 8 }}>
             {photos.map((p, i) => (
               <div key={i} className="at-photothumb">
                 {/* eslint-disable-next-line @next/next/no-img-element */}
@@ -173,18 +359,26 @@ export function EstimateFlow() {
   );
 }
 
-/** The editable draft: fixes (read-only scope) + editable parts, labour, rate & materials, live totals. */
+/** The editable draft: fixes (read-only scope) + editable parts, labour, rate & materials, live totals,
+ *  and a "Save to car" action that persists the draft + photos against the car's job. */
 function EstimateResultView({
   result,
+  car,
+  photos,
   onRestart,
 }: {
   result: Extract<EstimateResult, { configured: true }>;
+  car: CarRef;
+  photos: Photo[];
   onRestart: () => void;
 }) {
   const [parts, setParts] = useState<EstimatePart[]>(result.parts);
   const [labour, setLabour] = useState<EstimateLabour[]>(result.labour);
   const [rate, setRate] = useState<number>(result.labourRateAud);
   const [materials, setMaterials] = useState<number>(result.materialsAud);
+  const [saving, setSaving] = useState(false);
+  const [saved, setSaved] = useState<string | null>(null);
+  const [saveErr, setSaveErr] = useState<string | null>(null);
 
   const totals = useMemo(
     () => recompute({ parts, labour, labourRateAud: rate, materialsAud: materials }),
@@ -195,6 +389,56 @@ function EstimateResultView({
     setParts((ps) => ps.map((p, j) => (j === i ? { ...p, ...patch } : p)));
   const setLab = (i: number, patch: Partial<EstimateLabour>) =>
     setLabour((ls) => ls.map((l, j) => (j === i ? { ...l, ...patch } : l)));
+
+  function buildSummary(): string {
+    const lines: string[] = [`AI estimate (draft) — est. total ${aud(totals.totalAud)}`, ''];
+    if (result.summary) lines.push(result.summary, '');
+    if (result.fixes.length) {
+      lines.push('What needs fixing:');
+      for (const f of result.fixes)
+        lines.push(`• ${OPERATION_LABEL[f.operation]} — ${f.panel}${f.note ? ` (${f.note})` : ''}`);
+      lines.push('');
+    }
+    if (parts.length) {
+      lines.push('Parts:');
+      for (const p of parts)
+        lines.push(`• ${p.name || 'part'} ×${p.quantity} @ ${aud(p.unitPriceAud)}`);
+    }
+    if (labour.length) {
+      lines.push('Labour:');
+      for (const l of labour) lines.push(`• ${l.task || 'task'} — ${l.hours}h`);
+    }
+    lines.push(
+      '',
+      `Parts ${aud(totals.partsSubtotalAud)} · Labour ${aud(totals.labourSubtotalAud)} · Materials ${aud(materials)}`,
+      `Subtotal ${aud(totals.subtotalAud)} · GST ${aud(totals.gstAud)} · Estimated total ${aud(totals.totalAud)}`,
+    );
+    if (result.flags.length) {
+      lines.push('');
+      for (const f of result.flags) lines.push(`⚠ ${f.message}`);
+    }
+    return lines.join('\n');
+  }
+
+  async function save(): Promise<void> {
+    setSaving(true);
+    setSaveErr(null);
+    setSaved(null);
+    try {
+      const res = await api.post<{ jobReference: string; photoCount: number }>(
+        `/vehicle-profile/${car.id}/estimate`,
+        {
+          summary: buildSummary(),
+          photos: photos.map((p) => ({ dataBase64: p.dataBase64, contentType: p.contentType })),
+        },
+      );
+      setSaved(`Saved to ${car.rego}${res?.jobReference ? ` · job ${res.jobReference}` : ''}.`);
+    } catch (e) {
+      setSaveErr(e instanceof ApiError ? e.message : 'Could not save — try again.');
+    } finally {
+      setSaving(false);
+    }
+  }
 
   return (
     <>
@@ -376,7 +620,29 @@ function EstimateResultView({
         </div>
       </div>
 
-      <button type="button" className="at-btn ghost" onClick={onRestart} style={{ marginTop: 14 }}>
+      {/* Save the draft against the car (its current job). */}
+      <button
+        type="button"
+        className="at-btn primary"
+        disabled={saving || saved !== null}
+        onClick={() => void save()}
+        style={{ marginTop: 14 }}
+      >
+        <Save size={18} strokeWidth={2.4} />
+        {saving ? 'Saving…' : saved ? 'Saved' : `Save to ${car.rego}`}
+      </button>
+      {saved && (
+        <div className="at-savedbanner">
+          {saved} The owner can review it on the car’s job and turn it into a quote.
+        </div>
+      )}
+      {saveErr && (
+        <div className="at-errbanner" style={{ marginTop: 10 }}>
+          {saveErr}
+        </div>
+      )}
+
+      <button type="button" className="at-btn ghost" onClick={onRestart} style={{ marginTop: 12 }}>
         Start a new estimate
       </button>
     </>
