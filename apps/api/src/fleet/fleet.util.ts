@@ -8,7 +8,14 @@ export type FleetVehicleStatus = 'available' | 'out' | 'booked' | 'repair' | 'un
 export type FleetMovementStatus = 'active' | 'returned' | 'closed';
 export type FleetBookingStatus = 'booked' | 'active' | 'completed' | 'cancelled';
 export type FleetPhotoType =
-  'before_handover' | 'after_return' | 'damage' | 'odometer' | 'fuel' | 'tow_card' | 'other';
+  | 'before_handover'
+  | 'after_return'
+  | 'damage'
+  | 'odometer'
+  | 'fuel'
+  | 'tow_card'
+  | 'invoice'
+  | 'other';
 
 export const FLEET_VEHICLE_STATUSES: FleetVehicleStatus[] = [
   'available',
