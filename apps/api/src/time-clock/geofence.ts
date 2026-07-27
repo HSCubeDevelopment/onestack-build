@@ -218,6 +218,37 @@ export function checkGeofence(
   };
 }
 
+/**
+ * Judge a position against SEVERAL fences and take the most favourable outcome — a worker assigned to
+ * more than one shop is "on site" if they're at ANY of them. With no fences it degrades to the single
+ * default workshop fence, so the caller can always hand this the resolved list without special-casing.
+ *
+ * "Most favourable" = inside if inside any; otherwise the nearest (smallest distance) refusal, so the
+ * reason names the closest shop rather than an arbitrary one. A position with no usable fix is
+ * `unavailable` against every fence, so that verdict is returned unchanged.
+ */
+export function checkGeofenceAny(
+  position: Coords | null | undefined,
+  fences: Geofence[],
+): GeofenceResult {
+  if (fences.length === 0) return checkGeofence(position);
+
+  let best: GeofenceResult | null = null;
+  for (const fence of fences) {
+    const r = checkGeofence(position, fence);
+    if (r.allowed) return r; // inside one shop is enough
+    if (best === null) {
+      best = r;
+      continue;
+    }
+    // Prefer the result that is closer. Nulls (no fix) sort last, so a measured distance always wins.
+    const rd = r.distanceMetres ?? Number.POSITIVE_INFINITY;
+    const bd = best.distanceMetres ?? Number.POSITIVE_INFINITY;
+    if (rd < bd) best = r;
+  }
+  return best as GeofenceResult;
+}
+
 /** Human distance: metres up close, kilometres once that stops being meaningful. */
 export function formatDistance(metres: number): string {
   if (metres < 1000) return `${metres} m`;
