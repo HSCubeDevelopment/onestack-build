@@ -1,4 +1,5 @@
 import { Inject, Injectable, NotFoundException } from '@nestjs/common';
+import { checkClaimCompleteness, ClaimGap } from './claim-completeness';
 import { ContactsService } from '../contacts/contacts.service';
 import { DocumentRecordService } from '../documents/document-record.service';
 import { InvoiceService } from '../invoices/invoice.service';
@@ -71,6 +72,9 @@ export interface ClaimFileView {
   documents: ClaimDocument[];
   counts: ClaimFileCounts;
   financials: ClaimFinancials;
+  /** Completeness check: what's still missing before the pack is insurer/lawyer-ready. */
+  gaps: ClaimGap[];
+  ready: boolean;
 }
 
 export interface ClaimFileExport extends ClaimFileView {
@@ -134,6 +138,22 @@ export class ClaimFileService {
       templateVersion: d.templateVersion,
     }));
 
+    const completeness = checkClaimCompleteness({
+      claim: claim
+        ? {
+            claimNumber: claim.claimNumber,
+            authorisedAmountCents: claim.authorisedAmountCents,
+            excessCents: claim.excessCents,
+          }
+        : null,
+      customer: customer ? { id: customer.id } : null,
+      insurer: insurer ? { id: insurer.id } : null,
+      vehicles,
+      photos,
+      quotes: quotes.map((q) => ({ status: q.status })),
+      invoices,
+    });
+
     return {
       job: {
         id: job.id,
@@ -177,6 +197,8 @@ export class ClaimFileService {
       documents,
       counts: claimFileCounts({ photos, quotes, invoices, documents }),
       financials: claimFinancials(invoices),
+      gaps: completeness.gaps,
+      ready: completeness.ready,
     };
   }
 
