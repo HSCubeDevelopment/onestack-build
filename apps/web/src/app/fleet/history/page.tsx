@@ -105,7 +105,21 @@ function CarRecord() {
           </div>
 
           {/* Photos */}
-          <VehiclePhotos vehicleId={v.id} isCompanyCar={v.isCompanyCar} />
+          <PhotoSection
+            vehicleId={v.id}
+            title={v.isCompanyCar ? 'Photos' : 'Report card'}
+            show={(t) => t !== 'invoice'}
+          />
+
+          {/* Invoices — search rego → photo the invoice → save (against this car). */}
+          <PhotoSection
+            vehicleId={v.id}
+            title="Invoices"
+            addLabel="Photo invoice"
+            capturePhotoType="invoice"
+            show={(t) => t === 'invoice'}
+            emptyText="No invoices yet — tap “Photo invoice”."
+          />
 
           {/* History (audit) */}
           <SectionHeader>History</SectionHeader>
@@ -263,13 +277,26 @@ function RentalRow({ p, onOpen }: { p: RentalPeriod; onOpen: () => void }) {
   );
 }
 
-function VehiclePhotos({ vehicleId, isCompanyCar }: { vehicleId: string; isCompanyCar: boolean }) {
+function PhotoSection({
+  vehicleId,
+  title,
+  addLabel = 'Add photo',
+  capturePhotoType = 'other',
+  show,
+  emptyText = 'No photos yet — tap “Add photo”.',
+}: {
+  vehicleId: string;
+  title: string;
+  addLabel?: string;
+  capturePhotoType?: string;
+  show?: (photoType: string) => boolean;
+  emptyText?: string;
+}) {
   const { data, loading, reload } = useAsync(
     () => api.getOr<FleetPhoto[]>(`/fleet/photos?vehicleId=${vehicleId}`, []),
     [vehicleId],
   );
-  const photos = data ?? [];
-  const title = isCompanyCar ? 'Photos' : 'Report card';
+  const photos = (data ?? []).filter((p) => (show ? show(p.photoType) : true));
   const inputRef = useRef<HTMLInputElement>(null);
   const [uploading, setUploading] = useState(false);
   const [err, setErr] = useState<string | null>(null);
@@ -279,7 +306,12 @@ function VehiclePhotos({ vehicleId, isCompanyCar }: { vehicleId: string; isCompa
     setErr(null);
     try {
       const { dataBase64, contentType } = await compressToBase64(file);
-      await api.post('/fleet/photos', { vehicleId, photoType: 'other', dataBase64, contentType });
+      await api.post('/fleet/photos', {
+        vehicleId,
+        photoType: capturePhotoType,
+        dataBase64,
+        contentType,
+      });
       await reload();
     } catch (e) {
       setErr(e instanceof ApiError ? e.message : 'Could not add photo');
@@ -299,7 +331,7 @@ function VehiclePhotos({ vehicleId, isCompanyCar }: { vehicleId: string; isCompa
           disabled={uploading}
           onClick={() => inputRef.current?.click()}
         >
-          {uploading ? 'Adding…' : 'Add photo'}
+          {uploading ? 'Adding…' : addLabel}
         </button>
       </div>
       <input
@@ -319,7 +351,7 @@ function VehiclePhotos({ vehicleId, isCompanyCar }: { vehicleId: string; isCompa
           <Loading />
         ) : photos.length === 0 ? (
           <span className="muted" style={{ fontSize: 13 }}>
-            No photos yet — tap “Add photo”.
+            {emptyText}
           </span>
         ) : (
           <div className="photo-grid">
