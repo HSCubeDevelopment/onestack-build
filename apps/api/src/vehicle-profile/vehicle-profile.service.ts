@@ -200,12 +200,20 @@ export class VehicleProfileService {
       await this.subjects.searchAcrossFields(tenantId, 'vehicle', ['rego'], rego)
     ).find((v) => String((v.fields as Record<string, unknown>)?.rego ?? '').toUpperCase() === rego);
 
+    const displayName = [make, model].filter(Boolean).join(' ');
     const vehicle =
       existing ??
       (await this.subjects.create(tenantId, {
         type: 'vehicle',
-        label: [make, model].filter(Boolean).join(' ') ? `${make} ${model} (${rego})` : rego,
-        fields: { rego, ...(make ? { make } : {}), ...(model ? { model } : {}) },
+        label: displayName ? `${displayName} (${rego})` : rego,
+        // The automotive vehicle schema requires make/model/year. For a draft the plate is all we have,
+        // so fill placeholders the owner corrects later (make/model "Unknown", year = this year).
+        fields: {
+          rego,
+          make: make || 'Unknown',
+          model: model || 'Unknown',
+          year: new Date().getFullYear(),
+        },
       }));
 
     // Ensure there's an open job to attach work to; create a draft one if the car has none open.
@@ -227,8 +235,11 @@ export class VehicleProfileService {
       jobReference = created.reference;
     }
 
+    // Display label — hide the "Unknown" placeholders so a plain draft just shows its rego.
     const f = vehicle.fields as Record<string, unknown>;
-    const label = [f?.year, f?.make, f?.model].filter(Boolean).map(String).join(' ');
+    const realMake = f?.make && f.make !== 'Unknown' ? String(f.make) : '';
+    const realModel = f?.model && f.model !== 'Unknown' ? String(f.model) : '';
+    const label = [realMake, realModel].filter(Boolean).join(' ');
     return { vehicleId: vehicle.id, rego, label, jobId, jobReference };
   }
 
