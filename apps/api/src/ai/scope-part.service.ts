@@ -2,6 +2,7 @@ import { BadRequestException, Injectable, NotFoundException } from '@nestjs/comm
 import { PriceBookService } from '../price-book/price-book.service';
 import { QuoteService, QuoteView } from '../quotes/quote.service';
 import { TenantService } from '../tenancy/tenant.service';
+import { labourLinesFromScope } from './estimate-pricing';
 import { partsFromScope, PriceBookPart } from './parts-from-scope';
 import {
   PartGrade,
@@ -314,10 +315,33 @@ export class ScopePartService {
    * must be priced first — the money engine forbids <$1 lines, and shipping an unpriced part would be a
    * silent $0. The quote stays Draft; nothing is sent or ordered.
    */
+  /**
+   * Assemble a full itemised Draft quote from the job: LABOUR (one line per scope operation) + PARTS
+   * (the priced parts list) + PAINT & MATERIALS. Not parts-only — a repair/paint-only job (no
+   * replacements) is now quotable on labour + materials alone. Everything is an editable Draft the
+   * estimator reviews before it leaves the building; the labour/materials figures are a deterministic
+   * starting point (hours × rate), not a final price.
+   */
   async buildQuote(tenantId: string, jobId: string): Promise<QuoteView> {
+    // The scope drives labour; the parts list drives parts. Both hang off the same job.
+    const scope = await this.tenants.runInTenant(tenantId, async (tx) => {
+      const job = await tx.workItem.findFirst({ where: { id: jobId, deletedAt: null } });
+      if (!job) throw new NotFoundException('Job not found');
+      return tx.damageScope.findFirst({
+        where: { workItemId: jobId },
+        orderBy: { createdAt: 'desc' },
+      });
+    });
+    if (!scope) {
+      throw new BadRequestException(
+        'Generate a damage scope for this job before building the quote',
+      );
+    }
+    const scopeItems = Array.isArray(scope.items)
+      ? (scope.items as { panel: string; operation: 'replace' | 'repair' | 'paint' }[])
+      : [];
+
     const parts = await this.listForJob(tenantId, jobId);
-    if (parts.length === 0)
-      throw new BadRequestException('The parts list is empty — nothing to quote');
     const unpriced = parts.filter((p) => p.unitPriceCents < 1);
     if (unpriced.length > 0) {
       throw new BadRequestException(
@@ -325,14 +349,39 @@ export class ScopePartService {
       );
     }
 
+    const { labour, materialsCents, paintedPanels } = labourLinesFromScope(scopeItems);
+    if (parts.length === 0 && labour.length === 0) {
+      throw new BadRequestException('Nothing to quote — the scope has no operations and no parts');
+    }
+
     const quote = await this.quotes.create(tenantId, jobId);
     let view = quote;
+
+    // Labour first (reads top-down like a real estimate), then parts, then materials.
+    for (const l of labour) {
+      view = await this.quotes.addLine(tenantId, quote.id, {
+        description: l.description,
+        type: 'labour',
+        quantity: 1,
+        unitPriceCents: l.unitPriceCents,
+        taxCode: 'GST',
+      });
+    }
     for (const p of parts) {
       view = await this.quotes.addLine(tenantId, quote.id, {
         description: p.description,
         type: 'part',
         quantity: p.quantity,
         unitPriceCents: p.unitPriceCents,
+        taxCode: 'GST',
+      });
+    }
+    if (materialsCents >= 1) {
+      view = await this.quotes.addLine(tenantId, quote.id, {
+        description: `Paint & materials — ${paintedPanels} panel${paintedPanels === 1 ? '' : 's'}`,
+        type: 'part',
+        quantity: 1,
+        unitPriceCents: materialsCents,
         taxCode: 'GST',
       });
     }

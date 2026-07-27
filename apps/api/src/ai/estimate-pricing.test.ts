@@ -3,6 +3,7 @@ import { DamageAnalysisResult } from './damage-analyzer';
 import {
   DEFAULT_LABOUR_RATE_AUD,
   DEFAULT_PART_PRICE_AUD,
+  labourLinesFromScope,
   LABOUR_HOURS,
   PAINT_MATERIALS_AUD,
   priceScope,
@@ -89,5 +90,47 @@ describe('priceScope', () => {
     const draft = priceScope(scope([{ panel: 'Roof', operation: 'paint' }]));
     expect(draft.disclaimer).toMatch(/review each line/i);
     expect(draft.disclaimer).toMatch(/hidden or structural/i);
+  });
+});
+
+describe('labourLinesFromScope (persisted quote — cents)', () => {
+  it('makes one labour line per operation, priced hours × rate in cents', () => {
+    const { labour } = labourLinesFromScope([
+      { panel: 'Front bumper', operation: 'replace' },
+      { panel: 'Left door', operation: 'repair' },
+    ]);
+    expect(labour).toHaveLength(2);
+    // replace = 3h × $95 = $285 = 28500c; repair = 2.5h × $95 = $237.50 = 23750c.
+    expect(labour[0]!.unitPriceCents).toBe(
+      Math.round(LABOUR_HOURS.replace * DEFAULT_LABOUR_RATE_AUD * 100),
+    );
+    expect(labour[1]!.unitPriceCents).toBe(23750);
+    expect(labour[0]!.description).toMatch(/Replace Front bumper — 3 h/);
+  });
+
+  it('charges paint materials in cents for replaced + painted panels only', () => {
+    const r = labourLinesFromScope([
+      { panel: 'Front bumper', operation: 'replace' },
+      { panel: 'Bonnet', operation: 'paint' },
+      { panel: 'Left guard', operation: 'repair' },
+    ]);
+    expect(r.paintedPanels).toBe(2); // replace + paint
+    expect(r.materialsCents).toBe(2 * PAINT_MATERIALS_AUD * 100); // 2 × $120 = 24000c
+  });
+
+  it('honours a custom rate and falls back on a nonsensical one', () => {
+    expect(
+      labourLinesFromScope([{ panel: 'Boot', operation: 'repair' }], 140).labour[0]!.unitPriceCents,
+    ).toBe(Math.round(LABOUR_HOURS.repair * 140 * 100));
+    expect(
+      labourLinesFromScope([{ panel: 'Boot', operation: 'repair' }], 0).labour[0]!.unitPriceCents,
+    ).toBe(Math.round(LABOUR_HOURS.repair * DEFAULT_LABOUR_RATE_AUD * 100));
+  });
+
+  it('an empty scope yields no labour and no materials (repair-only handled by caller)', () => {
+    const r = labourLinesFromScope([]);
+    expect(r.labour).toEqual([]);
+    expect(r.materialsCents).toBe(0);
+    expect(r.paintedPanels).toBe(0);
   });
 });

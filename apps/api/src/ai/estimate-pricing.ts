@@ -117,3 +117,41 @@ export function priceScope(
     disclaimer: ESTIMATE_DISCLAIMER,
   };
 }
+
+export interface QuoteLabourLine {
+  description: string;
+  unitPriceCents: number;
+}
+
+export interface ScopeQuoteLines {
+  labour: QuoteLabourLine[];
+  materialsCents: number;
+  paintedPanels: number;
+}
+
+/**
+ * Labour + paint-materials lines for a PERSISTED quote, derived from a damage scope. Money in CENTS —
+ * the quote engine's unit. Each operation becomes one labour line priced hours × rate, collapsed to a
+ * single unit so the integer-quantity quote engine can still carry fractional hours (the hours are shown
+ * in the description). Replaced or painted panels accrue a flat paint-materials charge. Deterministic and
+ * a starting point — the estimator edits every line before the quote leaves Draft.
+ */
+export function labourLinesFromScope(
+  items: { panel: string; operation: DamageOperation }[],
+  rateAud: number = DEFAULT_LABOUR_RATE_AUD,
+): ScopeQuoteLines {
+  const rate = Number.isFinite(rateAud) && rateAud > 0 ? rateAud : DEFAULT_LABOUR_RATE_AUD;
+  const labour: QuoteLabourLine[] = items.map((i) => {
+    const hours = LABOUR_HOURS[i.operation];
+    const op = i.operation.charAt(0).toUpperCase() + i.operation.slice(1);
+    return {
+      description: `${op} ${i.panel} — ${hours} h @ $${rate}/h`,
+      unitPriceCents: Math.round(hours * rate * 100),
+    };
+  });
+  const paintedPanels = items.filter(
+    (i) => i.operation === 'replace' || i.operation === 'paint',
+  ).length;
+  const materialsCents = Math.round(paintedPanels * PAINT_MATERIALS_AUD * 100);
+  return { labour, materialsCents, paintedPanels };
+}
