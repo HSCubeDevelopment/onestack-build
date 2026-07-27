@@ -53,4 +53,60 @@ export class SupabaseAuthService {
     }
     return out;
   }
+
+  /** Email + display name for a set of user ids (name from user_metadata). For the PIN name-picker. */
+  async profilesByUserId(
+    userIds: string[],
+  ): Promise<Map<string, { email: string | null; name: string | null }>> {
+    const out = new Map<string, { email: string | null; name: string | null }>();
+    if (userIds.length === 0) return out;
+    const { url, key } = this.cfg();
+    const res = await fetch(`${url}/auth/v1/admin/users?per_page=200`, {
+      headers: { apikey: key, Authorization: `Bearer ${key}` },
+    });
+    if (!res.ok) return out;
+    const body = (await res.json()) as {
+      users?: { id: string; email?: string; user_metadata?: { name?: string } }[];
+    };
+    const wanted = new Set(userIds);
+    for (const u of body.users ?? []) {
+      if (wanted.has(u.id)) {
+        out.set(u.id, { email: u.email ?? null, name: u.user_metadata?.name ?? null });
+      }
+    }
+    return out;
+  }
+
+  /** A single admin user with its server-only app_metadata (where the PIN hash + lockout live). */
+  async getUser(userId: string): Promise<AdminUser | null> {
+    const { url, key } = this.cfg();
+    const res = await fetch(`${url}/auth/v1/admin/users/${encodeURIComponent(userId)}`, {
+      headers: { apikey: key, Authorization: `Bearer ${key}` },
+    });
+    if (res.status === 404) return null;
+    if (!res.ok) throw new ServiceUnavailableException('Supabase admin read failed');
+    return (await res.json()) as AdminUser;
+  }
+
+  /**
+   * Replace the user's `app_metadata` (server-only). We always send the FULL object we intend to persist
+   * (read-merge-write in the caller), so this doesn't depend on GoTrue's merge semantics.
+   */
+  async putAppMetadata(userId: string, appMetadata: Record<string, unknown>): Promise<void> {
+    const { url, key } = this.cfg();
+    const res = await fetch(`${url}/auth/v1/admin/users/${encodeURIComponent(userId)}`, {
+      method: 'PUT',
+      headers: { apikey: key, Authorization: `Bearer ${key}`, 'Content-Type': 'application/json' },
+      body: JSON.stringify({ app_metadata: appMetadata }),
+    });
+    if (!res.ok) throw new ServiceUnavailableException('Supabase admin update failed');
+  }
+}
+
+/** Shape of an admin user we care about. app_metadata is server-only and never returned to a client. */
+export interface AdminUser {
+  id: string;
+  email?: string;
+  app_metadata?: Record<string, unknown>;
+  user_metadata?: Record<string, unknown>;
 }

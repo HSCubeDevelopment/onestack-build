@@ -1,88 +1,75 @@
 'use client';
 import { useEffect, useMemo, useState } from 'react';
-import { LogIn } from 'lucide-react';
+import { ChevronLeft, Delete, Search, ShieldCheck } from 'lucide-react';
 
-interface DemoAccount {
-  label: string;
-  email: string;
-  password: string;
-  role: 'OWNER' | 'STAFF' | 'TOW';
-}
-interface Employee {
+interface Person {
+  userId: string;
   name: string;
-  email: string;
-  site: string;
-  password: string;
+  role: 'OWNER' | 'STAFF' | 'TOW';
+  site: string | null;
 }
-type RoleChoice = 'OWNER' | 'EMPLOYEE' | 'TOW';
 
+const roleLabel: Record<Person['role'], string> = {
+  OWNER: 'Owner',
+  STAFF: 'Employee',
+  TOW: 'Tow driver',
+};
+
+/**
+ * PIN sign-in. Everyone — owner, tow driver, every employee — signs in by tapping their name and entering
+ * their 4-digit PIN. No passwords on this screen. The PIN is verified server-side against a salted hash
+ * with a per-person lockout; nothing sensitive is stored in the browser.
+ */
 export default function LoginPage() {
-  const [accounts, setAccounts] = useState<DemoAccount[]>([]);
-  const [employees, setEmployees] = useState<Employee[]>([]);
-  const [role, setRole] = useState<RoleChoice>('EMPLOYEE');
-  const [employeeEmail, setEmployeeEmail] = useState('');
+  const [people, setPeople] = useState<Person[]>([]);
+  const [loaded, setLoaded] = useState(false);
+  const [selected, setSelected] = useState<Person | null>(null);
+  const [query, setQuery] = useState('');
+  const [pin, setPin] = useState('');
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  // Manual email/password fallback (real accounts).
-  const [manual, setManual] = useState(false);
-  const [email, setEmail] = useState('');
-  const [password, setPassword] = useState('');
-
   useEffect(() => {
-    fetch('/api/auth/demo')
+    fetch('/api/auth/pin-directory')
       .then((r) => r.json())
-      .then((d) => {
-        setAccounts(d.accounts ?? []);
-        setEmployees(d.employees ?? []);
-        // If the demo directory isn't available, fall straight to manual sign-in.
-        if (!(d.accounts ?? []).length && !(d.employees ?? []).length) setManual(true);
-      })
-      .catch(() => setManual(true));
+      .then((d) => setPeople(Array.isArray(d) ? d : []))
+      .catch(() => setPeople([]))
+      .finally(() => setLoaded(true));
   }, []);
 
-  const owner = accounts.find((a) => a.role === 'OWNER');
-  const tow = accounts.find((a) => a.role === 'TOW');
+  const shown = useMemo(() => {
+    const q = query.trim().toLowerCase();
+    return q ? people.filter((p) => p.name.toLowerCase().includes(q)) : people;
+  }, [people, query]);
 
-  // Employees grouped by site for the dropdown's optgroups.
-  const bySite = useMemo(() => {
-    const groups = new Map<string, Employee[]>();
-    for (const e of employees) {
-      const list = groups.get(e.site) ?? [];
-      list.push(e);
-      groups.set(e.site, list);
-    }
-    return [...groups.entries()];
-  }, [employees]);
-
-  async function signInWith(em: string, pw: string) {
+  async function submit(person: Person, code: string) {
     setBusy(true);
     setError(null);
     try {
-      const res = await fetch('/api/auth/login', {
+      const res = await fetch('/api/auth/pin-login', {
         method: 'POST',
         headers: { 'content-type': 'application/json' },
-        body: JSON.stringify({ email: em.trim(), password: pw }),
+        body: JSON.stringify({ userId: person.userId, pin: code }),
       });
       if (!res.ok) {
         const d = await res.json().catch(() => ({}));
-        throw new Error(d.error || 'Invalid email or password');
+        throw new Error(d.error || 'Incorrect PIN');
       }
-      // Full reload so the proxy picks up the new session cookie everywhere.
-      window.location.assign('/');
+      window.location.assign('/'); // full reload so the proxy picks up the session cookie
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Sign in failed');
+      setPin('');
       setBusy(false);
     }
   }
 
-  const roleTabs: { key: RoleChoice; label: string; enabled: boolean }[] = [
-    { key: 'OWNER', label: 'Owner', enabled: !!owner },
-    { key: 'EMPLOYEE', label: 'Employee', enabled: employees.length > 0 },
-    { key: 'TOW', label: 'Tow', enabled: !!tow },
-  ];
-
-  const selectedEmployee = employees.find((e) => e.email === employeeEmail);
+  function press(digit: string) {
+    if (busy || !selected) return;
+    setError(null);
+    const next = (pin + digit).slice(0, 4);
+    setPin(next);
+    if (next.length === 4) void submit(selected, next);
+  }
 
   return (
     <div style={{ width: '100%', maxWidth: 400 }}>
@@ -94,189 +81,231 @@ export default function LoginPage() {
           </p>
         </div>
 
-        {!manual && (accounts.length > 0 || employees.length > 0) ? (
+        {!selected ? (
+          /* Step 1 — pick who you are. */
           <>
-            <div className="field" style={{ marginBottom: 14 }}>
-              <span>I&apos;m signing in as</span>
-              <div className="seg" role="tablist" aria-label="Role" style={{ marginTop: 6 }}>
-                {roleTabs.map((t) => (
-                  <button
-                    key={t.key}
-                    type="button"
-                    role="tab"
-                    aria-selected={role === t.key}
-                    disabled={!t.enabled}
-                    className={role === t.key ? 'on' : ''}
-                    onClick={() => {
-                      setRole(t.key);
-                      setError(null);
-                    }}
-                  >
-                    {t.label}
-                  </button>
-                ))}
-              </div>
+            <div
+              className="field"
+              style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 12 }}
+            >
+              <Search size={16} style={{ color: 'var(--text-faint)', flex: 'none' }} />
+              <input
+                className="input"
+                style={{ border: 'none', padding: 0, background: 'transparent' }}
+                placeholder="Search your name"
+                value={query}
+                onChange={(e) => setQuery(e.target.value)}
+                aria-label="Search your name"
+              />
             </div>
 
-            {role === 'EMPLOYEE' ? (
-              <div style={{ display: 'grid', gap: 12 }}>
-                <label className="field">
-                  <span>Employee</span>
-                  <select
-                    className="input"
-                    value={employeeEmail}
-                    onChange={(e) => setEmployeeEmail(e.target.value)}
-                    aria-label="Select employee"
+            {!loaded ? (
+              <p style={{ color: 'var(--text-faint)', fontSize: 14 }}>Loading…</p>
+            ) : people.length === 0 ? (
+              <p style={{ color: 'var(--text-faint)', fontSize: 14 }}>
+                PIN sign-in isn’t set up yet. Ask the owner to generate the PINs.
+              </p>
+            ) : (
+              <div
+                style={{
+                  display: 'grid',
+                  gap: 6,
+                  maxHeight: 340,
+                  overflowY: 'auto',
+                  margin: '0 -4px',
+                  padding: '0 4px',
+                }}
+              >
+                {shown.map((p) => (
+                  <button
+                    key={p.userId}
+                    type="button"
+                    onClick={() => {
+                      setSelected(p);
+                      setPin('');
+                      setError(null);
+                    }}
+                    style={{
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'space-between',
+                      gap: 10,
+                      padding: '12px 14px',
+                      borderRadius: 12,
+                      border: '1px solid var(--border)',
+                      background: 'var(--panel-2, #f7f7f9)',
+                      cursor: 'pointer',
+                      textAlign: 'left',
+                      font: 'inherit',
+                    }}
                   >
-                    <option value="">Select employee…</option>
-                    {bySite.map(([site, list]) => (
-                      <optgroup key={site} label={site}>
-                        {list.map((e) => (
-                          <option key={e.email} value={e.email}>
-                            {e.name}
-                          </option>
-                        ))}
-                      </optgroup>
-                    ))}
-                  </select>
-                </label>
-                {error ? <div className="err">{error}</div> : null}
-                <button
-                  className="btn primary"
-                  type="button"
-                  disabled={busy || !selectedEmployee}
-                  onClick={() =>
-                    selectedEmployee &&
-                    void signInWith(selectedEmployee.email, selectedEmployee.password)
-                  }
-                >
-                  <LogIn size={16} />{' '}
-                  {busy
-                    ? 'Signing in…'
-                    : selectedEmployee
-                      ? `Sign in as ${selectedEmployee.name}`
-                      : 'Select an employee'}
-                </button>
-                <p style={{ fontSize: 12, color: 'var(--text-faint)', margin: '2px 0 0' }}>
-                  {employees.length} employees across {new Set(employees.map((e) => e.site)).size}{' '}
-                  sites.
-                </p>
+                    <span style={{ fontWeight: 600, fontSize: 15 }}>{p.name}</span>
+                    <span style={{ fontSize: 12, color: 'var(--text-faint)' }}>
+                      {roleLabel[p.role]}
+                      {p.site ? ` · ${p.site.split(',')[0]}` : ''}
+                    </span>
+                  </button>
+                ))}
+                {shown.length === 0 && (
+                  <p style={{ color: 'var(--text-faint)', fontSize: 14 }}>
+                    No one matches “{query}”.
+                  </p>
+                )}
+              </div>
+            )}
+          </>
+        ) : (
+          /* Step 2 — enter the PIN. */
+          <>
+            <button
+              type="button"
+              onClick={() => {
+                setSelected(null);
+                setPin('');
+                setError(null);
+              }}
+              style={{
+                display: 'inline-flex',
+                alignItems: 'center',
+                gap: 4,
+                border: 'none',
+                background: 'none',
+                color: 'var(--brand, #007aff)',
+                fontWeight: 600,
+                fontSize: 14,
+                cursor: 'pointer',
+                padding: 0,
+                marginBottom: 10,
+              }}
+            >
+              <ChevronLeft size={16} /> Not you?
+            </button>
+
+            <div style={{ textAlign: 'center', marginBottom: 4 }}>
+              <div style={{ fontSize: 18, fontWeight: 700 }}>{selected.name}</div>
+              <div style={{ fontSize: 13, color: 'var(--text-faint)' }}>Enter your 4-digit PIN</div>
+            </div>
+
+            {/* PIN dots */}
+            <div style={{ display: 'flex', justifyContent: 'center', gap: 14, margin: '16px 0' }}>
+              {[0, 1, 2, 3].map((i) => (
+                <span
+                  key={i}
+                  style={{
+                    width: 14,
+                    height: 14,
+                    borderRadius: '50%',
+                    border: '2px solid var(--border)',
+                    background: i < pin.length ? 'var(--brand, #007aff)' : 'transparent',
+                    borderColor: i < pin.length ? 'var(--brand, #007aff)' : 'var(--border)',
+                  }}
+                />
+              ))}
+            </div>
+
+            {error ? (
+              <div className="err" style={{ textAlign: 'center' }}>
+                {error}
               </div>
             ) : (
-              <div style={{ display: 'grid', gap: 12 }}>
-                {error ? <div className="err">{error}</div> : null}
-                <button
-                  className="btn primary"
-                  type="button"
-                  disabled={busy || (role === 'OWNER' ? !owner : !tow)}
-                  onClick={() => {
-                    const a = role === 'OWNER' ? owner : tow;
-                    if (a) void signInWith(a.email, a.password);
-                  }}
-                >
-                  <LogIn size={16} />{' '}
-                  {busy ? 'Signing in…' : role === 'OWNER' ? 'Sign in as Owner' : 'Sign in as Tow'}
-                </button>
-                <p style={{ fontSize: 12, color: 'var(--text-faint)', margin: '2px 0 0' }}>
-                  {role === 'OWNER'
-                    ? 'Full workshop admin — dashboard, jobs, money, settings.'
-                    : 'Tow driver — tow-in, your jobs and your shift clock.'}
-                </p>
+              <div
+                style={{
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  gap: 6,
+                  color: 'var(--text-faint)',
+                  fontSize: 12,
+                  minHeight: 18,
+                }}
+              >
+                <ShieldCheck size={13} /> Locked after 5 wrong tries
               </div>
             )}
 
-            <div style={{ marginTop: 16, borderTop: '1px solid var(--border)', paddingTop: 12 }}>
-              <button
-                type="button"
-                className="btn"
-                style={{ width: '100%' }}
-                onClick={() => setManual(true)}
+            {/* Keypad */}
+            <div
+              style={{
+                display: 'grid',
+                gridTemplateColumns: 'repeat(3, 1fr)',
+                gap: 10,
+                marginTop: 12,
+              }}
+            >
+              {['1', '2', '3', '4', '5', '6', '7', '8', '9'].map((d) => (
+                <KeypadButton key={d} onClick={() => press(d)} disabled={busy}>
+                  {d}
+                </KeypadButton>
+              ))}
+              <span />
+              <KeypadButton onClick={() => press('0')} disabled={busy}>
+                0
+              </KeypadButton>
+              <KeypadButton
+                onClick={() => {
+                  setError(null);
+                  setPin((p) => p.slice(0, -1));
+                }}
+                disabled={busy || pin.length === 0}
+                aria-label="Delete"
               >
-                Sign in with email &amp; password
-              </button>
+                <Delete size={22} />
+              </KeypadButton>
             </div>
+
+            {busy && (
+              <p
+                style={{
+                  textAlign: 'center',
+                  color: 'var(--text-faint)',
+                  fontSize: 13,
+                  marginTop: 12,
+                }}
+              >
+                Signing in…
+              </p>
+            )}
           </>
-        ) : (
-          <ManualForm
-            email={email}
-            password={password}
-            setEmail={setEmail}
-            setPassword={setPassword}
-            busy={busy}
-            error={error}
-            onSubmit={() => void signInWith(email, password)}
-            canGoBack={accounts.length > 0 || employees.length > 0}
-            onBack={() => {
-              setManual(false);
-              setError(null);
-            }}
-          />
         )}
       </div>
     </div>
   );
 }
 
-function ManualForm({
-  email,
-  password,
-  setEmail,
-  setPassword,
-  busy,
-  error,
-  onSubmit,
-  canGoBack,
-  onBack,
+function KeypadButton({
+  children,
+  onClick,
+  disabled,
+  'aria-label': ariaLabel,
 }: {
-  email: string;
-  password: string;
-  setEmail: (v: string) => void;
-  setPassword: (v: string) => void;
-  busy: boolean;
-  error: string | null;
-  onSubmit: () => void;
-  canGoBack: boolean;
-  onBack: () => void;
+  children: React.ReactNode;
+  onClick: () => void;
+  disabled?: boolean;
+  'aria-label'?: string;
 }) {
   return (
-    <form
-      onSubmit={(e) => {
-        e.preventDefault();
-        onSubmit();
+    <button
+      type="button"
+      onClick={onClick}
+      disabled={disabled}
+      aria-label={ariaLabel}
+      style={{
+        height: 60,
+        borderRadius: 14,
+        border: '1px solid var(--border)',
+        background: 'var(--panel-2, #f7f7f9)',
+        fontSize: 24,
+        fontWeight: 600,
+        color: 'var(--text)',
+        cursor: disabled ? 'default' : 'pointer',
+        opacity: disabled ? 0.5 : 1,
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'center',
+        fontFamily: 'inherit',
       }}
-      style={{ display: 'grid', gap: 12 }}
     >
-      <label className="field">
-        <span>Email</span>
-        <input
-          className="input"
-          type="email"
-          autoComplete="username"
-          value={email}
-          onChange={(e) => setEmail(e.target.value)}
-          placeholder="you@workshop.test"
-        />
-      </label>
-      <label className="field">
-        <span>Password</span>
-        <input
-          className="input"
-          type="password"
-          autoComplete="current-password"
-          value={password}
-          onChange={(e) => setPassword(e.target.value)}
-          placeholder="••••••••"
-        />
-      </label>
-      {error ? <div className="err">{error}</div> : null}
-      <button className="btn primary" type="submit" disabled={busy || !email || !password}>
-        <LogIn size={16} /> {busy ? 'Signing in…' : 'Sign in'}
-      </button>
-      {canGoBack ? (
-        <button type="button" className="btn" style={{ width: '100%' }} onClick={onBack}>
-          Back to quick sign-in
-        </button>
-      ) : null}
-    </form>
+      {children}
+    </button>
   );
 }
