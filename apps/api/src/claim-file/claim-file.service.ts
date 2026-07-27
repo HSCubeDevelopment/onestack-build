@@ -1,5 +1,6 @@
 import { Inject, Injectable, NotFoundException } from '@nestjs/common';
 import { checkClaimCompleteness, ClaimGap } from './claim-completeness';
+import { quoteVariance, QuoteVariance } from './quote-variance';
 import { ContactsService } from '../contacts/contacts.service';
 import { DocumentRecordService } from '../documents/document-record.service';
 import { InvoiceService } from '../invoices/invoice.service';
@@ -75,6 +76,8 @@ export interface ClaimFileView {
   /** Completeness check: what's still missing before the pack is insurer/lawyer-ready. */
   gaps: ClaimGap[];
   ready: boolean;
+  /** Reconciliation: what was quoted vs what was finally invoiced (Stage 9 feedback). */
+  variance: QuoteVariance;
 }
 
 export interface ClaimFileExport extends ClaimFileView {
@@ -154,6 +157,11 @@ export class ClaimFileService {
       invoices,
     });
 
+    const variance = quoteVariance(
+      quotes.map((q) => ({ id: q.id, totalCents: q.totalCents })),
+      invoices.map((i) => ({ quoteId: i.quoteId, totalCents: i.totalCents })),
+    );
+
     return {
       job: {
         id: job.id,
@@ -199,6 +207,7 @@ export class ClaimFileService {
       financials: claimFinancials(invoices),
       gaps: completeness.gaps,
       ready: completeness.ready,
+      variance,
     };
   }
 
