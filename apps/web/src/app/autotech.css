@@ -616,6 +616,9 @@ textarea.at-input {
 .at-grad-estimate {
   background: linear-gradient(140deg, #ff375f, #c9184a);
 }
+.at-grad-ticket {
+  background: linear-gradient(140deg, #5c6470, #3a3f47);
+}
 
 .at-warn {
   border: 1px solid rgba(255, 149, 0, 0.4);
