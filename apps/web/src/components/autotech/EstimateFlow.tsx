@@ -56,8 +56,13 @@ interface CarRef {
 
 const regoOf = (v: SubjectView): string =>
   (typeof v.fields.rego === 'string' && v.fields.rego) || v.label;
-const carLine = (v: SubjectView): string =>
-  [v.fields.year, v.fields.make, v.fields.model].filter(Boolean).join(' ');
+/** Make/model/year for display — hides the "Unknown" placeholders a draft car carries. */
+const carLine = (v: SubjectView): string => {
+  const make = v.fields.make === 'Unknown' ? '' : v.fields.make;
+  const model = v.fields.model === 'Unknown' ? '' : v.fields.model;
+  if (!make && !model) return ''; // a plain draft — show just the rego
+  return [v.fields.year, make, model].filter(Boolean).join(' ');
+};
 
 /**
  * Instant estimate — start with the car's registration, snap photos of the damage, get an editable AI

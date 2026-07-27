@@ -43,8 +43,12 @@ type PhaseKey = (typeof PHASES)[number]['key'];
 
 const regoOf = (v: SubjectView): string =>
   (typeof v.fields.rego === 'string' && v.fields.rego) || v.label;
-const carLine = (v: SubjectView): string =>
-  [v.fields.year, v.fields.make, v.fields.model].filter(Boolean).join(' ');
+const carLine = (v: SubjectView): string => {
+  const make = v.fields.make === 'Unknown' ? '' : v.fields.make;
+  const model = v.fields.model === 'Unknown' ? '' : v.fields.model;
+  if (!make && !model) return ''; // a plain draft — show just the rego
+  return [v.fields.year, make, model].filter(Boolean).join(' ');
+};
 
 export function RepairPhotos() {
   const [rego, setRego] = useState('');
