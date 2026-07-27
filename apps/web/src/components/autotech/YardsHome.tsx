@@ -32,7 +32,7 @@ export function YardsHome() {
 
   return (
     <>
-      <AtTopbar backHref="/inout" right={<SignOutButton />} />
+      <AtTopbar backHref="/" right={<SignOutButton />} />
       <div className="at-h2">Yards</div>
 
       <div className="at-tiles">
