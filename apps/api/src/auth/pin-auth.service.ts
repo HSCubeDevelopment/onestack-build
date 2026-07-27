@@ -75,16 +75,20 @@ export class PinAuthService {
     const profiles = await this.supabase.profilesByUserId(members.map((m) => m.userId));
     const siteByEmail = new Map(EMPLOYEE_ROSTER.map((e) => [e.email.toLowerCase(), e.site]));
 
-    const entries = members.map((m) => {
-      const p = profiles.get(m.userId);
-      const email = p?.email ?? null;
-      return {
-        userId: m.userId,
-        name: p?.name || email || 'Unknown',
-        role: m.role as AppRole,
-        site: (email && siteByEmail.get(email.toLowerCase())) || null,
-      };
-    });
+    const entries = members
+      // Only people who actually resolve to a Supabase identity can sign in — skip stale/placeholder
+      // memberships with no user, so the picker never shows an "Unknown" row that can't log in.
+      .filter((m) => profiles.has(m.userId))
+      .map((m) => {
+        const p = profiles.get(m.userId);
+        const email = p?.email ?? null;
+        return {
+          userId: m.userId,
+          name: p?.name || email || 'Unknown',
+          role: m.role as AppRole,
+          site: (email && siteByEmail.get(email.toLowerCase())) || null,
+        };
+      });
     // Owner first, then tow, then employees A–Z — the order the picker shows.
     const rank = (r: AppRole) => (r === 'OWNER' ? 0 : r === 'TOW' ? 1 : 2);
     return entries.sort((a, b) => rank(a.role) - rank(b.role) || a.name.localeCompare(b.name));
