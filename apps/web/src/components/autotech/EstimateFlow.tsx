@@ -76,7 +76,7 @@ export function EstimateFlow() {
 
   return (
     <>
-      <AtTopbar backHref="/inout" right={<SignOutButton />} />
+      <AtTopbar backHref="/" right={<SignOutButton />} />
       <div className="at-h2">Instant estimate</div>
       <div className="at-note">
         Snap a few photos of the damage and get a rough draft — parts, repairs and a ballpark price

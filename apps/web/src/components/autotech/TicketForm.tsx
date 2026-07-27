@@ -83,7 +83,7 @@ export function TicketForm() {
   if (done) {
     return (
       <>
-        <AtTopbar backHref="/inout" right={<SignOutButton />} />
+        <AtTopbar backHref="/" right={<SignOutButton />} />
         <div className="at-done">
           <CheckCircle2 size={56} strokeWidth={2} color="var(--at-green)" />
           <div className="at-done-t">Ticket filed</div>
@@ -98,7 +98,7 @@ export function TicketForm() {
 
   return (
     <>
-      <AtTopbar backHref="/inout" right={<SignOutButton />} />
+      <AtTopbar backHref="/" right={<SignOutButton />} />
       <div className="at-h2">File a ticket</div>
       <div className="at-note">
         Photograph the infringement notice and log its details against the car.
