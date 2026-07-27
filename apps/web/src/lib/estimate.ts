@@ -34,8 +34,15 @@ export interface EstimateDraft {
   disclaimer: string;
 }
 
+export interface EstimateFlag {
+  level: 'info' | 'warn' | 'critical';
+  code: 'low_confidence' | 'supplementary' | 'structural';
+  message: string;
+}
+
 export type EstimateResult =
-  { configured: false } | ({ configured: true; analyzer: string } & EstimateDraft);
+  | { configured: false }
+  | ({ configured: true; analyzer: string; flags: EstimateFlag[] } & EstimateDraft);
 
 export const GST_RATE = 0.1;
 

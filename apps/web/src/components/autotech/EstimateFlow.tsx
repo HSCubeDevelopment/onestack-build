@@ -1,6 +1,6 @@
 'use client';
 import { useMemo, useRef, useState } from 'react';
-import { Camera, Sparkles, Trash2, Plus, X, AlertTriangle } from 'lucide-react';
+import { Camera, Sparkles, Trash2, Plus, X, AlertTriangle, ShieldAlert } from 'lucide-react';
 import { api, ApiError } from '@/lib/api';
 import { compressToBase64 } from '@/lib/image';
 import {
@@ -202,6 +202,21 @@ function EstimateResultView({
         <AlertTriangle size={16} strokeWidth={2.4} />
         <span>{result.disclaimer}</span>
       </div>
+
+      {result.flags.length > 0 && (
+        <div className="at-flags">
+          {result.flags.map((f, i) => (
+            <div key={i} className={`at-flag ${f.level}`}>
+              {f.level === 'critical' ? (
+                <ShieldAlert size={15} strokeWidth={2.4} />
+              ) : (
+                <AlertTriangle size={14} strokeWidth={2.4} />
+              )}
+              <span>{f.message}</span>
+            </div>
+          ))}
+        </div>
+      )}
 
       {result.summary && <div className="at-estsummary">{result.summary}</div>}
 
