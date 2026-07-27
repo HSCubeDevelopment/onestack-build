@@ -93,46 +93,32 @@ export class LoginController {
   }
 
   /**
-   * The seeded sample credentials, so the sign-in page can display / prefill them.
+   * The seeded sample identities, so the sign-in page can list who to sign in as.
    *
-   * By product decision this is available in EVERY environment (including production) — the demo tenant's
-   * sample logins are shown on the public sign-in page. `DEV_LOGIN_ENABLED` is the single on/off switch;
-   * set it to anything but 'true' to hide it. Note: this exposes the demo owner/staff passwords publicly.
-   * That is intentional and contained — those accounts belong to the demo tenant only, and Postgres RLS
-   * keeps them away from any other tenant's data.
+   * Passwords are NO LONGER returned: sign-in is by 4-digit PIN (see PinController), so exposing the shared
+   * demo password would only be a way to bypass the PIN via /auth/login. Names, emails and roles are the
+   * same public, demo-tenant-only surface as before, and Postgres RLS keeps them off any other tenant's
+   * data. Gated by `DEV_LOGIN_ENABLED`, unchanged. Kept for backward compatibility; the PIN name-picker
+   * uses `/auth/pin-directory`.
    */
   @Get('demo-credentials')
   demoCredentials(): {
-    accounts: { label: string; email: string; password: string; role: AppRole }[];
-    employees: { name: string; email: string; site: string; password: string }[];
+    accounts: { label: string; email: string; role: AppRole }[];
+    employees: { name: string; email: string; site: string }[];
   } {
     if (process.env.DEV_LOGIN_ENABLED !== 'true') {
       throw new ForbiddenException('Demo credentials are not available');
     }
     const owner = process.env.DEMO_OWNER_EMAIL;
-    const ownerPw = process.env.DEMO_OWNER_PASSWORD;
     const staff = process.env.DEMO_STAFF_EMAIL;
-    const staffPw = process.env.DEMO_STAFF_PASSWORD;
     // A tow driver is a first-class TOW role (301) — staff-level API access with a tow-focused web nav.
     const tow = process.env.DEMO_TOW_EMAIL;
-    const towPw = process.env.DEMO_TOW_PASSWORD;
-    const accounts: { label: string; email: string; password: string; role: AppRole }[] = [];
-    if (owner && ownerPw)
-      accounts.push({ label: 'Owner', email: owner, password: ownerPw, role: 'OWNER' });
-    if (staff && staffPw)
-      accounts.push({ label: 'Staff', email: staff, password: staffPw, role: 'STAFF' });
-    if (tow && towPw) accounts.push({ label: 'Tow', email: tow, password: towPw, role: 'TOW' });
+    const accounts: { label: string; email: string; role: AppRole }[] = [];
+    if (owner) accounts.push({ label: 'Owner', email: owner, role: 'OWNER' });
+    if (staff) accounts.push({ label: 'Staff', email: staff, role: 'STAFF' });
+    if (tow) accounts.push({ label: 'Tow', email: tow, role: 'TOW' });
 
-    // The workshop's real employees (attendance sheet), so the sign-in page's "sign in as <employee>"
-    // dropdown can log in as any of them. All share the STAFF demo password — same contained,
-    // demo-tenant-only exposure as the accounts above, and RLS keeps them off any other tenant's data.
-    const employeePw = staffPw ?? 'Staff!2345';
-    const employees = EMPLOYEE_ROSTER.map((e) => ({
-      name: e.name,
-      email: e.email,
-      site: e.site,
-      password: employeePw,
-    }));
+    const employees = EMPLOYEE_ROSTER.map((e) => ({ name: e.name, email: e.email, site: e.site }));
     return { accounts, employees };
   }
 
