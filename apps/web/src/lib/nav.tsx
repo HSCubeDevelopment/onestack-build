@@ -22,6 +22,7 @@ import {
   Building2,
   Users2,
   DollarSign,
+  ClipboardList,
   type LucideIcon,
 } from 'lucide-react';
 
@@ -64,6 +65,7 @@ export const NAV: NavRow[] = [
   { href: '/jobs', label: 'Jobs', Icon: Wrench, staff: true, tow: true },
   { href: '/calendar', label: 'Calendar', Icon: CalendarDays },
   { href: '/waitlist', label: 'Waitlist', Icon: ListChecks },
+  { href: '/forms', label: 'Forms', Icon: ClipboardList },
   { href: '/roster', label: 'Roster', Icon: CalendarDays, staff: true },
   { href: '/time-clock', label: 'Time clock', Icon: Clock, staff: true, tow: true },
   { section: 'Fleet & courtesy cars' },
