@@ -1,6 +1,7 @@
 import { BadRequestException, Inject, Injectable } from '@nestjs/common';
 import { DAMAGE_ANALYZER, DamageAnalyzer, MAX_ANALYSIS_IMAGES } from './damage-analyzer';
 import { EstimateFromPhotosDto } from './dto/estimate.dto';
+import { estimateFlags, EstimateFlag } from './estimate-flags';
 import { EstimateDraft, priceScope } from './estimate-pricing';
 
 /**
@@ -10,7 +11,8 @@ import { EstimateDraft, priceScope } from './estimate-pricing';
  * instead, exactly like the tracking panel, and the UI shows an honest empty state.
  */
 export type EstimateResult =
-  { configured: false } | ({ configured: true; analyzer: string } & EstimateDraft);
+  | { configured: false }
+  | ({ configured: true; analyzer: string; flags: EstimateFlag[] } & EstimateDraft);
 
 /**
  * Instant photo estimate (employee flow). Reuses the tested damage analyzer (slice A) for the hard part
@@ -40,6 +42,7 @@ export class EstimateService {
 
     const scope = await this.analyzer.analyze({ images, description: dto.notes });
     const draft = priceScope(scope, { labourRateAud: dto.labourRateAud });
-    return { configured: true, analyzer: this.analyzer.name, ...draft };
+    const { flags } = estimateFlags(scope.items);
+    return { configured: true, analyzer: this.analyzer.name, flags, ...draft };
   }
 }
