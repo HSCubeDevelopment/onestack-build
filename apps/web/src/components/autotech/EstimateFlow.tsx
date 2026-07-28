@@ -53,6 +53,12 @@ interface CarRef {
   label: string;
   jobRef: string | null;
 }
+/** A car from the fleet database (the real ~thousands-of-cars DB) that isn't a working job car yet. */
+interface FleetCar {
+  rego: string;
+  make: string;
+  model: string;
+}
 
 const regoOf = (v: SubjectView): string =>
   (typeof v.fields.rego === 'string' && v.fields.rego) || v.label;
@@ -74,6 +80,7 @@ export function EstimateFlow() {
   // Step 1: which car.
   const [rego, setRego] = useState('');
   const [matches, setMatches] = useState<SubjectView[] | null>(null);
+  const [fleetCar, setFleetCar] = useState<FleetCar | null>(null);
   const [notFound, setNotFound] = useState<string | null>(null);
   const [car, setCar] = useState<CarRef | null>(null);
   const [searching, setSearching] = useState(false);
@@ -106,12 +113,24 @@ export function EstimateFlow() {
     setErr(null);
     setMatches(null);
     setNotFound(null);
+    setFleetCar(null);
     try {
       const found = await api.get<SubjectView[]>(`/vehicle-profile?q=${encodeURIComponent(q)}`);
-      if (found.length === 0)
-        setNotFound(q.toUpperCase()); // offer to add it as a draft
-      else if (found.length === 1) await loadCar(found[0]!.id);
-      else setMatches(found);
+      if (found.length === 1) {
+        await loadCar(found[0]!.id);
+        return;
+      }
+      if (found.length > 1) {
+        setMatches(found);
+        return;
+      }
+      // Not a working car yet — look it up in the FLEET database (the real car DB) before giving up.
+      const fleet = await api.getOr<FleetCar | null>(
+        `/fleet/vehicles/lookup?rego=${encodeURIComponent(q)}`,
+        null,
+      );
+      if (fleet) setFleetCar({ rego: fleet.rego, make: fleet.make, model: fleet.model });
+      else setNotFound(q.toUpperCase());
     } catch (e) {
       setErr(e instanceof ApiError ? e.message : 'Could not search — try again.');
     } finally {
@@ -119,9 +138,9 @@ export function EstimateFlow() {
     }
   }
 
-  /** Car not in the system → start a draft with just this rego, then estimate against it. */
-  async function addDraft(): Promise<void> {
-    if (!notFound) return;
+  /** Open a car for estimating — a fleet car (seed its make/model) or a blank draft — creating/reusing
+   *  its working record (subject + draft job) so the estimate can be saved against it. */
+  async function openCar(info: { rego: string; make?: string; model?: string }): Promise<void> {
     setCreating(true);
     setErr(null);
     try {
@@ -130,11 +149,12 @@ export function EstimateFlow() {
         rego: string;
         label: string;
         jobReference: string;
-      }>('/vehicle-profile/draft', { rego: notFound });
+      }>('/vehicle-profile/draft', info);
       setCar({ id: c.vehicleId, rego: c.rego, label: c.label, jobRef: c.jobReference });
       setNotFound(null);
+      setFleetCar(null);
     } catch (e) {
-      setErr(e instanceof ApiError ? e.message : 'Could not add the car — try again.');
+      setErr(e instanceof ApiError ? e.message : 'Could not open the car — try again.');
     } finally {
       setCreating(false);
     }
@@ -238,6 +258,26 @@ export function EstimateFlow() {
           </>
         )}
 
+        {fleetCar && (
+          <div className="at-empty" style={{ marginTop: 16, textAlign: 'left' }}>
+            <div className="at-note">Found in the fleet database:</div>
+            <div style={{ marginTop: 2, fontSize: 18, fontWeight: 700 }}>
+              {[fleetCar.make, fleetCar.model].filter(Boolean).join(' ') || 'Vehicle'}
+              <span style={{ color: '#8a8a8e', fontWeight: 600 }}> · {fleetCar.rego}</span>
+            </div>
+            <button
+              className="at-btn primary"
+              style={{ marginTop: 12 }}
+              disabled={creating}
+              onClick={() =>
+                void openCar({ rego: fleetCar.rego, make: fleetCar.make, model: fleetCar.model })
+              }
+            >
+              <Car size={18} /> {creating ? 'Opening…' : 'Use this car'}
+            </button>
+          </div>
+        )}
+
         {notFound && (
           <div className="at-empty" style={{ marginTop: 16, textAlign: 'left' }}>
             <div>
@@ -250,7 +290,7 @@ export function EstimateFlow() {
               className="at-btn primary"
               style={{ marginTop: 12 }}
               disabled={creating}
-              onClick={() => void addDraft()}
+              onClick={() => void openCar({ rego: notFound })}
             >
               <Plus size={18} strokeWidth={2.6} /> {creating ? 'Adding…' : `Add car ${notFound}`}
             </button>

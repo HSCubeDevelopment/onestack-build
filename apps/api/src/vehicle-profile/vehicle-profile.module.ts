@@ -1,5 +1,6 @@
 import { Module } from '@nestjs/common';
 import { ContactsModule } from '../contacts/contacts.module';
+import { FleetModule } from '../fleet/fleet.module';
 import { SubjectModule } from '../subjects/subject.module';
 import { WorkItemModule } from '../work-items/work-item.module';
 import { VehicleProfileController } from './vehicle-profile.controller';

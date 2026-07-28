@@ -1,5 +1,6 @@
 import { BadRequestException, Injectable, NotFoundException } from '@nestjs/common';
 import { ContactsService, ContactView } from '../contacts/contacts.service';
+import { FleetService } from '../fleet/fleet.service';
 import { SubjectService, SubjectView } from '../subjects/subject.service';
 import { buildTimeline, TimelineEvent } from '../timeline/timeline';
 import { AttachmentService, AttachmentView } from '../work-items/attachment.service';
@@ -67,6 +68,7 @@ export class VehicleProfileService {
     private readonly workItems: WorkItemService,
     private readonly notes: NoteService,
     private readonly attachments: AttachmentService,
+    private readonly fleet: FleetService,
   ) {}
 
   /**
@@ -192,13 +194,23 @@ export class VehicleProfileService {
   }> {
     const rego = input.rego.replace(/\s+/g, '').toUpperCase().trim();
     if (!rego) throw new BadRequestException('Enter a registration.');
-    const make = input.make?.trim();
-    const model = input.model?.trim();
+    let make = input.make?.trim();
+    let model = input.model?.trim();
 
     // Reuse an existing car with this EXACT rego rather than creating a duplicate.
     const existing = (
       await this.subjects.searchAcrossFields(tenantId, 'vehicle', ['rego'], rego)
     ).find((v) => String((v.fields as Record<string, unknown>)?.rego ?? '').toUpperCase() === rego);
+
+    // Utilise the real car database: if this rego isn't a working car yet and we weren't told the
+    // make/model, pull them from the FLEET vehicle record (the ~thousands of imported cars) by rego.
+    if (!existing && !make && !model) {
+      const fleetCar = await this.fleet.getVehicleByRego(tenantId, rego);
+      if (fleetCar) {
+        make = fleetCar.make;
+        model = fleetCar.model;
+      }
+    }
 
     // A draft car has no customer yet, but the vehicle link and the job both want one — create a
     // placeholder contact (the shop fills in real details later), reused across the car and its job.
