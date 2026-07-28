@@ -1,6 +1,6 @@
 'use client';
 import { useMemo, useRef, useState } from 'react';
-import { Camera, Car, Search } from 'lucide-react';
+import { Camera, Car, Plus, Search } from 'lucide-react';
 import { api, ApiError } from '@/lib/api';
 import { compressToBase64 } from '@/lib/image';
 import { AtTopbar, SignOutButton } from '@/components/autotech/kit';
@@ -50,9 +50,19 @@ const carLine = (v: SubjectView): string => {
   return [v.fields.year, make, model].filter(Boolean).join(' ');
 };
 
+/** A fleet-database car (the real ~thousands-of-cars DB) that isn't a working job car yet. */
+interface FleetCar {
+  rego: string;
+  make: string;
+  model: string;
+}
+
 export function RepairPhotos() {
   const [rego, setRego] = useState('');
   const [matches, setMatches] = useState<SubjectView[] | null>(null);
+  const [fleetCar, setFleetCar] = useState<FleetCar | null>(null);
+  const [notFound, setNotFound] = useState<string | null>(null);
+  const [creating, setCreating] = useState(false);
   const [profile, setProfile] = useState<VehicleProfile | null>(null);
   const [jobId, setJobId] = useState<string | null>(null);
   const [searching, setSearching] = useState(false);
@@ -85,19 +95,46 @@ export function RepairPhotos() {
     setErr(null);
     setProfile(null);
     setMatches(null);
+    setNotFound(null);
+    setFleetCar(null);
     try {
       const found = await api.get<SubjectView[]>(`/vehicle-profile?q=${encodeURIComponent(q)}`);
-      if (found.length === 0) {
-        setErr(`No car found for “${q}”. Check the plate and try again.`);
-      } else if (found.length === 1) {
+      if (found.length === 1) {
         await loadProfile(found[0]!.id);
-      } else {
-        setMatches(found);
+        return;
       }
+      if (found.length > 1) {
+        setMatches(found);
+        return;
+      }
+      // Not a working car yet — look it up in the FLEET database (the real car DB) before giving up.
+      const fleet = await api.getOr<FleetCar | null>(
+        `/fleet/vehicles/lookup?rego=${encodeURIComponent(q)}`,
+        null,
+      );
+      if (fleet) setFleetCar({ rego: fleet.rego, make: fleet.make, model: fleet.model });
+      else setNotFound(q.toUpperCase());
     } catch (e) {
       setErr(e instanceof ApiError ? e.message : 'Could not search — try again.');
     } finally {
       setSearching(false);
+    }
+  }
+
+  /** Open a car for repair photos — a fleet car (seed its make/model) or a blank draft — creating or
+   *  reusing its working record (subject + draft job) so photos can attach. */
+  async function openCar(info: { rego: string; make?: string; model?: string }): Promise<void> {
+    setCreating(true);
+    setErr(null);
+    try {
+      const c = await api.post<{ vehicleId: string }>('/vehicle-profile/draft', info);
+      await loadProfile(c.vehicleId);
+      setNotFound(null);
+      setFleetCar(null);
+    } catch (e) {
+      setErr(e instanceof ApiError ? e.message : 'Could not open the car — try again.');
+    } finally {
+      setCreating(false);
     }
   }
 
@@ -183,6 +220,45 @@ export function RepairPhotos() {
               ))}
             </div>
           </>
+        )}
+
+        {fleetCar && (
+          <div className="at-empty" style={{ marginTop: 16, textAlign: 'left' }}>
+            <div className="at-note">Found in the fleet database:</div>
+            <div style={{ marginTop: 2, fontSize: 18, fontWeight: 700 }}>
+              {[fleetCar.make, fleetCar.model].filter(Boolean).join(' ') || 'Vehicle'}
+              <span style={{ color: '#8a8a8e', fontWeight: 600 }}> · {fleetCar.rego}</span>
+            </div>
+            <button
+              className="at-btn primary"
+              style={{ marginTop: 12 }}
+              disabled={creating}
+              onClick={() =>
+                void openCar({ rego: fleetCar.rego, make: fleetCar.make, model: fleetCar.model })
+              }
+            >
+              <Car size={18} /> {creating ? 'Opening…' : 'Use this car'}
+            </button>
+          </div>
+        )}
+
+        {notFound && (
+          <div className="at-empty" style={{ marginTop: 16, textAlign: 'left' }}>
+            <div>
+              No car found for <b>{notFound}</b>.
+            </div>
+            <div className="at-note" style={{ marginTop: 4 }}>
+              Start a draft with this registration — make &amp; model can be filled in later.
+            </div>
+            <button
+              className="at-btn primary"
+              style={{ marginTop: 12 }}
+              disabled={creating}
+              onClick={() => void openCar({ rego: notFound })}
+            >
+              <Plus size={18} strokeWidth={2.6} /> {creating ? 'Adding…' : `Add car ${notFound}`}
+            </button>
+          </div>
         )}
       </>
     );
