@@ -12,7 +12,7 @@ import { VehicleProfileService } from './vehicle-profile.service';
  * through that module's public service.
  */
 @Module({
-  imports: [SubjectModule, ContactsModule, WorkItemModule],
+  imports: [SubjectModule, ContactsModule, WorkItemModule, FleetModule],
   controllers: [VehicleProfileController],
   providers: [VehicleProfileService],
   exports: [VehicleProfileService],
