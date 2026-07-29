@@ -1,15 +1,46 @@
 /**
- * Repair-phase photos on a car (Before / During / After). Pure helpers, no DB/Nest — the target-job
- * resolution and the phase↔caption mapping, so they're unit-testable in isolation.
+ * Photo categories on a car. Pure helpers, no DB/Nest — the target-job resolution and the
+ * category↔caption mapping, so they're unit-testable in isolation.
  *
- * Work-item attachments have no typed "phase" column, only a free-text `caption`. We encode the phase in
- * the caption with these canonical labels, and group by them on the way back out. If a typed phase is
- * ever wanted, this is the one place the convention lives.
+ * Work-item attachments have no typed "category" column, only a free-text `caption`. We encode the
+ * category in the caption with these canonical labels, and group by them on the way back out. If a typed
+ * column is ever wanted, this is the one place the convention lives.
+ *
+ * The capture set mirrors the categories the floor actually shoots against — a car is photographed at
+ * check-in, when damage is found (pre-existing vs. accident vs. supplementary), while work progresses,
+ * and at handover. `uncategorized` is the honest bucket for a photo taken before anyone decides.
  */
-export const REPAIR_PHASES = ['before', 'during', 'after'] as const;
-export type RepairPhase = (typeof REPAIR_PHASES)[number];
+export const PHOTO_CATEGORIES = [
+  'uncategorized',
+  'check_in',
+  'existing_damage',
+  'accident_damage',
+  'supplementary_damage',
+  'progress',
+  'handover',
+] as const;
+export type PhotoCategory = (typeof PHOTO_CATEGORIES)[number];
+
+/**
+ * The original Before/During/After ids. Kept ACCEPTED and READABLE — never remapped — so photos taken
+ * under the old flow keep their true label instead of being retro-labelled as something they weren't.
+ * Not offered for new capture; the UI shows only PHOTO_CATEGORIES.
+ */
+export const LEGACY_PHASES = ['before', 'during', 'after'] as const;
+export type LegacyPhase = (typeof LEGACY_PHASES)[number];
+
+/** Everything the API accepts / can read back. */
+export const REPAIR_PHASES = [...PHOTO_CATEGORIES, ...LEGACY_PHASES] as const;
+export type RepairPhase = PhotoCategory | LegacyPhase;
 
 const CAPTION: Record<RepairPhase, string> = {
+  uncategorized: 'Uncategorized',
+  check_in: 'Check In',
+  existing_damage: 'Existing damage',
+  accident_damage: 'Accident damage',
+  supplementary_damage: 'Supplementary damage',
+  progress: 'Progress',
+  handover: 'Handover',
   before: 'Before repair',
   during: 'During repair',
   after: 'After repair',

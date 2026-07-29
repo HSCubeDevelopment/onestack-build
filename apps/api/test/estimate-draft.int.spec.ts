@@ -1,6 +1,7 @@
 // Editable saved estimate + employee job detail. An estimate saved against a car can be REOPENED and
 // edited in place (one draft per job — re-saving updates it), and a job's full detail is readable by
-// staff. Both are tenant-isolated. (Requires the 0053 estimate-draft table, which saveEstimate now writes.)
+// staff — with money behind the finance gate (owner sees it, plain staff don't). Both tenant-isolated.
+// (Requires the 0053 estimate-draft table, which saveEstimate now writes.)
 import type { INestApplication } from '@nestjs/common';
 import { PrismaClient } from '@prisma/client';
 import request from 'supertest';
@@ -91,14 +92,39 @@ describe.skipIf(!hasDb)('Editable estimate + job detail', () => {
     expect(Number(count[0]!.n)).toBe(1);
   });
 
-  it('returns the job detail with car, estimate and money withheld', async () => {
+  it('returns the job detail with car, vehicles and the saved estimate', async () => {
     const detail = (
       await http().get(`/api/v1/vehicle-profile/jobs/${jobId}`).set(auth(a)).expect(200)
     ).body;
     expect(detail.job.id).toBe(jobId);
     expect(detail.vehicle.rego.toUpperCase()).toContain('EST123');
+    expect(detail.vehicles).toHaveLength(1);
     expect(detail.estimate.data.totalAud).toBe(5678);
-    expect(detail.moneyHidden).toBe(true);
+    expect(Array.isArray(detail.notes)).toBe(true);
+    expect(Array.isArray(detail.photos)).toBe(true);
+  });
+
+  it('gates money on the employee job detail: owner sees it, plain staff do not', async () => {
+    const asOwner = (
+      await http().get(`/api/v1/vehicle-profile/jobs/${jobId}`).set(auth(a)).expect(200)
+    ).body;
+    expect(asOwner.moneyHidden).toBe(false);
+    expect(Array.isArray(asOwner.quotes)).toBe(true);
+    expect(Array.isArray(asOwner.invoices)).toBe(true);
+
+    // A STAFF member without a finance grant gets the same job, minus every dollar figure.
+    const asStaff = (
+      await http()
+        .get(`/api/v1/vehicle-profile/jobs/${jobId}`)
+        .set({ Authorization: `Bearer ${a.staffToken}` })
+        .expect(200)
+    ).body;
+    expect(asStaff.moneyHidden).toBe(true);
+    expect(asStaff.quotes).toBeNull(); // null, not [] — withheld, not "none"
+    expect(asStaff.invoices).toBeNull();
+    // The non-money picture is still fully there.
+    expect(asStaff.job.reference).toBe(asOwner.job.reference);
+    expect(asStaff.vehicle.rego).toBe(asOwner.vehicle.rego);
   });
 
   it('is tenant-isolated: shop B cannot read the job detail or the estimate', async () => {
