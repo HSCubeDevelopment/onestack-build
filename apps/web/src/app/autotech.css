@@ -214,6 +214,12 @@
 .at-grad-photos {
   background: linear-gradient(140deg, #ff375f, #d61f45);
 }
+.at-grad-history {
+  background: linear-gradient(140deg, #30b0c7, #1d7f91);
+}
+.at-grad-me {
+  background: linear-gradient(140deg, #64748b, #475569);
+}
 
 /* ---- repair photos: car header + phase blocks ---- */
 .at-back-link {
@@ -254,6 +260,96 @@
 }
 .at-phase {
   margin-top: 16px;
+}
+
+/* ---- car history: activity timeline ---- */
+.at-timeline {
+  margin-top: 8px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+.at-tlrow {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  background: #fff;
+  border: 1px solid #ececf0;
+  border-radius: 14px;
+  padding: 11px 13px;
+}
+.at-tlrow .ic {
+  flex: none;
+  width: 36px;
+  height: 36px;
+  border-radius: 10px;
+  display: grid;
+  place-items: center;
+  color: #fff;
+  background: #8e8e93;
+}
+.at-tlrow.out .ic {
+  background: #007aff;
+}
+.at-tlrow.in .ic {
+  background: #12a594;
+}
+.at-tlrow.note .ic {
+  background: #af52de;
+}
+.at-tlrow.job .ic {
+  background: #ff9500;
+}
+.at-tlrow .body {
+  min-width: 0;
+}
+.at-tlrow .ti {
+  font-size: 14.5px;
+  font-weight: 600;
+  color: #1c1c1e;
+}
+.at-tlrow .dt {
+  font-size: 12.5px;
+  color: #8a8a8e;
+  margin-top: 1px;
+}
+
+/* ---- my profile card ---- */
+.at-mecard {
+  margin-top: 12px;
+  background: #fff;
+  border: 1px solid #ececf0;
+  border-radius: 16px;
+  overflow: hidden;
+}
+.at-mecard .row {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 13px 14px;
+  border-bottom: 1px solid #f2f2f7;
+}
+.at-mecard .row:last-child {
+  border-bottom: 0;
+}
+.at-mecard .ic {
+  flex: none;
+  width: 34px;
+  height: 34px;
+  border-radius: 9px;
+  display: grid;
+  place-items: center;
+  background: #f2f2f7;
+  color: #48484a;
+}
+.at-mecard .k {
+  font-size: 12px;
+  color: #8a8a8e;
+}
+.at-mecard .v {
+  font-size: 15.5px;
+  font-weight: 600;
+  color: #1c1c1e;
 }
 .at-phase-head {
   display: flex;

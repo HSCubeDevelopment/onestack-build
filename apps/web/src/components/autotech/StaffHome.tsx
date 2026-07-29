@@ -1,6 +1,15 @@
 'use client';
 import Link from 'next/link';
-import { Camera, Car, Clock, Warehouse, Sparkles, ShieldAlert } from 'lucide-react';
+import {
+  Camera,
+  Car,
+  Clock,
+  Warehouse,
+  Sparkles,
+  ShieldAlert,
+  History,
+  UserCog,
+} from 'lucide-react';
 import { AtLogo, SignOutButton } from '@/components/autotech/kit';
 
 /**
@@ -47,6 +56,14 @@ export function StaffHome() {
         <span className="sub">Rego · before, during &amp; after photos on the job</span>
       </Link>
 
+      <Link href="/inout/car-history" className="at-bigbtn at-grad-history">
+        <span className="circ">
+          <History size={54} strokeWidth={2} />
+        </span>
+        <span className="lab">Car history</span>
+        <span className="sub">Every photo, estimate &amp; In / Out on a rego</span>
+      </Link>
+
       <Link href="/inout/yards" className="at-bigbtn at-grad-yards">
         <span className="circ">
           <Warehouse size={54} strokeWidth={2} />
@@ -69,6 +86,14 @@ export function StaffHome() {
         </span>
         <span className="lab">Clock In / Out</span>
         <span className="sub">Start &amp; finish your shift</span>
+      </Link>
+
+      <Link href="/inout/me" className="at-bigbtn at-grad-me">
+        <span className="circ">
+          <UserCog size={54} strokeWidth={2} />
+        </span>
+        <span className="lab">My profile</span>
+        <span className="sub">Your roster &amp; details · change your PIN</span>
       </Link>
     </>
   );
