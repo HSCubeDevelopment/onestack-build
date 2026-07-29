@@ -111,6 +111,9 @@ function CarRecord() {
             show={(t) => t !== 'invoice' && t !== 'ticket'}
           />
 
+          {/* Repair & estimate photos — the subject-side job photos (instant estimate / before-during-after). */}
+          <RepairEstimatePhotos rego={v.rego} />
+
           {/* Invoices — search rego → photo the invoice → save (against this car). */}
           <PhotoSection
             vehicleId={v.id}
@@ -155,6 +158,57 @@ function DetailRow({ label, value }: { label: string; value?: string }) {
 
 function SectionHeader({ children }: { children: React.ReactNode }) {
   return <div className="recdet-section">{children}</div>;
+}
+
+/**
+ * Repair & estimate photos — the SUBJECT-side job photos (instant-estimate + before/during/after repair),
+ * resolved from the rego via the vehicle 360. Hidden when the car has none. Read-only here.
+ */
+function RepairEstimatePhotos({ rego }: { rego: string }) {
+  const data = useAsync(async () => {
+    const subjects = await api.getOr<{ id: string }[]>(
+      `/vehicle-profile?q=${encodeURIComponent(rego)}`,
+      [],
+    );
+    if (!subjects[0]) return { vehicleId: null as string | null, photos: [] as JobPhoto[] };
+    const profile = await api.getOr<{ vehicle: { id: string }; photos: JobPhoto[] } | null>(
+      `/vehicle-profile/${subjects[0].id}`,
+      null,
+    );
+    return { vehicleId: profile?.vehicle.id ?? null, photos: profile?.photos ?? [] };
+  }, [rego]);
+
+  const d = data.data;
+  if (data.loading || !d || !d.vehicleId || d.photos.length === 0) return null;
+  return (
+    <>
+      <SectionHeader>Repair &amp; estimate photos ({d.photos.length})</SectionHeader>
+      <div className="card">
+        <div className="photo-grid">
+          {d.photos.map((p) => (
+            <a
+              key={p.id}
+              href={`/api/backend/vehicle-profile/${d.vehicleId}/photos/${p.id}/content`}
+              target="_blank"
+              rel="noreferrer"
+              title={p.caption ?? ''}
+            >
+              {/* eslint-disable-next-line @next/next/no-img-element */}
+              <img
+                src={`/api/backend/vehicle-profile/${d.vehicleId}/photos/${p.id}/content`}
+                alt={p.caption ?? 'Photo'}
+              />
+            </a>
+          ))}
+        </div>
+      </div>
+    </>
+  );
+}
+
+interface JobPhoto {
+  id: string;
+  caption: string | null;
 }
 
 /** Always-visible, inline-editable car notes (service history, damage, reminders). */
