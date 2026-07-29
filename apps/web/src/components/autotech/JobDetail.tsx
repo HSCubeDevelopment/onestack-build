@@ -18,8 +18,10 @@ import {
   ShieldCheck,
   FileSpreadsheet,
   Lock,
+  AlertTriangle,
 } from 'lucide-react';
 import { api, ApiError, money } from '@/lib/api';
+import { parseEstimateNote, type ParsedEstimateNote } from '@/lib/estimate-note';
 import { AtTopbar, SignOutButton } from '@/components/autotech/kit';
 
 /**
@@ -311,6 +313,116 @@ function EstimateBreakdown({ data, summary }: { data: Record<string, unknown>; s
         </div>
       </div>
     </>
+  );
+}
+
+/**
+ * An estimate note (the human-readable summary written to the job's timeline) rendered as tables. This is
+ * what a saved estimate looks like in "Notes & activity" — previously a 1,600-character paragraph. Parsed
+ * from the text we generated when saving, so it works for estimates saved before the structured store.
+ */
+function EstimateNoteTables({ parsed }: { parsed: ParsedEstimateNote }) {
+  return (
+    <div>
+      <div style={{ display: 'flex', justifyContent: 'space-between', gap: 10, fontWeight: 800 }}>
+        <span>AI estimate (draft)</span>
+        {parsed.total && <span>{parsed.total}</span>}
+      </div>
+      {parsed.summary && (
+        <div className="dt" style={{ marginTop: 4 }}>
+          {parsed.summary}
+        </div>
+      )}
+
+      {parsed.fixes.length > 0 && (
+        <>
+          <div className="at-estsub">What needs fixing</div>
+          <table className="at-tbl">
+            <thead>
+              <tr>
+                <th>Panel</th>
+                <th>Operation</th>
+              </tr>
+            </thead>
+            <tbody>
+              {parsed.fixes.map((f, i) => (
+                <tr key={i}>
+                  <td>
+                    {f.panel}
+                    {f.note && <span style={{ color: 'var(--at-label2)' }}> — {f.note}</span>}
+                  </td>
+                  <td style={{ textTransform: 'capitalize' }}>{f.operation}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </>
+      )}
+
+      {parsed.parts.length > 0 && (
+        <>
+          <div className="at-estsub">Parts</div>
+          <table className="at-tbl">
+            <thead>
+              <tr>
+                <th>Part</th>
+                <th className="num">Qty</th>
+                <th className="num">Unit</th>
+              </tr>
+            </thead>
+            <tbody>
+              {parsed.parts.map((p, i) => (
+                <tr key={i}>
+                  <td>{p.name}</td>
+                  <td className="num">{p.quantity}</td>
+                  <td className="num">{p.unitPrice || '—'}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </>
+      )}
+
+      {parsed.labour.length > 0 && (
+        <>
+          <div className="at-estsub">Labour</div>
+          <table className="at-tbl">
+            <thead>
+              <tr>
+                <th>Task</th>
+                <th className="num">Hours</th>
+              </tr>
+            </thead>
+            <tbody>
+              {parsed.labour.map((l, i) => (
+                <tr key={i}>
+                  <td style={{ textTransform: 'capitalize' }}>{l.task}</td>
+                  <td className="num">{l.hours || '—'}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </>
+      )}
+
+      {parsed.totals.length > 0 && (
+        <div className="at-esttotals">
+          {parsed.totals.map(([label, value], i) => (
+            <div key={i} className={`row${/estimated total/i.test(label) ? ' grand' : ''}`}>
+              <span>{label}</span>
+              <span>{value}</span>
+            </div>
+          ))}
+        </div>
+      )}
+
+      {parsed.flags.map((f, i) => (
+        <div key={i} className="at-flag warn" style={{ marginTop: 8 }}>
+          <AlertTriangle size={14} strokeWidth={2.4} />
+          <span>{f}</span>
+        </div>
+      ))}
+    </div>
   );
 }
 
@@ -669,19 +781,27 @@ export function JobDetail({ jobId }: { jobId: string }) {
         <div className="at-empty">Nothing logged on this job yet.</div>
       ) : (
         <div className="at-timeline">
-          {notes.map((n, i) => (
-            <div key={i} className="at-tlrow note">
-              <span className="ic">
-                <StickyNote size={18} />
-              </span>
-              <div className="body">
-                <div className="ti" style={{ whiteSpace: 'pre-wrap' }}>
-                  {n.body}
+          {notes.map((note, i) => {
+            // A saved estimate becomes a table; every other note stays plain text.
+            const parsed = parseEstimateNote(note.body);
+            return (
+              <div key={i} className="at-tlrow note" style={{ alignItems: 'flex-start' }}>
+                <span className="ic">
+                  {parsed ? <Sparkles size={18} /> : <StickyNote size={18} />}
+                </span>
+                <div className="body" style={{ flex: 1 }}>
+                  {parsed ? (
+                    <EstimateNoteTables parsed={parsed} />
+                  ) : (
+                    <div className="ti" style={{ whiteSpace: 'pre-wrap' }}>
+                      {note.body}
+                    </div>
+                  )}
+                  <div className="dt">{fmt(note.createdAt)}</div>
                 </div>
-                <div className="dt">{fmt(n.createdAt)}</div>
               </div>
-            </div>
-          ))}
+            );
+          })}
         </div>
       )}
 
