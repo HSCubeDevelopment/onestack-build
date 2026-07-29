@@ -1,23 +1,24 @@
 'use client';
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import Link from 'next/link';
 import {
   Search,
-  Car,
   Wrench,
   StickyNote,
   ArrowUpRight,
   ArrowDownLeft,
   ImageOff,
   Sparkles,
+  ReceiptText,
 } from 'lucide-react';
 import { api, ApiError } from '@/lib/api';
 import { AtTopbar, SignOutButton } from '@/components/autotech/kit';
 
 /**
- * Car history — enter a rego and see EVERYTHING recorded against that car: its photos (instant-estimate,
- * repair, handover), its jobs and estimates, and its In / Out movements. Pulls the pack "vehicle" 360
- * (jobs + notes + photos + timeline) AND the fleet record (In/Out movements + fleet photos), merged.
+ * Car history — a rego search on top, and beneath it a live DIRECTORY of everything moving through the
+ * yard: courtesy-car movements (in / out), tickets and jobs, newest first, across every car. Tapping any
+ * row with a rego drills into that car's full record (photos + estimates + jobs + In/Out), which is also
+ * what the search does. So it's both "look up one car" and "see what's happening" in one screen.
  */
 
 interface SubjectView {
@@ -59,6 +60,16 @@ interface FleetPhoto {
   photoType: string;
 }
 
+/** A row in the cross-car directory feed (GET /activity/feed). */
+interface ActivityEvent {
+  at: string;
+  kind: 'in' | 'out' | 'ticket' | 'job';
+  rego: string;
+  title: string;
+  subtitle: string;
+  ref: string;
+}
+
 interface PhotoItem {
   url: string;
   label: string;
@@ -90,6 +101,7 @@ export function CarHistory() {
   const [rego, setRego] = useState('');
   const [searching, setSearching] = useState(false);
   const [err, setErr] = useState<string | null>(null);
+  const [feed, setFeed] = useState<ActivityEvent[] | null>(null);
   const [loaded, setLoaded] = useState<{
     rego: string;
     line: string;
@@ -97,8 +109,12 @@ export function CarHistory() {
     events: Event[];
   } | null>(null);
 
-  async function view(): Promise<void> {
-    const q = rego.trim();
+  useEffect(() => {
+    void api.getOr<ActivityEvent[]>('/activity/feed?limit=40', []).then(setFeed);
+  }, []);
+
+  async function view(override?: string): Promise<void> {
+    const q = (override ?? rego).trim();
     if (!q) return;
     setSearching(true);
     setErr(null);
@@ -166,10 +182,22 @@ export function CarHistory() {
     }
   }
 
+  function openRego(r: string): void {
+    setRego(r.toUpperCase());
+    void view(r);
+  }
+
   const EventIcon = ({ kind }: { kind: Event['kind'] }) => {
     if (kind === 'out') return <ArrowUpRight size={18} />;
     if (kind === 'in') return <ArrowDownLeft size={18} />;
     if (kind === 'note') return <StickyNote size={18} />;
+    return <Wrench size={18} />;
+  };
+
+  const FeedIcon = ({ kind }: { kind: ActivityEvent['kind'] }) => {
+    if (kind === 'out') return <ArrowUpRight size={18} />;
+    if (kind === 'in') return <ArrowDownLeft size={18} />;
+    if (kind === 'ticket') return <ReceiptText size={18} />;
     return <Wrench size={18} />;
   };
 
@@ -181,8 +209,7 @@ export function CarHistory() {
         <>
           <div className="at-h2">Car history</div>
           <div className="at-note">
-            Enter a registration to see everything on record — photos, estimates, jobs and In / Out
-            movements.
+            Search a registration to see everything on that car — or browse the whole yard below.
           </div>
           {err && <div className="at-errbanner">{err}</div>}
           <div className="at-field" style={{ marginTop: 10 }}>
@@ -206,6 +233,41 @@ export function CarHistory() {
           >
             <Search size={18} /> {searching ? 'Loading…' : 'View history'}
           </button>
+
+          {/* Directory: everything across the yard, newest first */}
+          <div className="at-phase-head" style={{ marginTop: 22 }}>
+            <span className="t">Recent activity</span>
+            {feed && <span className="c">{feed.length}</span>}
+          </div>
+          {feed === null ? (
+            <div className="at-spin">Loading…</div>
+          ) : feed.length === 0 ? (
+            <div className="at-empty">Nothing recorded yet.</div>
+          ) : (
+            <div className="at-timeline">
+              {feed.map((e, i) => (
+                <div
+                  key={i}
+                  className={`at-tlrow ${e.kind}`}
+                  style={e.rego ? { cursor: 'pointer' } : undefined}
+                  onClick={() => e.rego && openRego(e.rego)}
+                >
+                  <span className="ic">
+                    <FeedIcon kind={e.kind} />
+                  </span>
+                  <div className="body">
+                    <div className="ti">
+                      {e.rego && <b>{e.rego}</b>}
+                      {e.rego ? ' · ' : ''}
+                      {e.title}
+                    </div>
+                    {e.subtitle && <div className="dt">{e.subtitle}</div>}
+                    <div className="dt">{fmt(e.at)}</div>
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
         </>
       ) : (
         <>
@@ -216,7 +278,7 @@ export function CarHistory() {
               setRego('');
             }}
           >
-            ‹ Search another rego
+            ‹ Back to directory
           </button>
           <div className="at-carhead">
             <div className="at-carrego">{loaded.rego}</div>

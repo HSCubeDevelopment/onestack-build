@@ -4,6 +4,26 @@
  * token cost). Falls back to the raw bytes if the canvas path isn't available. Returns base64 with no
  * `data:` prefix — the shape both /fleet/photos and /estimates/from-photos expect.
  */
+/**
+ * Read any file (PDF, image, …) as base64 with no `data:` prefix and no re-encoding — the shape the API's
+ * file endpoints expect. Use for PDFs and other non-image files where `compressToBase64` (which downscales
+ * via a canvas) doesn't apply. Rejects if the file can't be read.
+ */
+export async function fileToBase64(
+  file: File,
+): Promise<{ dataBase64: string; contentType: string }> {
+  const dataUrl = await new Promise<string>((res, rej) => {
+    const r = new FileReader();
+    r.onload = () => res(String(r.result));
+    r.onerror = () => rej(new Error('Could not read the file'));
+    r.readAsDataURL(file);
+  });
+  return {
+    dataBase64: dataUrl.split(',')[1] ?? '',
+    contentType: file.type || 'application/octet-stream',
+  };
+}
+
 export async function compressToBase64(
   file: File,
   maxEdge = 1600,
