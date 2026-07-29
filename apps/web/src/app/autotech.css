@@ -1139,3 +1139,93 @@ textarea.at-input {
   padding: 30px 0;
   font-weight: 700;
 }
+
+/* ---- tickets: AI extraction review + captured-file chips + on-car ticket list ---- */
+.at-grid2 {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 10px;
+}
+.at-grid2 .full {
+  grid-column: 1 / -1;
+}
+.at-filechip {
+  display: inline-flex;
+  align-items: center;
+  gap: 9px;
+  background: #f0f0f5;
+  border-radius: 12px;
+  padding: 10px 12px;
+  font-weight: 700;
+  font-size: 14px;
+  color: var(--at-label);
+  max-width: 100%;
+}
+.at-filechip .nm {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.at-filechip .rm {
+  border: none;
+  background: transparent;
+  color: var(--at-gray);
+  cursor: pointer;
+  display: inline-flex;
+  padding: 2px;
+}
+.at-aihint {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  background: rgba(0, 122, 255, 0.08);
+  color: var(--at-blue);
+  border-radius: 12px;
+  padding: 11px 13px;
+  font-weight: 700;
+  font-size: 14px;
+  margin: 4px 0 12px;
+}
+.at-tk {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  border: 1px solid var(--at-hair, #e6e6ec);
+  border-radius: 14px;
+  padding: 13px 14px;
+  margin-bottom: 10px;
+  background: #fff;
+}
+.at-tk .hd {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 10px;
+}
+.at-tk .ty {
+  font-weight: 800;
+  font-size: 15px;
+  color: var(--at-label);
+}
+.at-tk .amt {
+  font-weight: 800;
+  font-size: 15px;
+  white-space: nowrap;
+}
+.at-tk .mt {
+  font-size: 13px;
+  color: var(--at-label2);
+}
+.at-tk .act {
+  display: flex;
+  gap: 8px;
+  margin-top: 4px;
+}
+.at-spin-ic {
+  animation: at-spin-rot 0.9s linear infinite;
+}
+@keyframes at-spin-rot {
+  to {
+    transform: rotate(360deg);
+  }
+}

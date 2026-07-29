@@ -95,6 +95,7 @@ model Tenant {
   yards               Yard[]
   yardDrops           YardDrop[]
   sites               Site[]
+  tickets             Ticket[]
 
   @@map("onestack_tenant")
 }
@@ -831,6 +832,42 @@ model DamageScope {
   @@index([tenantId])
   @@index([tenantId, workItemId])
   @@map("onestack_damage_scope")
+}
+
+/// An infringement / police ticket captured against a car (automotive ops). The employee uploads a PDF or
+/// photographs the notice; Claude extracts the fields as an EDITABLE DRAFT a human confirms, then it's
+/// stored here — queryable by rego, agency, due date and status — with the original file kept in Storage.
+/// The core queryable fields are columns; the full extracted structure (recipient, fees breakdown, times)
+/// lives in `data`. Tenant-scoped with forced RLS.
+model Ticket {
+  id              String   @id @default(uuid()) @db.Uuid
+  tenantId        String   @db.Uuid
+  rego            String   @default("") // normalised (uppercase, no spaces) — the car the ticket is against
+  regoRaw         String   @default("") // as printed on the notice
+  noticeType      String   @default("") // e.g. 'Infringement Notice' | 'Notice of Final Demand'
+  noticeNumber    String   @default("") // primary reference (infringement / obligation number)
+  agency          String   @default("") // enforcement agency / issuer
+  offence         String   @default("") // offence description
+  offenceCode     String   @default("")
+  offenceAt       String   @default("") // offence date/time as printed (formats vary — kept as text)
+  location        String   @default("")
+  issueDate       String   @default("")
+  dueDate         String   @default("")
+  amountDueCents  Int      @default(0)
+  status          String   @default("open") // 'open' | 'paid' | 'disputed' | 'cancelled'
+  source          String   @default("photo") // 'photo' | 'pdf'
+  data            Json     @default("{}") // full extracted structure + any fields without a column
+  fileStoragePath String? // original image / PDF in Storage (tenant-prefixed ref)
+  fileContentType String?
+  createdByUserId String?  @db.Uuid
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+  tenant          Tenant   @relation(fields: [tenantId], references: [id])
+
+  @@index([tenantId])
+  @@index([tenantId, rego])
+  @@index([tenantId, status])
+  @@map("onestack_ticket")
 }
 
 /// AI photo-to-quote (Phase 2 flagship, slice B). The editable parts list derived from a damage scope's
