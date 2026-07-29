@@ -1,4 +1,5 @@
 import {
+  BadRequestException,
   ForbiddenException,
   Injectable,
   ServiceUnavailableException,
@@ -7,9 +8,10 @@ import {
 import * as jwt from 'jsonwebtoken';
 import { PrismaService } from '../prisma/prisma.service';
 import { AppRole } from './auth.types';
-import { EMPLOYEE_ROSTER } from './employee-roster';
+import { EMPLOYEE_ROSTER, WORKSHOP_SITES } from './employee-roster';
 import {
   clearedLockState,
+  hashPin,
   isLocked,
   isValidPin,
   LOCKOUT_MINUTES,
@@ -33,6 +35,18 @@ export interface PinLoginResult {
   token: string;
   user: { userId: string; tenantId: string; role: AppRole };
   expiresInSeconds: number;
+}
+
+/** The signed-in person's own profile — for the employee "My profile" screen. No secrets. */
+export interface MeProfile {
+  userId: string;
+  role: AppRole;
+  name: string | null;
+  email: string | null;
+  /** The workshop site(s) they're rostered / assigned to. */
+  sites: string[];
+  /** Whether a PIN is set (it always is for a real login; shown for completeness). */
+  pinSet: boolean;
 }
 
 /** app_metadata keys we own for PIN auth. Server-only — never included in the JWT we mint. */
@@ -146,6 +160,50 @@ export class PinAuthService {
       user: { userId, tenantId: membership.tenantId, role },
       expiresInSeconds: SESSION_SECONDS,
     };
+  }
+
+  /** The signed-in person's own profile: name, role and rostered/assigned site(s). Self-service. */
+  async me(userId: string, role: AppRole): Promise<MeProfile> {
+    const user = await this.supabase.getUser(userId);
+    const email = user?.email ?? null;
+    const name = (user?.user_metadata as { name?: string } | undefined)?.name ?? null;
+
+    // Prefer an explicit assigned-sites list (location keys), mapped to labels; else the rostered site.
+    const labelByKey = WORKSHOP_SITES as unknown as Record<string, string>;
+    const raw = user?.app_metadata?.['assigned_sites'];
+    let sites: string[] = Array.isArray(raw)
+      ? raw
+          .filter((k): k is string => typeof k === 'string')
+          .map((k) => labelByKey[k])
+          .filter((s): s is string => Boolean(s))
+      : [];
+    if (sites.length === 0 && email) {
+      const rostered = EMPLOYEE_ROSTER.find((e) => e.email.toLowerCase() === email.toLowerCase());
+      if (rostered) sites = [rostered.site];
+    }
+
+    return { userId, role, name, email, sites, pinSet: Boolean(user?.app_metadata?.[PIN_HASH]) };
+  }
+
+  /**
+   * Change YOUR OWN PIN — verify the current one, then store a new salted hash and clear any lockout.
+   * Self-service only (the caller can only change their own, gated at the controller by CurrentUser).
+   */
+  async changeOwnPin(userId: string, currentPin: string, newPin: string): Promise<{ ok: true }> {
+    if (!isValidPin(newPin)) throw new BadRequestException('New PIN must be exactly 4 digits.');
+    const user = await this.supabase.getUser(userId);
+    if (!user) throw new UnauthorizedException('Unknown login.');
+    const meta = { ...(user.app_metadata ?? {}) };
+    if (!verifyPin(currentPin, meta[PIN_HASH] as string | undefined)) {
+      throw new UnauthorizedException('Your current PIN is incorrect.');
+    }
+    await this.supabase.putAppMetadata(userId, {
+      ...meta,
+      [PIN_HASH]: hashPin(newPin),
+      [PIN_FAILED]: 0,
+      [PIN_LOCKED]: null,
+    });
+    return { ok: true };
   }
 
   /** Write the lockout counters back into app_metadata without disturbing the hash or other keys. */
