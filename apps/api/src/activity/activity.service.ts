@@ -86,7 +86,7 @@ export class ActivityService {
         rego: '',
         title: `Job ${j.reference}`,
         subtitle: j.stateName,
-        ref: j.reference,
+        ref: j.id, // the job id — the Car-history feed links this to the job-detail page
       });
     }
 

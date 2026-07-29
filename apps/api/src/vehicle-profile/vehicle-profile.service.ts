@@ -1,7 +1,9 @@
 import { BadRequestException, Injectable, NotFoundException } from '@nestjs/common';
 import { ContactsService, ContactView } from '../contacts/contacts.service';
+import { EstimateDraftService, EstimateDraftView } from '../estimate-draft/estimate-draft.service';
 import { FleetService } from '../fleet/fleet.service';
 import { SubjectService, SubjectView } from '../subjects/subject.service';
+import { TicketsService, TicketView } from '../tickets/tickets.service';
 import { buildTimeline, TimelineEvent } from '../timeline/timeline';
 import { AttachmentService, AttachmentView } from '../work-items/attachment.service';
 import { NoteService } from '../work-items/note.service';
@@ -54,8 +56,33 @@ export interface VehicleProfile {
   moneyHidden: boolean;
 }
 
+/** A single job's full detail for the employee mobile view (opened from Car history). Money withheld. */
+export interface EmployeeJobDetail {
+  job: {
+    id: string;
+    reference: string;
+    stateName: string;
+    assignees: string[];
+    siteId: string | null;
+    fields: Record<string, unknown>;
+    createdAt: string;
+    updatedAt: string;
+  };
+  vehicle: { id: string; label: string; rego: string; fields: Record<string, unknown> } | null;
+  notes: { body: string; authorUserId: string; createdAt: string }[];
+  photos: AttachmentView[];
+  estimate: EstimateDraftView | null;
+  tickets: TicketView[];
+  moneyHidden: boolean;
+}
+
 /** States that mean the car has left. Anything else is still live work. */
 const CLOSED_STATES = new Set(['collected', 'cancelled', 'closed']);
+
+/** The rego a vehicle subject is found by — its `rego` field, or the label as a fallback. */
+function regoOf(v: SubjectView): string {
+  return (typeof v.fields.rego === 'string' && v.fields.rego) || v.label;
+}
 
 const isOpen = (stateName: string): boolean =>
   !CLOSED_STATES.has(stateName.toLowerCase().replace(/[\s_-]/g, ''));
@@ -69,6 +96,8 @@ export class VehicleProfileService {
     private readonly notes: NoteService,
     private readonly attachments: AttachmentService,
     private readonly fleet: FleetService,
+    private readonly estimateDrafts: EstimateDraftService,
+    private readonly tickets: TicketsService,
   ) {}
 
   /**
@@ -290,8 +319,12 @@ export class VehicleProfileService {
       summary: string;
       photos: { dataBase64: string; contentType?: string }[];
       jobId?: string;
+      /** The full structured estimate — persisted so it can be REOPENED and edited in place. */
+      data?: unknown;
+      source?: string;
+      model?: string;
     },
-  ): Promise<{ jobId: string; jobReference: string; photoCount: number }> {
+  ): Promise<{ jobId: string; jobReference: string; photoCount: number; draftId: string }> {
     const vehicle = await this.subjects.get(tenantId, vehicleId);
     if (!vehicle || vehicle.type !== 'vehicle') throw new NotFoundException('Vehicle not found');
 
@@ -305,6 +338,9 @@ export class VehicleProfileService {
       );
     }
 
+    // Is this the first save for this job, or an in-place edit of an existing draft?
+    const existing = await this.estimateDrafts.getForJob(tenantId, resolved.job.id);
+
     for (const [i, p] of input.photos.entries()) {
       await this.attachments.add(tenantId, resolved.job.id, userId, {
         fileName: `estimate-${i + 1}.jpg`,
@@ -313,12 +349,84 @@ export class VehicleProfileService {
         caption: 'Estimate photo',
       });
     }
-    await this.notes.add(tenantId, resolved.job.id, userId, input.summary);
+    // Only drop a timeline note the FIRST time — an edit updates the draft in place, so re-noting each
+    // edit would just clutter the car's history.
+    if (!existing) await this.notes.add(tenantId, resolved.job.id, userId, input.summary);
+
+    const draft = await this.estimateDrafts.upsertForJob(tenantId, userId, {
+      workItemId: resolved.job.id,
+      rego: regoOf(vehicle),
+      summary: input.summary,
+      data: input.data,
+      photoCount: (existing?.photoCount ?? 0) + input.photos.length,
+      source: input.source ?? 'ai',
+      model: input.model ?? '',
+    });
 
     return {
       jobId: resolved.job.id,
       jobReference: resolved.job.reference,
       photoCount: input.photos.length,
+      draftId: draft.id,
+    };
+  }
+
+  /** The car's saved estimate draft (its current/target job's), or null if it has none. @AllowStaff read. */
+  async getEstimateDraft(
+    tenantId: string,
+    vehicleId: string,
+    jobId?: string,
+  ): Promise<EstimateDraftView | null> {
+    const vehicle = await this.subjects.get(tenantId, vehicleId);
+    if (!vehicle || vehicle.type !== 'vehicle') throw new NotFoundException('Vehicle not found');
+    const jobs = (await this.workItems.listForSubject(tenantId, vehicleId)).map(toJobSummary);
+    const resolved = resolveTargetJob(jobs, jobId);
+    if ('error' in resolved) return null; // no job yet → no draft
+    return this.estimateDrafts.getForJob(tenantId, resolved.job.id);
+  }
+
+  /**
+   * A single job's full detail for the on-the-floor employee view (opened from Car history). Composes the
+   * job, its car, notes/timeline, photos, saved estimate draft and the car's tickets — everything the job
+   * "entails" — through the same public services, no tables. MONEY stays hidden (like the car 360), so no
+   * quote/invoice figures leak to a role without finance.view.
+   */
+  async jobDetail(tenantId: string, jobId: string): Promise<EmployeeJobDetail> {
+    const job = await this.workItems.get(tenantId, jobId); // throws NotFound if missing / other tenant
+    const subjects = await this.subjects.listForWorkItem(tenantId, jobId);
+    const vehicle = subjects.find((s) => s.type === 'vehicle') ?? subjects[0] ?? null;
+    const rego = vehicle ? regoOf(vehicle) : '';
+
+    const [notes, photos, estimate, tickets] = await Promise.all([
+      this.notes.list(tenantId, jobId),
+      this.attachments.list(tenantId, jobId),
+      this.estimateDrafts.getForJob(tenantId, jobId),
+      rego ? this.tickets.list(tenantId, { rego }) : Promise.resolve([]),
+    ]);
+
+    return {
+      job: {
+        id: job.id,
+        reference: job.reference,
+        stateName: job.stateName,
+        assignees: job.assignees,
+        siteId: job.siteId,
+        fields: job.fields,
+        createdAt: job.createdAt.toISOString(),
+        updatedAt: job.updatedAt.toISOString(),
+      },
+      vehicle: vehicle
+        ? { id: vehicle.id, label: vehicle.label, rego, fields: vehicle.fields }
+        : null,
+      notes: notes.map((n) => ({
+        body: n.body,
+        authorUserId: n.authorUserId,
+        createdAt: n.createdAt.toISOString(),
+      })),
+      photos,
+      estimate,
+      tickets,
+      moneyHidden: true,
     };
   }
 

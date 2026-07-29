@@ -2,6 +2,7 @@ import { Type } from 'class-transformer';
 import {
   ArrayMaxSize,
   IsArray,
+  IsObject,
   IsOptional,
   IsString,
   IsUUID,
@@ -39,4 +40,22 @@ export class SaveEstimateDto {
   @IsOptional()
   @IsUUID()
   jobId?: string;
+
+  /**
+   * The full structured estimate (scope, parts, labour, rate, materials, totals, flags). Persisted so the
+   * estimate can be REOPENED and edited in place. Optional — a plain summary still saves without it.
+   */
+  @IsOptional()
+  @IsObject()
+  data?: Record<string, unknown>;
+
+  /** 'ai' | 'manual' — where the estimate came from. Defaults to 'ai'. */
+  @IsOptional()
+  @IsString()
+  source?: string;
+
+  /** The analyzer id that produced it (for audit). */
+  @IsOptional()
+  @IsString()
+  model?: string;
 }

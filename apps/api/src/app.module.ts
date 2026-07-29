@@ -32,6 +32,7 @@ import { DispatchModule } from './dispatch/dispatch.module';
 import { EventingModule } from './eventing/eventing.module';
 import { FleetModule } from './fleet/fleet.module';
 import { TicketsModule } from './tickets/tickets.module';
+import { EstimateDraftModule } from './estimate-draft/estimate-draft.module';
 import { ActivityModule } from './activity/activity.module';
 import { YardsModule } from './yards/yards.module';
 import { SitesModule } from './sites/sites.module';
@@ -116,6 +117,7 @@ import { TrackingModule } from './tracking/tracking.module';
     WebhooksModule,
     FleetModule, // fleet & courtesy cars: loan-car movements/returns/bookings/photos (migrated 1:1 from "In N Out")
     TicketsModule, // infringement / police tickets: upload PDF or photo → AI extraction → confirmed store (0052)
+    EstimateDraftModule, // saved editable photo-estimate drafts — reopen & edit in place (0053)
     ActivityModule, // cross-car activity directory (employee Car-history feed): movements + tickets + jobs
     TrackingModule, // fleet live-location via CityTag (In N Out migration §9, Phase 2; per-tenant secrets)
     YardsModule, // yards & vehicle logistics: park an incoming car at a yard before a job exists (YRD-1)

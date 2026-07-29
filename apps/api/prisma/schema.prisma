@@ -96,6 +96,7 @@ model Tenant {
   yardDrops           YardDrop[]
   sites               Site[]
   tickets             Ticket[]
+  estimateDrafts      EstimateDraft[]
 
   @@map("onestack_tenant")
 }
@@ -641,6 +642,7 @@ model WorkItem {
   purchaseOrders  PurchaseOrder[]
   materialRequests MaterialRequest[]
   supplierInvoices SupplierInvoice[]
+  estimateDrafts  EstimateDraft[]
   dispatch        Dispatch?
 
   @@unique([tenantId, reference])
@@ -868,6 +870,32 @@ model Ticket {
   @@index([tenantId, rego])
   @@index([tenantId, status])
   @@map("onestack_ticket")
+}
+
+/// A saved, structured photo-estimate draft for a job — so an employee's instant estimate can be REOPENED
+/// and edited in place instead of re-run from scratch. One current draft per job (re-saving updates it);
+/// `data` holds the full editable estimate (scope fixes, parts, labour, rate, materials, totals, flags) so
+/// it round-trips into the same editor. Draft only — never a formal money quote. Tenant-scoped, forced RLS.
+model EstimateDraft {
+  id              String   @id @default(uuid()) @db.Uuid
+  tenantId        String   @db.Uuid
+  workItemId      String   @db.Uuid // the job the estimate is for
+  rego            String   @default("") // convenience label/lookup
+  summary         String   @default("") // human-readable snapshot (also written to the job timeline)
+  data            Json     @default("{}") // the full structured estimate (round-trips into the editor)
+  photoCount      Int      @default(0)
+  source          String   @default("ai") // 'ai' | 'manual'
+  model           String   @default("") // analyzer id that produced it
+  status          String   @default("draft")
+  createdByUserId String?  @db.Uuid
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+  tenant          Tenant   @relation(fields: [tenantId], references: [id])
+  workItem        WorkItem @relation(fields: [workItemId], references: [id])
+
+  @@index([tenantId])
+  @@index([tenantId, workItemId])
+  @@map("onestack_estimate_draft")
 }
 
 /// AI photo-to-quote (Phase 2 flagship, slice B). The editable parts list derived from a damage scope's

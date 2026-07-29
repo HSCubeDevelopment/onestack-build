@@ -1,5 +1,5 @@
 'use client';
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import Link from 'next/link';
 import {
   Camera,
@@ -171,8 +171,17 @@ export function TicketForm() {
   const [err, setErr] = useState<string | null>(null);
   const [done, setDone] = useState<string | null>(null);
   const [existing, setExisting] = useState<TicketView[]>([]);
+  const [allTickets, setAllTickets] = useState<TicketView[]>([]);
 
   const set = (k: keyof Form, v: string) => setForm((f) => (f ? { ...f, [k]: v } : f));
+
+  // Load every ticket (across all cars) so the screen doubles as a ticket register with full detail.
+  async function loadAll(): Promise<void> {
+    setAllTickets(await api.getOr<TicketView[]>('/tickets', []));
+  }
+  useEffect(() => {
+    void loadAll();
+  }, []);
 
   async function addFiles(list: FileList | null): Promise<void> {
     if (!list?.length) return;
@@ -283,6 +292,7 @@ export function TicketForm() {
         file: first ? { dataBase64: first.dataBase64, contentType: first.contentType } : undefined,
       });
       setDone(form.rego.trim().toUpperCase());
+      void loadAll();
     } catch (e) {
       setErr(e instanceof ApiError ? e.message : 'Could not save the ticket.');
       setSaving(false);
@@ -292,7 +302,9 @@ export function TicketForm() {
   async function markPaid(id: string): Promise<void> {
     try {
       const updated = await api.patch<TicketView>(`/tickets/${id}`, { status: 'paid' });
-      setExisting((prev) => prev.map((t) => (t.id === id ? updated : t)));
+      const swap = (prev: TicketView[]) => prev.map((t) => (t.id === id ? updated : t));
+      setExisting(swap);
+      setAllTickets(swap);
     } catch {
       /* non-critical */
     }
@@ -308,14 +320,14 @@ export function TicketForm() {
     setExisting([]);
   }
 
-  const TicketList = () =>
-    existing.length === 0 ? null : (
+  const TicketList = ({ title, items }: { title: string; items: TicketView[] }) =>
+    items.length === 0 ? null : (
       <>
         <div className="at-phase-head" style={{ marginTop: 20 }}>
-          <span className="t">On this car</span>
-          <span className="c">{existing.length}</span>
+          <span className="t">{title}</span>
+          <span className="c">{items.length}</span>
         </div>
-        {existing.map((t) => (
+        {items.map((t) => (
           <div key={t.id} className="at-tk">
             <div className="hd">
               <div>
@@ -471,7 +483,7 @@ export function TicketForm() {
           {saving ? 'Saving…' : 'Save ticket'}
         </button>
 
-        <TicketList />
+        <TicketList title="On this car" items={existing} />
       </>
     );
   }
@@ -578,7 +590,8 @@ export function TicketForm() {
         <Pencil size={16} /> Enter manually
       </button>
 
-      <TicketList />
+      {existing.length > 0 && <TicketList title="On this car" items={existing} />}
+      <TicketList title="All tickets" items={allTickets} />
     </>
   );
 }
