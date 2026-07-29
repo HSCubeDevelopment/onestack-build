@@ -1,5 +1,6 @@
 'use client';
 import { useState } from 'react';
+import Link from 'next/link';
 import {
   Search,
   Car,
@@ -8,6 +9,7 @@ import {
   ArrowUpRight,
   ArrowDownLeft,
   ImageOff,
+  Sparkles,
 } from 'lucide-react';
 import { api, ApiError } from '@/lib/api';
 import { AtTopbar, SignOutButton } from '@/components/autotech/kit';
@@ -220,6 +222,14 @@ export function CarHistory() {
             <div className="at-carrego">{loaded.rego}</div>
             {loaded.line && <div className="at-carsub">{loaded.line}</div>}
           </div>
+
+          <Link
+            href={`/inout/estimate?rego=${encodeURIComponent(loaded.rego)}`}
+            className="at-btn ghost"
+            style={{ marginTop: 10, display: 'inline-flex', width: 'auto' }}
+          >
+            <Sparkles size={16} /> New / update estimate
+          </Link>
 
           {/* Photos */}
           <div className="at-phase-head" style={{ marginTop: 14 }}>

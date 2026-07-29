@@ -1,5 +1,5 @@
 'use client';
-import { useMemo, useRef, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import {
   Camera,
   Sparkles,
@@ -106,8 +106,22 @@ export function EstimateFlow() {
     setMatches(null);
   }
 
+  // Deep-link support: /inout/estimate?rego=1CW8ZV opens straight into that car (e.g. "Update estimate"
+  // from car history). Read from window.location so no Suspense boundary is needed.
+  useEffect(() => {
+    const r = new URLSearchParams(window.location.search).get('rego');
+    if (r) {
+      setRego(r.toUpperCase());
+      void searchFor(r.trim());
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
   async function search(): Promise<void> {
-    const q = rego.trim();
+    await searchFor(rego.trim());
+  }
+
+  async function searchFor(q: string): Promise<void> {
     if (!q) return;
     setSearching(true);
     setErr(null);
