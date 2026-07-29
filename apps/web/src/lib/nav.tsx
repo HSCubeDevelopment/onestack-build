@@ -87,6 +87,8 @@ export const NAV: NavRow[] = [
   // /finance/overview is gated the same way (FinanceGuard).
   { href: '/money', label: 'Money & Payments', Icon: DollarSign, financeView: true },
   { section: 'Settings' },
+  // Features (card #6.3): owner composes this tenant's product. API is OWNER-gated + tenant-scoped.
+  { href: '/settings/features', label: 'Features', Icon: Layers3 },
   // Sites: owner-only management (create/edit/delete 403 for staff), so no `staff` flag (SITE-1).
   { href: '/settings/sites', label: 'Sites', Icon: Building2 },
   // Team: owner manages members + finance access (40.8).
