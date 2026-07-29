@@ -21,17 +21,65 @@ export interface ModuleDef {
 
 export const MODULES = {
   // ---- Core platform (shared by every tenant) ----
-  contacts: { key: 'contacts', label: 'Contacts', defaultEnabled: true, group: 'core', toggleable: false },
+  contacts: {
+    key: 'contacts',
+    label: 'Contacts',
+    defaultEnabled: true,
+    group: 'core',
+    toggleable: false,
+  },
   // A module that is OFF by default — used to prove server-side enforcement (card #6.2).
-  scheduling: { key: 'scheduling', label: 'Scheduling', defaultEnabled: false, group: 'core', toggleable: true },
+  scheduling: {
+    key: 'scheduling',
+    label: 'Scheduling',
+    defaultEnabled: false,
+    group: 'core',
+    toggleable: true,
+  },
 
   // ---- Automotive pack (opt-in per tenant; off by default so enabling is a deliberate choice) ----
-  vehicles: { key: 'vehicles', label: 'Vehicles / fleet', defaultEnabled: false, group: 'automotive', toggleable: true },
-  movements: { key: 'movements', label: 'Movements (In / Out)', defaultEnabled: false, group: 'automotive', toggleable: true },
-  returns: { key: 'returns', label: 'Returns', defaultEnabled: false, group: 'automotive', toggleable: true },
-  bookings: { key: 'bookings', label: 'Bookings', defaultEnabled: false, group: 'automotive', toggleable: true },
-  tracking: { key: 'tracking', label: 'CityTag GPS tracking', defaultEnabled: false, group: 'automotive', toggleable: true },
-  damage_quote: { key: 'damage_quote', label: 'Damage → quote (AI)', defaultEnabled: false, group: 'automotive', toggleable: true },
+  vehicles: {
+    key: 'vehicles',
+    label: 'Vehicles / fleet',
+    defaultEnabled: false,
+    group: 'automotive',
+    toggleable: true,
+  },
+  movements: {
+    key: 'movements',
+    label: 'Movements (In / Out)',
+    defaultEnabled: false,
+    group: 'automotive',
+    toggleable: true,
+  },
+  returns: {
+    key: 'returns',
+    label: 'Returns',
+    defaultEnabled: false,
+    group: 'automotive',
+    toggleable: true,
+  },
+  bookings: {
+    key: 'bookings',
+    label: 'Bookings',
+    defaultEnabled: false,
+    group: 'automotive',
+    toggleable: true,
+  },
+  tracking: {
+    key: 'tracking',
+    label: 'CityTag GPS tracking',
+    defaultEnabled: false,
+    group: 'automotive',
+    toggleable: true,
+  },
+  damage_quote: {
+    key: 'damage_quote',
+    label: 'Damage → quote (AI)',
+    defaultEnabled: false,
+    group: 'automotive',
+    toggleable: true,
+  },
 } as const satisfies Record<string, ModuleDef>;
 
 export type ModuleKey = keyof typeof MODULES;
