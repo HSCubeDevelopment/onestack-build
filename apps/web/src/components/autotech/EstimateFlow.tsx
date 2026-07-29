@@ -11,6 +11,7 @@ import {
   Search,
   Save,
   Car,
+  Pencil,
 } from 'lucide-react';
 import { api, ApiError } from '@/lib/api';
 import { compressToBase64 } from '@/lib/image';
@@ -59,6 +60,14 @@ interface FleetCar {
   make: string;
   model: string;
 }
+/** A saved estimate for a car (its job's) — reopened into the editor and edited in place. */
+interface SavedEstimateDraft {
+  id: string;
+  workItemId: string;
+  summary: string;
+  data: Record<string, unknown>; // the full structured EstimateResult, round-tripped back into the editor
+  updatedAt: string;
+}
 
 const regoOf = (v: SubjectView): string =>
   (typeof v.fields.rego === 'string' && v.fields.rego) || v.label;
@@ -93,6 +102,15 @@ export function EstimateFlow() {
   const [busy, setBusy] = useState(false);
   const [err, setErr] = useState<string | null>(null);
   const [result, setResult] = useState<EstimateResult | null>(null);
+  const [savedDraft, setSavedDraft] = useState<SavedEstimateDraft | null>(null);
+  const [editJobId, setEditJobId] = useState<string | undefined>(undefined);
+
+  /** Fetch any saved estimate for the car so it can be reopened and edited in place. */
+  async function loadDraft(vehicleId: string): Promise<void> {
+    setSavedDraft(
+      await api.getOr<SavedEstimateDraft | null>(`/vehicle-profile/${vehicleId}/estimate`, null),
+    );
+  }
 
   async function loadCar(vehicleId: string): Promise<void> {
     const p = await api.get<VehicleProfile>(`/vehicle-profile/${vehicleId}`);
@@ -104,6 +122,14 @@ export function EstimateFlow() {
       jobRef: job?.reference ?? null,
     });
     setMatches(null);
+    void loadDraft(p.vehicle.id);
+  }
+
+  /** Reopen the saved estimate into the editor (no photos needed) — edits re-save in place. */
+  function editSaved(): void {
+    if (!savedDraft) return;
+    setEditJobId(savedDraft.workItemId);
+    setResult(savedDraft.data as EstimateResult);
   }
 
   // Deep-link support: /inout/estimate?rego=1CW8ZV opens straight into that car (e.g. "Update estimate"
@@ -167,6 +193,7 @@ export function EstimateFlow() {
       setCar({ id: c.vehicleId, rego: c.rego, label: c.label, jobRef: c.jobReference });
       setNotFound(null);
       setFleetCar(null);
+      void loadDraft(c.vehicleId);
     } catch (e) {
       setErr(e instanceof ApiError ? e.message : 'Could not open the car — try again.');
     } finally {
@@ -339,7 +366,14 @@ export function EstimateFlow() {
       {err && <div className="at-errbanner">{err}</div>}
 
       {result && result.configured ? (
-        <EstimateResultView result={result} car={car} photos={photos} onRestart={reset} />
+        <EstimateResultView
+          result={result}
+          car={car}
+          photos={photos}
+          jobId={editJobId}
+          editing={!!editJobId}
+          onRestart={reset}
+        />
       ) : result && !result.configured ? (
         <div className="at-empty">
           The AI estimator isn’t connected yet — ask the owner to enable it.
@@ -351,6 +385,21 @@ export function EstimateFlow() {
         </div>
       ) : (
         <>
+          {savedDraft && (
+            <div className="at-aihint" style={{ justifyContent: 'space-between' }}>
+              <span style={{ display: 'inline-flex', alignItems: 'center', gap: 8 }}>
+                <Save size={16} /> Saved estimate on file
+              </span>
+              <button
+                type="button"
+                className="at-chip on"
+                onClick={editSaved}
+                style={{ cursor: 'pointer' }}
+              >
+                <Pencil size={14} /> Edit it
+              </button>
+            </div>
+          )}
           <div className="at-photorow" style={{ marginTop: 8 }}>
             {photos.map((p, i) => (
               <div key={i} className="at-photothumb">
@@ -424,11 +473,16 @@ function EstimateResultView({
   result,
   car,
   photos,
+  jobId,
+  editing,
   onRestart,
 }: {
   result: Extract<EstimateResult, { configured: true }>;
   car: CarRef;
   photos: Photo[];
+  /** When reopening a saved estimate, the job it belongs to — so the edit re-saves in place. */
+  jobId?: string;
+  editing?: boolean;
   onRestart: () => void;
 }) {
   const [parts, setParts] = useState<EstimatePart[]>(result.parts);
@@ -479,6 +533,27 @@ function EstimateResultView({
     return lines.join('\n');
   }
 
+  /** The full structured estimate, persisted so it round-trips back into THIS editor when reopened. */
+  function buildData(): Record<string, unknown> {
+    return {
+      configured: true,
+      analyzer: result.analyzer,
+      flags: result.flags,
+      summary: result.summary,
+      fixes: result.fixes,
+      parts,
+      labour,
+      labourRateAud: rate,
+      partsSubtotalAud: totals.partsSubtotalAud,
+      labourSubtotalAud: totals.labourSubtotalAud,
+      materialsAud: materials,
+      subtotalAud: totals.subtotalAud,
+      gstAud: totals.gstAud,
+      totalAud: totals.totalAud,
+      disclaimer: result.disclaimer,
+    };
+  }
+
   async function save(): Promise<void> {
     setSaving(true);
     setSaveErr(null);
@@ -488,10 +563,17 @@ function EstimateResultView({
         `/vehicle-profile/${car.id}/estimate`,
         {
           summary: buildSummary(),
+          // On an edit there are no new photos; a fresh estimate saves the photos it was based on.
           photos: photos.map((p) => ({ dataBase64: p.dataBase64, contentType: p.contentType })),
+          data: buildData(),
+          source: 'ai',
+          model: result.analyzer,
+          ...(jobId ? { jobId } : {}),
         },
       );
-      setSaved(`Saved to ${car.rego}${res?.jobReference ? ` · job ${res.jobReference}` : ''}.`);
+      setSaved(
+        `${editing ? 'Updated' : 'Saved'} on ${car.rego}${res?.jobReference ? ` · job ${res.jobReference}` : ''}.`,
+      );
     } catch (e) {
       setSaveErr(e instanceof ApiError ? e.message : 'Could not save — try again.');
     } finally {

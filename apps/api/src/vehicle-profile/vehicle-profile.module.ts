@@ -1,7 +1,9 @@
 import { Module } from '@nestjs/common';
 import { ContactsModule } from '../contacts/contacts.module';
+import { EstimateDraftModule } from '../estimate-draft/estimate-draft.module';
 import { FleetModule } from '../fleet/fleet.module';
 import { SubjectModule } from '../subjects/subject.module';
+import { TicketsModule } from '../tickets/tickets.module';
 import { WorkItemModule } from '../work-items/work-item.module';
 import { VehicleProfileController } from './vehicle-profile.controller';
 import { VehicleProfileService } from './vehicle-profile.service';
@@ -12,7 +14,14 @@ import { VehicleProfileService } from './vehicle-profile.service';
  * through that module's public service.
  */
 @Module({
-  imports: [SubjectModule, ContactsModule, WorkItemModule, FleetModule],
+  imports: [
+    SubjectModule,
+    ContactsModule,
+    WorkItemModule,
+    FleetModule,
+    EstimateDraftModule,
+    TicketsModule,
+  ],
   controllers: [VehicleProfileController],
   providers: [VehicleProfileService],
   exports: [VehicleProfileService],

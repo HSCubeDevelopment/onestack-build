@@ -36,11 +36,16 @@ interface TimelineEvent {
   jobReference: string;
   summary: string;
 }
+interface JobRow {
+  id: string;
+  reference: string;
+  stateName: string;
+}
 interface VehicleProfile {
   vehicle: SubjectView;
   photos: Attachment[];
   timeline: TimelineEvent[];
-  jobs: { id: string; reference: string; stateName: string }[];
+  jobs: JobRow[];
 }
 interface FleetVehicle {
   id: string;
@@ -107,6 +112,7 @@ export function CarHistory() {
     line: string;
     photos: PhotoItem[];
     events: Event[];
+    jobs: JobRow[];
   } | null>(null);
 
   useEffect(() => {
@@ -174,7 +180,7 @@ export function CarHistory() {
         : fleet
           ? [fleet.make, fleet.model].filter((x) => cleanUnknown(x)).join(' ')
           : '';
-      setLoaded({ rego: rego2, line, photos, events });
+      setLoaded({ rego: rego2, line, photos, events, jobs: profile?.jobs ?? [] });
     } catch (e) {
       setErr(e instanceof ApiError ? e.message : 'Could not load history — try again.');
     } finally {
@@ -245,27 +251,47 @@ export function CarHistory() {
             <div className="at-empty">Nothing recorded yet.</div>
           ) : (
             <div className="at-timeline">
-              {feed.map((e, i) => (
-                <div
-                  key={i}
-                  className={`at-tlrow ${e.kind}`}
-                  style={e.rego ? { cursor: 'pointer' } : undefined}
-                  onClick={() => e.rego && openRego(e.rego)}
-                >
-                  <span className="ic">
-                    <FeedIcon kind={e.kind} />
-                  </span>
-                  <div className="body">
-                    <div className="ti">
-                      {e.rego && <b>{e.rego}</b>}
-                      {e.rego ? ' · ' : ''}
-                      {e.title}
+              {feed.map((e, i) => {
+                const inner = (
+                  <>
+                    <span className="ic">
+                      <FeedIcon kind={e.kind} />
+                    </span>
+                    <div className="body">
+                      <div className="ti">
+                        {e.rego && <b>{e.rego}</b>}
+                        {e.rego ? ' · ' : ''}
+                        {e.title}
+                      </div>
+                      {e.subtitle && <div className="dt">{e.subtitle}</div>}
+                      <div className="dt">{fmt(e.at)}</div>
                     </div>
-                    {e.subtitle && <div className="dt">{e.subtitle}</div>}
-                    <div className="dt">{fmt(e.at)}</div>
+                  </>
+                );
+                // Job rows open the job-detail page; car rows drill into that car; others are static.
+                if (e.kind === 'job') {
+                  return (
+                    <Link
+                      key={i}
+                      href={`/inout/job/${e.ref}`}
+                      className="at-tlrow job"
+                      style={{ cursor: 'pointer', textDecoration: 'none', color: 'inherit' }}
+                    >
+                      {inner}
+                    </Link>
+                  );
+                }
+                return (
+                  <div
+                    key={i}
+                    className={`at-tlrow ${e.kind}`}
+                    style={e.rego ? { cursor: 'pointer' } : undefined}
+                    onClick={() => e.rego && openRego(e.rego)}
+                  >
+                    {inner}
                   </div>
-                </div>
-              ))}
+                );
+              })}
             </div>
           )}
         </>
@@ -292,6 +318,32 @@ export function CarHistory() {
           >
             <Sparkles size={16} /> New / update estimate
           </Link>
+
+          {/* Jobs — tap through to the full job detail */}
+          {loaded.jobs.length > 0 && (
+            <>
+              <div className="at-phase-head" style={{ marginTop: 16 }}>
+                <span className="t">Jobs</span>
+                <span className="c">{loaded.jobs.length}</span>
+              </div>
+              {loaded.jobs.map((j) => (
+                <Link
+                  key={j.id}
+                  href={`/inout/job/${j.id}`}
+                  className="at-tk"
+                  style={{ textDecoration: 'none', color: 'inherit' }}
+                >
+                  <div className="hd">
+                    <div className="ty">
+                      <Wrench size={14} style={{ verticalAlign: '-2px', marginRight: 5 }} />
+                      Job {j.reference}
+                    </div>
+                    <span className="at-badge gray">{j.stateName}</span>
+                  </div>
+                </Link>
+              ))}
+            </>
+          )}
 
           {/* Photos */}
           <div className="at-phase-head" style={{ marginTop: 14 }}>
