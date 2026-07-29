@@ -30,7 +30,10 @@ const GROUP_SUB: Record<string, string> = {
  * refuses to toggle them). Owners reach this page via the owner-only nav entry.
  */
 export default function FeaturesPage() {
-  const { data, loading, error, reload } = useAsync(() => api.get<FeatureView[]>('/admin/features'), []);
+  const { data, loading, error, reload } = useAsync(
+    () => api.get<FeatureView[]>('/admin/features'),
+    [],
+  );
   const [busy, setBusy] = useState<string | null>(null);
   const [msg, setMsg] = useState('');
 

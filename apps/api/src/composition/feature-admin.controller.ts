@@ -73,6 +73,12 @@ export class FeatureAdminController {
       throw new UnprocessableEntityException('`enabled` must be true or false.');
     }
     await this.flags.setEnabled(user.tenantId, key, body.enabled);
-    return { key: def.key, label: def.label, group: def.group, toggleable: def.toggleable, enabled: body.enabled };
+    return {
+      key: def.key,
+      label: def.label,
+      group: def.group,
+      toggleable: def.toggleable,
+      enabled: body.enabled,
+    };
   }
 }

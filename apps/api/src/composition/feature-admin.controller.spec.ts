@@ -44,7 +44,9 @@ describe('FeatureAdminController', () => {
   });
 
   it('404s an unknown feature without revealing the catalogue', async () => {
-    await expect(ctrl.setEnabled(OWNER, 'nope', { enabled: true })).rejects.toBeInstanceOf(NotFoundException);
+    await expect(ctrl.setEnabled(OWNER, 'nope', { enabled: true })).rejects.toBeInstanceOf(
+      NotFoundException,
+    );
     expect(flags.setEnabled).not.toHaveBeenCalled();
   });
 

@@ -9,6 +9,15 @@ import { DependencyGraph, DepViolation } from './dependency-graph';
 export const MODULE_DEPENDENCIES: Record<ModuleKey, ModuleKey[]> = {
   contacts: [],
   scheduling: ['contacts'], // you can't schedule against nobody — scheduling needs contacts
+  // Automotive-pack modules added with the feature-admin panel (#136). Their real dependency edges are
+  // not defined yet, so they're declared with none for now (conservative — this never blocks a valid
+  // combination). Fill these in as the automotive module relationships are decided.
+  vehicles: [],
+  movements: [],
+  returns: [],
+  bookings: [],
+  tracking: [],
+  damage_quote: [],
 };
 
 /**
