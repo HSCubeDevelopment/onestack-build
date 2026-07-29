@@ -1229,3 +1229,62 @@ textarea.at-input {
     transform: rotate(360deg);
   }
 }
+
+/* ---- estimate breakdown tables (saved estimate, shown itemised not as a paragraph) ---- */
+.at-tbl {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 13.5px;
+  margin-top: 6px;
+}
+.at-tbl th {
+  text-align: left;
+  font-weight: 700;
+  color: var(--at-label2);
+  font-size: 11px;
+  text-transform: uppercase;
+  letter-spacing: 0.4px;
+  padding: 4px 8px;
+  border-bottom: 1px solid var(--at-hair, #e6e6ec);
+}
+.at-tbl td {
+  padding: 6px 8px;
+  border-bottom: 1px solid #f1f1f5;
+  color: var(--at-label);
+  vertical-align: top;
+}
+.at-tbl td.num,
+.at-tbl th.num {
+  text-align: right;
+  white-space: nowrap;
+  font-variant-numeric: tabular-nums;
+}
+.at-tbl tr:last-child td {
+  border-bottom: none;
+}
+.at-esttotals {
+  margin-top: 10px;
+  border-top: 2px solid var(--at-hair, #e6e6ec);
+  padding-top: 8px;
+}
+.at-esttotals .row {
+  display: flex;
+  justify-content: space-between;
+  padding: 3px 8px;
+  font-size: 13.5px;
+  color: var(--at-label2);
+}
+.at-esttotals .row.grand {
+  font-weight: 800;
+  font-size: 16px;
+  color: var(--at-label);
+  margin-top: 3px;
+}
+.at-estsub {
+  font-weight: 800;
+  font-size: 12px;
+  text-transform: uppercase;
+  letter-spacing: 0.4px;
+  color: var(--at-label2);
+  margin: 12px 0 2px;
+}

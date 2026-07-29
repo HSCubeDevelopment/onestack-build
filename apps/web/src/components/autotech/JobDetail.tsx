@@ -161,6 +161,159 @@ function Field({ label, value }: { label: string; value?: string | null }) {
   );
 }
 
+// ---- estimate breakdown: render the saved structured estimate as tables, not a paragraph ----
+const asArr = (v: unknown): Record<string, unknown>[] =>
+  Array.isArray(v)
+    ? (v.filter((x) => x && typeof x === 'object') as Record<string, unknown>[])
+    : [];
+const n = (v: unknown): number => (typeof v === 'number' && Number.isFinite(v) ? v : 0);
+const s = (v: unknown): string => (typeof v === 'string' ? v : '');
+const aud = (v: number): string =>
+  `$${v.toLocaleString('en-AU', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+
+/**
+ * A saved estimate, itemised. When the stored estimate carries structured lines (fixes / parts / labour)
+ * it renders them as tables with a totals block; older saves that only kept a text summary fall back to
+ * showing that summary (plus the total if present), so nothing regresses.
+ */
+function EstimateBreakdown({ data, summary }: { data: Record<string, unknown>; summary: string }) {
+  const fixes = asArr(data.fixes);
+  const parts = asArr(data.parts);
+  const labour = asArr(data.labour);
+  const total = n(data.totalAud);
+  const structured = fixes.length + parts.length + labour.length > 0;
+
+  if (!structured) {
+    return (
+      <>
+        {summary && (
+          <div className="mt" style={{ whiteSpace: 'pre-wrap' }}>
+            {summary}
+          </div>
+        )}
+        {total > 0 && (
+          <div className="at-esttotals">
+            <div className="row grand">
+              <span>Estimated total</span>
+              <span>{aud(total)}</span>
+            </div>
+          </div>
+        )}
+      </>
+    );
+  }
+
+  const rate = n(data.labourRateAud);
+  const rows: [string, number][] = [
+    ['Parts', n(data.partsSubtotalAud)],
+    ['Labour', n(data.labourSubtotalAud)],
+    ['Materials', n(data.materialsAud)],
+    ['Subtotal', n(data.subtotalAud)],
+    ['GST', n(data.gstAud)],
+  ];
+
+  return (
+    <>
+      {fixes.length > 0 && (
+        <>
+          <div className="at-estsub">What needs fixing</div>
+          <table className="at-tbl">
+            <thead>
+              <tr>
+                <th>Panel</th>
+                <th>Operation</th>
+              </tr>
+            </thead>
+            <tbody>
+              {fixes.map((f, i) => (
+                <tr key={i}>
+                  <td>
+                    {s(f.panel) || 'Panel'}
+                    {s(f.note) && <span style={{ color: 'var(--at-label2)' }}> — {s(f.note)}</span>}
+                  </td>
+                  <td style={{ textTransform: 'capitalize' }}>{s(f.operation)}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </>
+      )}
+
+      {parts.length > 0 && (
+        <>
+          <div className="at-estsub">Parts</div>
+          <table className="at-tbl">
+            <thead>
+              <tr>
+                <th>Part</th>
+                <th className="num">Qty</th>
+                <th className="num">Unit</th>
+                <th className="num">Total</th>
+              </tr>
+            </thead>
+            <tbody>
+              {parts.map((p, i) => {
+                const qty = n(p.quantity) || 1;
+                const unit = n(p.unitPriceAud);
+                return (
+                  <tr key={i}>
+                    <td>{s(p.name) || 'Part'}</td>
+                    <td className="num">{qty}</td>
+                    <td className="num">{aud(unit)}</td>
+                    <td className="num">{aud(qty * unit)}</td>
+                  </tr>
+                );
+              })}
+            </tbody>
+          </table>
+        </>
+      )}
+
+      {labour.length > 0 && (
+        <>
+          <div className="at-estsub">Labour{rate ? ` · ${aud(rate)}/h` : ''}</div>
+          <table className="at-tbl">
+            <thead>
+              <tr>
+                <th>Task</th>
+                <th className="num">Hours</th>
+                <th className="num">Cost</th>
+              </tr>
+            </thead>
+            <tbody>
+              {labour.map((l, i) => {
+                const hours = n(l.hours);
+                return (
+                  <tr key={i}>
+                    <td style={{ textTransform: 'capitalize' }}>{s(l.task) || 'Labour'}</td>
+                    <td className="num">{hours}</td>
+                    <td className="num">{rate ? aud(hours * rate) : '—'}</td>
+                  </tr>
+                );
+              })}
+            </tbody>
+          </table>
+        </>
+      )}
+
+      <div className="at-esttotals">
+        {rows
+          .filter(([, v]) => v > 0)
+          .map(([label, v]) => (
+            <div key={label} className="row">
+              <span>{label}</span>
+              <span>{aud(v)}</span>
+            </div>
+          ))}
+        <div className="row grand">
+          <span>Estimated total</span>
+          <span>{aud(total || n(data.subtotalAud))}</span>
+        </div>
+      </div>
+    </>
+  );
+}
+
 function SectionHead({ title, count }: { title: string; count?: number }) {
   return (
     <div className="at-phase-head" style={{ marginTop: 18 }}>
@@ -204,8 +357,6 @@ export function JobDetail({ jobId }: { jobId: string }) {
   const { quotes, invoices, moneyHidden } = data;
   const rego = vehicle?.rego ?? '';
   const line = vehicle ? carLine(vehicle.fields) : '';
-  const estTotal =
-    estimate && typeof estimate.data.totalAud === 'number' ? estimate.data.totalAud : null;
 
   // Claim-file readiness mirrors the owner's overview. Two of its four checks are quotes/invoices, so
   // it's only shown when money is visible — a part-blind percentage would be worse than none.
@@ -302,17 +453,7 @@ export function JobDetail({ jobId }: { jobId: string }) {
         <>
           <SectionHead title="Estimate" />
           <div className="at-tk">
-            {estTotal != null && (
-              <div className="hd">
-                <div className="ty">Estimated total</div>
-                <div className="amt">${Number(estTotal).toFixed(2)}</div>
-              </div>
-            )}
-            {estimate.summary && (
-              <div className="mt" style={{ whiteSpace: 'pre-wrap' }}>
-                {estimate.summary}
-              </div>
-            )}
+            <EstimateBreakdown data={estimate.data} summary={estimate.summary} />
             <div className="act">
               {rego && (
                 <Link
