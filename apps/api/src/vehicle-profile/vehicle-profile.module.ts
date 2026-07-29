@@ -2,6 +2,8 @@ import { Module } from '@nestjs/common';
 import { ContactsModule } from '../contacts/contacts.module';
 import { EstimateDraftModule } from '../estimate-draft/estimate-draft.module';
 import { FleetModule } from '../fleet/fleet.module';
+import { InvoicesModule } from '../invoices/invoices.module';
+import { QuotesModule } from '../quotes/quotes.module';
 import { SubjectModule } from '../subjects/subject.module';
 import { TicketsModule } from '../tickets/tickets.module';
 import { WorkItemModule } from '../work-items/work-item.module';
@@ -21,6 +23,8 @@ import { VehicleProfileService } from './vehicle-profile.service';
     FleetModule,
     EstimateDraftModule,
     TicketsModule,
+    QuotesModule,
+    InvoicesModule,
   ],
   controllers: [VehicleProfileController],
   providers: [VehicleProfileService],

@@ -34,12 +34,31 @@ interface VehicleProfile {
   photos: Attachment[];
 }
 
-const PHASES = [
+/**
+ * The categories a car is photographed against on the floor. Must stay in step with PHOTO_CATEGORIES in
+ * the API's repair-photos.ts — the caption is the stored value, so a mismatch would silently split a
+ * category in two.
+ */
+const CATEGORIES = [
+  { key: 'uncategorized', title: 'Uncategorized', caption: 'Uncategorized' },
+  { key: 'check_in', title: 'Check In', caption: 'Check In' },
+  { key: 'existing_damage', title: 'Existing damage', caption: 'Existing damage' },
+  { key: 'accident_damage', title: 'Accident damage', caption: 'Accident damage' },
+  { key: 'supplementary_damage', title: 'Supplementary damage', caption: 'Supplementary damage' },
+  { key: 'progress', title: 'Progress', caption: 'Progress' },
+  { key: 'handover', title: 'Handover', caption: 'Handover' },
+] as const;
+type PhaseKey = (typeof CATEGORIES)[number]['key'];
+
+/**
+ * Photos taken under the original Before/During/After flow. Shown (read-only) when a job actually has
+ * them, so history isn't hidden — but not offered for new capture.
+ */
+const LEGACY_CATEGORIES = [
   { key: 'before', title: 'Before repair', caption: 'Before repair' },
   { key: 'during', title: 'During repair', caption: 'During repair' },
   { key: 'after', title: 'After repair', caption: 'After repair' },
 ] as const;
-type PhaseKey = (typeof PHASES)[number]['key'];
 
 const regoOf = (v: SubjectView): string =>
   (typeof v.fields.rego === 'string' && v.fields.rego) || v.label;
@@ -68,11 +87,10 @@ export function RepairPhotos() {
   const [searching, setSearching] = useState(false);
   const [uploading, setUploading] = useState<PhaseKey | null>(null);
   const [err, setErr] = useState<string | null>(null);
-  const inputs = {
-    before: useRef<HTMLInputElement>(null),
-    during: useRef<HTMLInputElement>(null),
-    after: useRef<HTMLInputElement>(null),
-  };
+  // One shared file input: the category being added to is held in `pendingCat` while the picker is open,
+  // so adding a category never means adding another ref.
+  const fileInput = useRef<HTMLInputElement>(null);
+  const [pendingCat, setPendingCat] = useState<PhaseKey | null>(null);
 
   const openJobs = useMemo(() => profile?.jobs.filter((j) => j.isOpen) ?? [], [profile]);
   const activeJob = useMemo(
@@ -157,9 +175,15 @@ export function RepairPhotos() {
       setErr(e instanceof ApiError ? e.message : 'Could not upload — try again.');
     } finally {
       setUploading(null);
-      const ref = inputs[phase].current;
-      if (ref) ref.value = '';
+      setPendingCat(null);
+      if (fileInput.current) fileInput.current.value = '';
     }
+  }
+
+  /** Open the picker for a category (the shared input reads `pendingCat` on change). */
+  function pickFor(cat: PhaseKey): void {
+    setPendingCat(cat);
+    fileInput.current?.click();
   }
 
   function photosFor(caption: string): Attachment[] {
@@ -174,7 +198,7 @@ export function RepairPhotos() {
         <AtTopbar backHref="/" right={<SignOutButton />} />
         <div className="at-h2">Repair photos</div>
         <div className="at-note">
-          Enter the car’s registration, then add before / during / after photos to its job.
+          Enter the car’s registration, then add photos to its job under any category.
         </div>
 
         {err && <div className="at-errbanner">{err}</div>}
@@ -316,7 +340,7 @@ export function RepairPhotos() {
       )}
 
       {activeJob &&
-        PHASES.map((ph) => {
+        CATEGORIES.map((ph) => {
           const shots = photosFor(ph.caption);
           return (
             <div key={ph.key} className="at-phase">
@@ -338,7 +362,7 @@ export function RepairPhotos() {
                   type="button"
                   className="at-photoadd"
                   disabled={uploading !== null}
-                  onClick={() => inputs[ph.key].current?.click()}
+                  onClick={() => pickFor(ph.key)}
                 >
                   {uploading === ph.key ? (
                     <span className="at-spin" />
@@ -350,20 +374,48 @@ export function RepairPhotos() {
                   )}
                 </button>
               </div>
-              <input
-                ref={inputs[ph.key]}
-                type="file"
-                accept="image/*"
-                capture="environment"
-                multiple
-                style={{ display: 'none' }}
-                onChange={(e) => {
-                  if (e.target.files?.length) void addPhotos(ph.key, e.target.files);
-                }}
-              />
             </div>
           );
         })}
+
+      {/* Photos from the old Before/During/After flow — shown only when this job has some. */}
+      {activeJob &&
+        LEGACY_CATEGORIES.map((ph) => {
+          const shots = photosFor(ph.caption);
+          if (shots.length === 0) return null;
+          return (
+            <div key={ph.key} className="at-phase">
+              <div className="at-phase-head">
+                <span className="t">{ph.title}</span>
+                <span className="c">{shots.length}</span>
+              </div>
+              <div className="at-photorow">
+                {shots.map((s) => (
+                  <div key={s.id} className="at-photothumb">
+                    {/* eslint-disable-next-line @next/next/no-img-element */}
+                    <img
+                      src={`/api/backend/vehicle-profile/${v.id}/photos/${s.id}/content`}
+                      alt={`${ph.title} photo`}
+                    />
+                  </div>
+                ))}
+              </div>
+            </div>
+          );
+        })}
+
+      {/* One shared picker for every category — `pendingCat` says which one it's filling. */}
+      <input
+        ref={fileInput}
+        type="file"
+        accept="image/*"
+        capture="environment"
+        multiple
+        style={{ display: 'none' }}
+        onChange={(e) => {
+          if (e.target.files?.length && pendingCat) void addPhotos(pendingCat, e.target.files);
+        }}
+      />
     </>
   );
 }

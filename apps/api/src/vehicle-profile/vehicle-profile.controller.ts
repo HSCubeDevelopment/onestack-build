@@ -99,14 +99,21 @@ export class VehicleProfileController {
     return this.profiles.getEstimateDraft(user.tenantId, id, jobId);
   }
 
-  /** A single job's full detail for the employee mobile view (opened from Car history). */
+  /**
+   * A single job's full detail for the employee mobile view (opened from Car history) — everything the
+   * owner's job page shows. Money inside it stays behind the finance gate (40.8), applied per-caller in
+   * the service, so this staying @AllowStaff does not widen who can see dollars.
+   */
   @AllowStaff()
   @Get('jobs/:jobId')
   jobDetail(
     @CurrentUser() user: AuthContext,
     @Param('jobId') jobId: string,
   ): Promise<EmployeeJobDetail> {
-    return this.profiles.jobDetail(user.tenantId, jobId);
+    return this.profiles.jobDetail(user.tenantId, jobId, {
+      userId: user.userId,
+      role: user.role,
+    });
   }
 
   /** Stream a car photo's bytes (verified to belong to one of the car's jobs). Rendered in an <img>. */

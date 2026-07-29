@@ -2,6 +2,9 @@ import { BadRequestException, Injectable, NotFoundException } from '@nestjs/comm
 import { ContactsService, ContactView } from '../contacts/contacts.service';
 import { EstimateDraftService, EstimateDraftView } from '../estimate-draft/estimate-draft.service';
 import { FleetService } from '../fleet/fleet.service';
+import { InvoiceService } from '../invoices/invoice.service';
+import { PrismaService } from '../prisma/prisma.service';
+import { QuoteService } from '../quotes/quote.service';
 import { SubjectService, SubjectView } from '../subjects/subject.service';
 import { TicketsService, TicketView } from '../tickets/tickets.service';
 import { buildTimeline, TimelineEvent } from '../timeline/timeline';
@@ -56,7 +59,15 @@ export interface VehicleProfile {
   moneyHidden: boolean;
 }
 
-/** A single job's full detail for the employee mobile view (opened from Car history). Money withheld. */
+/**
+ * A single job's full detail for the employee mobile view (opened from Car history) — the same picture
+ * the owner's job page shows, so a worker on the floor isn't guessing at half a record.
+ *
+ * MONEY IS ROLE-GATED, not simply absent: quotes, invoices and the claim's dollar figures are included
+ * only when the caller passes the SAME finance gate the owner surface uses (card 40.8 — an OWNER always,
+ * a STAFF member only if the owner granted `canViewFinance`). When withheld, the money fields are null
+ * and `moneyHidden` is true so the UI can say "hidden" rather than imply zero.
+ */
 export interface EmployeeJobDetail {
   job: {
     id: string;
@@ -64,17 +75,38 @@ export interface EmployeeJobDetail {
     stateName: string;
     assignees: string[];
     siteId: string | null;
+    description: string;
     fields: Record<string, unknown>;
     createdAt: string;
     updatedAt: string;
   };
+  /** The primary vehicle (kept for existing callers) plus every vehicle on the job. */
   vehicle: { id: string; label: string; rego: string; fields: Record<string, unknown> } | null;
+  vehicles: { id: string; label: string; rego: string; fields: Record<string, unknown> }[];
+  customer: { id: string; displayName: string; phone: string | null; email: string | null } | null;
+  /** The insurance claim as recorded on the job. Dollar figures stripped unless money is visible. */
+  claim: Record<string, unknown> | null;
   notes: { body: string; authorUserId: string; createdAt: string }[];
   photos: AttachmentView[];
   estimate: EstimateDraftView | null;
   tickets: TicketView[];
+  /** Null when withheld by the finance gate (never an empty list, which would read as "none"). */
+  quotes: { id: string; reference: string; status: string; totalCents: number }[] | null;
+  invoices:
+    | {
+        id: string;
+        reference: string;
+        status: string;
+        totalCents: number;
+        paidCents: number;
+        balanceCents: number;
+      }[]
+    | null;
   moneyHidden: boolean;
 }
+
+/** Claim keys that carry dollar figures — removed when the caller can't see money. */
+const CLAIM_MONEY_KEYS = ['authorisedAmountCents', 'excessCents'];
 
 /** States that mean the car has left. Anything else is still live work. */
 const CLOSED_STATES = new Set(['collected', 'cancelled', 'closed']);
@@ -98,6 +130,9 @@ export class VehicleProfileService {
     private readonly fleet: FleetService,
     private readonly estimateDrafts: EstimateDraftService,
     private readonly tickets: TicketsService,
+    private readonly quotes: QuoteService,
+    private readonly invoices: InvoiceService,
+    private readonly prisma: PrismaService,
   ) {}
 
   /**
@@ -196,7 +231,7 @@ export class VehicleProfileService {
     }
 
     const attachment = await this.attachments.add(tenantId, resolved.job.id, userId, {
-      fileName: `${input.phase}-repair.jpg`,
+      fileName: `${input.phase}.jpg`,
       contentType: input.contentType || 'image/jpeg',
       dataBase64: input.dataBase64,
       caption: phaseCaption(input.phase),
@@ -391,18 +426,46 @@ export class VehicleProfileService {
    * "entails" — through the same public services, no tables. MONEY stays hidden (like the car 360), so no
    * quote/invoice figures leak to a role without finance.view.
    */
-  async jobDetail(tenantId: string, jobId: string): Promise<EmployeeJobDetail> {
+  async jobDetail(
+    tenantId: string,
+    jobId: string,
+    viewer: { userId: string; role: string },
+  ): Promise<EmployeeJobDetail> {
     const job = await this.workItems.get(tenantId, jobId); // throws NotFound if missing / other tenant
     const subjects = await this.subjects.listForWorkItem(tenantId, jobId);
-    const vehicle = subjects.find((s) => s.type === 'vehicle') ?? subjects[0] ?? null;
-    const rego = vehicle ? regoOf(vehicle) : '';
+    const vehicles = subjects
+      .filter((s) => s.type === 'vehicle')
+      .map((v) => ({ id: v.id, label: v.label, rego: regoOf(v), fields: v.fields }));
+    const primary = vehicles[0] ?? null;
+    const rego = primary?.rego ?? '';
 
-    const [notes, photos, estimate, tickets] = await Promise.all([
+    // The SAME gate the owner money surface uses (40.8) — owner always, staff only if granted.
+    const canViewMoney = await this.canViewFinance(tenantId, viewer);
+
+    const customerId = job.fields.customerId;
+    const [notes, photos, estimate, tickets, customer, quotes, invoices] = await Promise.all([
       this.notes.list(tenantId, jobId),
       this.attachments.list(tenantId, jobId),
       this.estimateDrafts.getForJob(tenantId, jobId),
       rego ? this.tickets.list(tenantId, { rego }) : Promise.resolve([]),
+      typeof customerId === 'string'
+        ? this.contacts.get(tenantId, customerId).catch(() => null)
+        : Promise.resolve(null),
+      canViewMoney
+        ? this.quotes.listForJob(tenantId, jobId).catch(() => [])
+        : Promise.resolve(null),
+      canViewMoney
+        ? this.invoices.listForJob(tenantId, jobId).catch(() => [])
+        : Promise.resolve(null),
     ]);
+
+    // The claim as recorded, with dollar figures stripped when money is withheld.
+    let claim: Record<string, unknown> | null = null;
+    const rawClaim = job.fields.claim;
+    if (rawClaim && typeof rawClaim === 'object') {
+      claim = { ...(rawClaim as Record<string, unknown>) };
+      if (!canViewMoney) for (const k of CLAIM_MONEY_KEYS) delete claim[k];
+    }
 
     return {
       job: {
@@ -411,13 +474,22 @@ export class VehicleProfileService {
         stateName: job.stateName,
         assignees: job.assignees,
         siteId: job.siteId,
+        description: typeof job.fields.description === 'string' ? job.fields.description : '',
         fields: job.fields,
         createdAt: job.createdAt.toISOString(),
         updatedAt: job.updatedAt.toISOString(),
       },
-      vehicle: vehicle
-        ? { id: vehicle.id, label: vehicle.label, rego, fields: vehicle.fields }
+      vehicle: primary,
+      vehicles,
+      customer: customer
+        ? {
+            id: customer.id,
+            displayName: customer.displayName,
+            phone: customer.phone,
+            email: customer.email,
+          }
         : null,
+      claim,
       notes: notes.map((n) => ({
         body: n.body,
         authorUserId: n.authorUserId,
@@ -426,8 +498,40 @@ export class VehicleProfileService {
       photos,
       estimate,
       tickets,
-      moneyHidden: true,
+      quotes:
+        quotes?.map((q) => ({
+          id: q.id,
+          reference: q.reference,
+          status: q.status,
+          totalCents: q.totalCents,
+        })) ?? null,
+      invoices:
+        invoices?.map((i) => ({
+          id: i.id,
+          reference: i.reference,
+          status: i.status,
+          totalCents: i.totalCents,
+          paidCents: i.paidCents,
+          balanceCents: i.balanceCents,
+        })) ?? null,
+      moneyHidden: !canViewMoney,
     };
+  }
+
+  /**
+   * Card 40.8's finance rule, read per-request from the membership row (not the JWT) so a revoked grant
+   * takes effect immediately — deliberately identical to FinanceGuard rather than a second, drifting copy.
+   */
+  private async canViewFinance(
+    tenantId: string,
+    viewer: { userId: string; role: string },
+  ): Promise<boolean> {
+    if (viewer.role === 'OWNER') return true;
+    const membership = await this.prisma.membership.findFirst({
+      where: { tenantId, userId: viewer.userId },
+      select: { canViewFinance: true },
+    });
+    return membership?.canViewFinance ?? false;
   }
 
   /**

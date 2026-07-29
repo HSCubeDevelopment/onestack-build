@@ -12,20 +12,31 @@ import {
   Pencil,
   MapPin,
   Users,
+  User,
+  Phone,
+  Mail,
+  ShieldCheck,
+  FileSpreadsheet,
+  Lock,
 } from 'lucide-react';
 import { api, ApiError, money } from '@/lib/api';
 import { AtTopbar, SignOutButton } from '@/components/autotech/kit';
 
 /**
- * Job details for the employee (opened from Car history). Everything a job entails, in the mobile view:
- * the car, status, the saved estimate (with an edit link), photos, tickets on the car, and the notes /
- * activity timeline. Money is withheld by the API (like the car 360) — no quote/invoice figures here.
+ * Job details for the employee (opened from Car history) — the same picture the owner's job page shows,
+ * in the mobile shell: car(s), customer, status, description, the insurance claim, the saved estimate,
+ * photos by category, tickets on the car, quotes/invoices, and the notes timeline.
+ *
+ * Money is gated SERVER-SIDE by the finance rule (card 40.8): an owner always sees it, a staff member
+ * only if the owner granted finance access. When it's withheld the API sends null (not zero) and this
+ * page says so plainly rather than implying there's nothing there.
  */
 
 interface Attachment {
   id: string;
   caption: string | null;
   contentType: string;
+  createdAt: string;
 }
 interface NoteItem {
   body: string;
@@ -49,6 +60,26 @@ interface Ticket {
   status: string;
   hasFile: boolean;
 }
+interface VehicleRow {
+  id: string;
+  label: string;
+  rego: string;
+  fields: Record<string, unknown>;
+}
+interface QuoteRow {
+  id: string;
+  reference: string;
+  status: string;
+  totalCents: number;
+}
+interface InvoiceRow {
+  id: string;
+  reference: string;
+  status: string;
+  totalCents: number;
+  paidCents: number;
+  balanceCents: number;
+}
 interface JobDetailData {
   job: {
     id: string;
@@ -56,15 +87,21 @@ interface JobDetailData {
     stateName: string;
     assignees: string[];
     siteId: string | null;
+    description: string;
     fields: Record<string, unknown>;
     createdAt: string;
     updatedAt: string;
   };
-  vehicle: { id: string; label: string; rego: string; fields: Record<string, unknown> } | null;
+  vehicle: VehicleRow | null;
+  vehicles: VehicleRow[];
+  customer: { id: string; displayName: string; phone: string | null; email: string | null } | null;
+  claim: Record<string, unknown> | null;
   notes: NoteItem[];
   photos: Attachment[];
   estimate: EstimateDraft | null;
   tickets: Ticket[];
+  quotes: QuoteRow[] | null;
+  invoices: InvoiceRow[] | null;
   moneyHidden: boolean;
 }
 
@@ -74,6 +111,22 @@ const TICKET_BADGE: Record<string, string> = {
   disputed: 'purple',
   cancelled: 'gray',
 };
+
+/** Photo categories, in capture order — must match PHOTO_CATEGORIES in the API's repair-photos.ts. */
+const PHOTO_GROUPS = [
+  'Check In',
+  'Existing damage',
+  'Accident damage',
+  'Supplementary damage',
+  'Progress',
+  'Handover',
+  'Uncategorized',
+  // Legacy captions from the original Before/During/After flow — still shown where they exist.
+  'Before repair',
+  'During repair',
+  'After repair',
+  'Estimate photo',
+];
 
 const cleanUnknown = (s: unknown): string => (s === 'Unknown' || !s ? '' : String(s));
 const carLine = (f: Record<string, unknown>): string =>
@@ -97,6 +150,25 @@ const fmt = (iso: string): string =>
     hour: 'numeric',
     minute: '2-digit',
   });
+
+/** A labelled value; shows an em-dash rather than a blank so a missing field reads as "not recorded". */
+function Field({ label, value }: { label: string; value?: string | null }) {
+  return (
+    <div className="at-field" style={{ margin: 0 }}>
+      <div className="at-flabel">{label}</div>
+      <div style={{ fontWeight: 700, fontSize: 15 }}>{value || '—'}</div>
+    </div>
+  );
+}
+
+function SectionHead({ title, count }: { title: string; count?: number }) {
+  return (
+    <div className="at-phase-head" style={{ marginTop: 18 }}>
+      <span className="t">{title}</span>
+      {count != null && <span className="c">{count}</span>}
+    </div>
+  );
+}
 
 export function JobDetail({ jobId }: { jobId: string }) {
   const [data, setData] = useState<JobDetailData | null>(null);
@@ -128,11 +200,38 @@ export function JobDetail({ jobId }: { jobId: string }) {
     );
   }
 
-  const { job, vehicle, notes, photos, estimate, tickets } = data;
-  const rego = vehicle?.rego ?? cleanUnknown(vehicle?.fields.rego);
+  const { job, vehicle, vehicles, customer, claim, notes, photos, estimate, tickets } = data;
+  const { quotes, invoices, moneyHidden } = data;
+  const rego = vehicle?.rego ?? '';
   const line = vehicle ? carLine(vehicle.fields) : '';
   const estTotal =
     estimate && typeof estimate.data.totalAud === 'number' ? estimate.data.totalAud : null;
+
+  // Claim-file readiness mirrors the owner's overview. Two of its four checks are quotes/invoices, so
+  // it's only shown when money is visible — a part-blind percentage would be worse than none.
+  const readiness = moneyHidden
+    ? null
+    : (() => {
+        const items = [
+          { label: 'Claim details recorded', done: !!claim },
+          { label: 'Damage photos (3+)', done: photos.length >= 3 },
+          { label: 'Quote prepared', done: (quotes?.length ?? 0) >= 1 },
+          { label: 'Invoice raised', done: (invoices?.length ?? 0) >= 1 },
+        ];
+        const done = items.filter((i) => i.done).length;
+        return {
+          pct: Math.round((done / items.length) * 100),
+          missing: items.filter((i) => !i.done),
+        };
+      })();
+
+  // Group photos by their category caption; anything unrecognised falls into "Other".
+  const grouped = PHOTO_GROUPS.map((g) => ({
+    title: g,
+    shots: photos.filter((p) => p.caption === g),
+  })).filter((g) => g.shots.length > 0);
+  const otherShots = photos.filter((p) => !PHOTO_GROUPS.includes(p.caption ?? ''));
+  if (otherShots.length) grouped.push({ title: 'Other', shots: otherShots });
 
   return (
     <>
@@ -149,14 +248,59 @@ export function JobDetail({ jobId }: { jobId: string }) {
         </div>
       </div>
 
+      {customer && (
+        <div className="at-tk" style={{ marginTop: 12 }}>
+          <div className="ty">
+            <User size={14} style={{ verticalAlign: '-2px', marginRight: 5 }} />
+            {customer.displayName}
+          </div>
+          {customer.phone && (
+            <a className="mt" href={`tel:${customer.phone}`} style={{ color: 'inherit' }}>
+              <Phone size={13} style={{ verticalAlign: '-2px', marginRight: 6 }} />
+              {customer.phone}
+            </a>
+          )}
+          {customer.email && (
+            <div className="mt">
+              <Mail size={13} style={{ verticalAlign: '-2px', marginRight: 6 }} />
+              {customer.email}
+            </div>
+          )}
+        </div>
+      )}
+
+      {job.description && (
+        <>
+          <SectionHead title="Description" />
+          <div className="at-tk">
+            <div className="mt" style={{ whiteSpace: 'pre-wrap' }}>
+              {job.description}
+            </div>
+          </div>
+        </>
+      )}
+
+      {/* Claim-file readiness — only when the full picture (incl. quotes/invoices) is visible. */}
+      {readiness && (
+        <>
+          <SectionHead title="Claim file" />
+          <div className="at-tk">
+            <div className="hd">
+              <div className="ty">{readiness.pct}% ready</div>
+            </div>
+            <div className="mt">
+              {readiness.missing.length === 0
+                ? 'Everything a claim pack needs is present.'
+                : `Missing: ${readiness.missing.map((m) => m.label).join(' · ')}`}
+            </div>
+          </div>
+        </>
+      )}
+
       {/* Estimate */}
       {estimate ? (
         <>
-          <div className="at-lbl" style={{ marginTop: 16 }}>
-            <span style={{ display: 'inline-flex', alignItems: 'center', gap: 6 }}>
-              <Sparkles size={15} /> Estimate
-            </span>
-          </div>
+          <SectionHead title="Estimate" />
           <div className="at-tk">
             {estTotal != null && (
               <div className="hd">
@@ -193,36 +337,133 @@ export function JobDetail({ jobId }: { jobId: string }) {
         )
       )}
 
-      {/* Photos */}
-      <div className="at-phase-head" style={{ marginTop: 18 }}>
-        <span className="t">Photos</span>
-        <span className="c">{photos.length}</span>
-      </div>
+      {/* Quotes & invoices — the money surface, shown only to someone allowed to see it. */}
+      {moneyHidden ? (
+        <>
+          <SectionHead title="Quotes & invoices" />
+          <div className="at-empty" style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
+            <Lock size={16} /> Hidden — ask the owner for finance access.
+          </div>
+        </>
+      ) : (
+        <>
+          <SectionHead title="Quotes" count={quotes?.length ?? 0} />
+          {(quotes?.length ?? 0) === 0 ? (
+            <div className="at-empty">No quotes on this job.</div>
+          ) : (
+            quotes!.map((q) => (
+              <div key={q.id} className="at-tk">
+                <div className="hd">
+                  <div className="ty">
+                    <FileSpreadsheet size={14} style={{ verticalAlign: '-2px', marginRight: 5 }} />
+                    {q.reference}
+                  </div>
+                  <div style={{ textAlign: 'right', display: 'grid', gap: 5, justifyItems: 'end' }}>
+                    <div className="amt">{money(q.totalCents)}</div>
+                    <span className="at-badge gray">{q.status}</span>
+                  </div>
+                </div>
+              </div>
+            ))
+          )}
+
+          <SectionHead title="Invoices" count={invoices?.length ?? 0} />
+          {(invoices?.length ?? 0) === 0 ? (
+            <div className="at-empty">No invoices on this job.</div>
+          ) : (
+            invoices!.map((i) => (
+              <div key={i.id} className="at-tk">
+                <div className="hd">
+                  <div className="ty">
+                    <ReceiptText size={14} style={{ verticalAlign: '-2px', marginRight: 5 }} />
+                    {i.reference}
+                  </div>
+                  <div style={{ textAlign: 'right', display: 'grid', gap: 5, justifyItems: 'end' }}>
+                    <div className="amt">{money(i.totalCents)}</div>
+                    <span className={`at-badge ${i.balanceCents === 0 ? 'green' : 'amber'}`}>
+                      {i.status}
+                    </span>
+                  </div>
+                </div>
+                <div className="mt">
+                  Paid {money(i.paidCents)} · Balance {money(i.balanceCents)}
+                </div>
+              </div>
+            ))
+          )}
+        </>
+      )}
+
+      {/* Insurance claim */}
+      {claim && (
+        <>
+          <SectionHead title="Insurance claim" />
+          <div className="at-tk">
+            <div className="at-grid2">
+              <Field label="Insurer" value={claim.insurer as string} />
+              <Field label="Claim number" value={claim.claimNumber as string} />
+              <Field label="Assessor" value={claim.assessor as string} />
+              <Field label="Date lodged" value={claim.dateLodged as string} />
+              {!moneyHidden && (
+                <>
+                  <Field
+                    label="Authorised amount"
+                    value={
+                      typeof claim.authorisedAmountCents === 'number'
+                        ? money(claim.authorisedAmountCents)
+                        : undefined
+                    }
+                  />
+                  <Field
+                    label="Excess"
+                    value={
+                      typeof claim.excessCents === 'number' ? money(claim.excessCents) : undefined
+                    }
+                  />
+                </>
+              )}
+            </div>
+            {moneyHidden && (
+              <div className="mt" style={{ display: 'flex', gap: 6, alignItems: 'center' }}>
+                <Lock size={13} /> Amounts hidden.
+              </div>
+            )}
+          </div>
+        </>
+      )}
+
+      {/* Photos, grouped by capture category */}
+      <SectionHead title="Photos" count={photos.length} />
       {photos.length === 0 ? (
         <div className="at-empty" style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
           <ImageOff size={18} /> No photos on this job yet.
         </div>
       ) : (
-        <div className="at-photorow">
-          {photos.map((p) => (
-            <div key={p.id} className="at-photothumb" title={p.caption ?? 'Photo'}>
-              {/* eslint-disable-next-line @next/next/no-img-element */}
-              <img
-                src={`/api/backend/vehicle-profile/${vehicle?.id}/photos/${p.id}/content`}
-                alt={p.caption ?? 'Photo'}
-              />
+        grouped.map((g) => (
+          <div key={g.title} className="at-phase">
+            <div className="at-phase-head">
+              <span className="t">{g.title}</span>
+              <span className="c">{g.shots.length}</span>
             </div>
-          ))}
-        </div>
+            <div className="at-photorow">
+              {g.shots.map((p) => (
+                <div key={p.id} className="at-photothumb" title={p.caption ?? 'Photo'}>
+                  {/* eslint-disable-next-line @next/next/no-img-element */}
+                  <img
+                    src={`/api/backend/vehicle-profile/${vehicle?.id}/photos/${p.id}/content`}
+                    alt={p.caption ?? 'Photo'}
+                  />
+                </div>
+              ))}
+            </div>
+          </div>
+        ))
       )}
 
       {/* Tickets on the car */}
       {tickets.length > 0 && (
         <>
-          <div className="at-phase-head" style={{ marginTop: 18 }}>
-            <span className="t">Tickets</span>
-            <span className="c">{tickets.length}</span>
-          </div>
+          <SectionHead title="Tickets" count={tickets.length} />
           {tickets.map((t) => (
             <div key={t.id} className="at-tk">
               <div className="hd">
@@ -259,11 +500,30 @@ export function JobDetail({ jobId }: { jobId: string }) {
         </>
       )}
 
+      {/* Vehicles */}
+      <SectionHead title={vehicles.length === 1 ? 'Vehicle' : 'Vehicles'} count={vehicles.length} />
+      {vehicles.length === 0 ? (
+        <div className="at-empty">No vehicle attached.</div>
+      ) : (
+        vehicles.map((v) => (
+          <div key={v.id} className="at-tk">
+            <div className="at-grid2">
+              <Field label="Rego" value={v.rego} />
+              <Field
+                label="Year"
+                value={v.fields.year != null ? String(v.fields.year) : undefined}
+              />
+              <Field label="Make" value={cleanUnknown(v.fields.make)} />
+              <Field label="Model" value={cleanUnknown(v.fields.model)} />
+              {v.fields.vin ? <Field label="VIN" value={String(v.fields.vin)} /> : null}
+              {v.fields.colour ? <Field label="Colour" value={String(v.fields.colour)} /> : null}
+            </div>
+          </div>
+        ))
+      )}
+
       {/* Notes / activity */}
-      <div className="at-phase-head" style={{ marginTop: 18 }}>
-        <span className="t">Notes &amp; activity</span>
-        <span className="c">{notes.length}</span>
-      </div>
+      <SectionHead title="Notes &amp; activity" count={notes.length} />
       {notes.length === 0 ? (
         <div className="at-empty">Nothing logged on this job yet.</div>
       ) : (
@@ -285,13 +545,15 @@ export function JobDetail({ jobId }: { jobId: string }) {
       )}
 
       {/* Job meta */}
-      <div className="at-phase-head" style={{ marginTop: 18 }}>
-        <span className="t">Job details</span>
-      </div>
+      <SectionHead title="Job details" />
       <div className="at-tk">
         <div className="mt">
           <Wrench size={13} style={{ verticalAlign: '-2px', marginRight: 6 }} />
           Reference {job.reference}
+        </div>
+        <div className="mt">
+          <ShieldCheck size={13} style={{ verticalAlign: '-2px', marginRight: 6 }} />
+          Status {job.stateName}
         </div>
         {vehicle && (
           <div className="mt">
@@ -299,12 +561,10 @@ export function JobDetail({ jobId }: { jobId: string }) {
             {[rego, line].filter(Boolean).join(' · ')}
           </div>
         )}
-        {job.assignees.length > 0 && (
-          <div className="mt">
-            <Users size={13} style={{ verticalAlign: '-2px', marginRight: 6 }} />
-            {job.assignees.length} assigned
-          </div>
-        )}
+        <div className="mt">
+          <Users size={13} style={{ verticalAlign: '-2px', marginRight: 6 }} />
+          {job.assignees.length} assigned
+        </div>
         {job.siteId && (
           <div className="mt">
             <MapPin size={13} style={{ verticalAlign: '-2px', marginRight: 6 }} />
