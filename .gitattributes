@@ -1,0 +1,13 @@
+# Line endings. Git's `core.autocrlf` defaults to true on Windows, which rewrites every file to CRLF
+# at checkout. Prettier's `endOfLine` defaults to "lf", so `npm run format` then fails on every file
+# in the repo — 623 of them — for a reason that has nothing to do with the code. CI runs on ubuntu
+# and never sees it, so the failure looks local and mysterious to whoever hits it.
+#
+# `text=auto eol=lf` makes the checkout LF on every OS regardless of each developer's git config,
+# which is what Prettier and CI already assume. The repo's blobs are already pure LF, so this
+# normalises nothing retroactively and produces no diff churn.
+* text=auto eol=lf
+
+# Never line-ending-convert binary assets — `text=auto` usually detects these, but being explicit
+# means a corrupted image can't be blamed on autodetection.
+*.png binary
