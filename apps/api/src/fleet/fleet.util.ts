@@ -117,3 +117,25 @@ export const startOfToday = (now = new Date()): Date => {
 
 export const endOfToday = (now = new Date()): Date =>
   new Date(startOfToday(now).getTime() + 24 * 3600 * 1000 - 1);
+
+/**
+ * A movement can name TWO cars: `carsInRego` is the customer's car arriving for repair, and
+ * `carsOutRego` is the loan car going out. Photos hang off the MOVEMENT, not off a car, so both cars'
+ * photos sit in the same bucket and only the type says which vehicle is in frame.
+ *
+ * Verified against the imported photos by reading number plates and dashboards: a `damage` shot is the
+ * customer's car (a red Camry on movement 96926d65, whose carsInRego is 2BX5YT), while the
+ * `before_handover` shot on that same movement is the loan car's odometer (carsOutRego 1WZ1BY).
+ *
+ * Without this split a loan car shows the damage to somebody else's vehicle — which is exactly what
+ * 1WZ1BY did, displaying a red car that was never ours.
+ */
+export const CUSTOMER_CAR_PHOTO_TYPES: FleetPhotoType[] = ['damage'];
+
+/**
+ * Everything else documents the LOAN car — its condition at handover, its odometer, its fuel. New types
+ * default here rather than to the customer's car: a photo wrongly shown on our own loan car is a
+ * nuisance, whereas one wrongly shown on a customer's car misattributes damage.
+ */
+export const isCustomerCarPhotoType = (t: string): boolean =>
+  (CUSTOMER_CAR_PHOTO_TYPES as string[]).includes(t);

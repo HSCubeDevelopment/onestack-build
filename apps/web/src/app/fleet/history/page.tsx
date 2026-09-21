@@ -11,8 +11,8 @@ import {
   vehicleStatusColor,
   vehicleStatusLabel,
 } from '@/lib/fleet';
-import { isActiveFleet } from '@/lib/active-fleet';
 import { LiveLocation } from '@/components/LiveLocation';
+import { PhotoLightbox, useLightbox } from '@/components/PhotoLightbox';
 
 /**
  * The car (vehicle) record — a faithful port of the source In N Out RecordDetail vehicle view:
@@ -75,7 +75,11 @@ function CarRecord() {
           </div>
 
           {/* Live location (CityTag) — fleet / active-fleet cars only, like the source. */}
-          {v.isCompanyCar || isActiveFleet(v.rego) ? <LiveLocation rego={v.rego} /> : null}
+          {/* Shown for every car now that CityTag is connected. The old gate was a hardcoded
+              686-rego list that predated the integration, so it hid the map for cars that do have a
+              tag and showed it for plenty that do not. LiveLocation already says when there is no
+              tag, which is a better answer than silently omitting the card. */}
+          <LiveLocation rego={v.rego} />
 
           {/* Editable notes */}
           <VehicleNotes vehicle={v} onSaved={(notes) => vehicle.setData({ ...v, notes })} />
@@ -361,6 +365,7 @@ function PhotoSection({
     [vehicleId],
   );
   const photos = (data ?? []).filter((p) => (show ? show(p.photoType) : true));
+  const lightbox = useLightbox();
   const inputRef = useRef<HTMLInputElement>(null);
   const [uploading, setUploading] = useState(false);
   const [err, setErr] = useState<string | null>(null);
@@ -418,18 +423,34 @@ function PhotoSection({
             {emptyText}
           </span>
         ) : (
-          <div className="photo-grid">
-            {photos.map((ph) => (
-              // eslint-disable-next-line @next/next/no-img-element
-              <img
-                key={ph.id}
-                className="photo-thumb"
-                src={`/api/backend/fleet/photos/${ph.id}/content`}
-                alt={ph.photoType}
-                title={ph.photoType}
+          <>
+            <div className="photo-grid">
+              {photos.map((ph, i) => (
+                // eslint-disable-next-line @next/next/no-img-element
+                <img
+                  key={ph.id}
+                  className="photo-thumb"
+                  src={`/api/backend/fleet/photos/${ph.id}/content`}
+                  alt={ph.photoType}
+                  title={ph.photoType}
+                  style={{ cursor: 'zoom-in' }}
+                  onClick={() => lightbox.open(i)}
+                />
+              ))}
+            </div>
+            {lightbox.isOpen && (
+              <PhotoLightbox
+                photos={photos.map((ph) => ({
+                  src: `/api/backend/fleet/photos/${ph.id}/content`,
+                  caption: `${ph.photoType} · ${new Date(ph.uploadedAt).toLocaleString()}`,
+                  fileName: `${ph.photoType}-${ph.id.slice(0, 8)}.jpg`,
+                }))}
+                index={lightbox.index!}
+                onIndex={lightbox.setIndex}
+                onClose={lightbox.close}
               />
-            ))}
-          </div>
+            )}
+          </>
         )}
       </div>
     </>

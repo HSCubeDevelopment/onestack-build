@@ -2,6 +2,7 @@ import { BadRequestException, Inject, Injectable, NotFoundException } from '@nes
 import { TenantService } from '../tenancy/tenant.service';
 import { AddFleetPhotoDto } from './dto/fleet.dto';
 import { FLEET_PHOTO_STORAGE, FleetPhotoStorage } from './fleet-photo-storage';
+import { CUSTOMER_CAR_PHOTO_TYPES } from './fleet.util';
 
 export interface FleetPhotoView {
   id: string;
@@ -135,7 +136,11 @@ export class FleetPhotoService {
         if (!vehicle) return [];
         const rego = vehicle.rego?.trim() ? vehicle.rego : null;
 
-        const [movements, returns] = await Promise.all([
+        // A movement names TWO cars — the customer's arriving for repair (carsInRego) and the loan car
+        // going out (carsOutRego) — and every photo on it hangs off the movement, not off a car. So the
+        // side this vehicle is on decides WHICH photos are of it. Matching the movement alone put the
+        // customer's damage photos on our loan car: 1WZ1BY showed a red Camry that was never ours.
+        const [asLoanCar, asCustomerCar, returns] = await Promise.all([
           tx.fleetMovement.findMany({
             where: {
               OR: [
@@ -145,6 +150,10 @@ export class FleetPhotoService {
             },
             select: { id: true },
           }),
+          // Only ever matched by rego — a movement has no carsInVehicleId column.
+          rego
+            ? tx.fleetMovement.findMany({ where: { carsInRego: rego }, select: { id: true } })
+            : Promise.resolve([] as { id: string }[]),
           tx.fleetReturn.findMany({
             where: {
               OR: [
@@ -156,9 +165,19 @@ export class FleetPhotoService {
           }),
         ]);
 
+        const loanIds = asLoanCar.map((m) => m.id);
+        const customerIds = asCustomerCar.map((m) => m.id);
+
         where.OR = [
           { vehicleId: filter.vehicleId },
-          ...(movements.length ? [{ movementId: { in: movements.map((m) => m.id) } }] : []),
+          // Out on loan: everything documenting our car, but never the damage to theirs.
+          ...(loanIds.length
+            ? [{ movementId: { in: loanIds }, photoType: { notIn: CUSTOMER_CAR_PHOTO_TYPES } }]
+            : []),
+          // In for repair: the damage photos, which are the ones actually of this car.
+          ...(customerIds.length
+            ? [{ movementId: { in: customerIds }, photoType: { in: CUSTOMER_CAR_PHOTO_TYPES } }]
+            : []),
           ...(returns.length ? [{ returnId: { in: returns.map((r) => r.id) } }] : []),
         ];
       }
