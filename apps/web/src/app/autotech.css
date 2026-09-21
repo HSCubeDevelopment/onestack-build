@@ -15,6 +15,46 @@
  * `.at-shell` itself, they win over `html.dark` for everything inside — the employee app stays iOS-light
  * even when the owner has dark mode on.
  */
+/*
+ * The at-* palette at :root.
+ *
+ * The component classes below (.at-list/.at-lrow/.at-chip/.at-badge…) are the In N Out look, and the
+ * owner's /fleet screen now uses the same ones — so their colours cannot live only on `.at-shell`.
+ * The palette is hoisted here; `.at-shell` still redeclares it (and re-maps the shared OneStack
+ * tokens), which is what keeps the employee phone surface light-only regardless of `html.dark`.
+ */
+:root {
+  --at-blue: #007aff;
+  --at-blue-d: #0a5bd6;
+  --at-green: #34c759;
+  --at-green-d: #1f9e46;
+  --at-red: #ff3b30;
+  --at-orange: #ff9500;
+  --at-purple: #af52de;
+  --at-teal: #12a594;
+  --at-gray: #8e8e93;
+  --at-bg: #f2f2f7;
+  --at-card: #ffffff;
+  --at-sep: #e4e4e8;
+  --at-label: #1c1c1e;
+  --at-label2: #8a8a8e;
+  --at-green-text: #1d7a35;
+  --at-chip: #e9e9ee;
+  --at-chip-ink: #1c1c1e;
+}
+
+/* Owner dark mode. Never applies inside .at-shell, which redeclares every one of these. */
+html.dark {
+  --at-bg: #0b1220;
+  --at-card: #111c2e;
+  --at-sep: #223049;
+  --at-label: #e8eefb;
+  --at-label2: #8ea1c0;
+  --at-green-text: #4ade80;
+  --at-chip: #1b2942;
+  --at-chip-ink: #e8eefb;
+}
+
 .at-shell {
   --at-blue: #007aff;
   --at-blue-d: #0a5bd6;
@@ -31,6 +71,8 @@
   --at-label: #1c1c1e;
   --at-label2: #8a8a8e;
   --at-green-text: #1d7a35;
+  --at-chip: #e9e9ee;
+  --at-chip-ink: #1c1c1e;
 
   /* Re-skin the shared OneStack tokens to iOS so tow's shared pages match. */
   --bg: #f2f2f7;
@@ -473,7 +515,8 @@
   color: var(--at-label);
 }
 .at-input::placeholder {
-  color: #b7b7bd;
+  color: var(--at-label2);
+  opacity: 0.7;
 }
 .at-input:focus {
   outline: none;
@@ -970,8 +1013,8 @@ textarea.at-input {
   border: none;
   cursor: pointer;
   font-family: inherit;
-  background: #e9e9ee;
-  color: var(--at-label);
+  background: var(--at-chip);
+  color: var(--at-chip-ink);
   border-radius: 20px;
   padding: 9px 15px;
   font-size: 14px;
@@ -1003,8 +1046,8 @@ textarea.at-input {
   appearance: none;
   -webkit-appearance: none;
   border: none;
-  background-color: #e9e9ee;
-  color: var(--at-label);
+  background-color: var(--at-chip);
+  color: var(--at-chip-ink);
   border-radius: 20px;
   padding: 8px 32px 8px 14px;
   font-size: 14px;

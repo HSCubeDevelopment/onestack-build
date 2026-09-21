@@ -1,0 +1,12 @@
+{
+  "id": "session-1789980294556",
+  "startedAt": "2026-09-21T08:44:54.556Z",
+  "cwd": "/Users/jaidenchopra/code/onestack-build/apps/web/src",
+  "context": {},
+  "metrics": {
+    "edits": 1,
+    "commands": 0,
+    "tasks": 0,
+    "errors": 0
+  }
+}
