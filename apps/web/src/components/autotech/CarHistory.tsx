@@ -13,6 +13,7 @@ import {
 } from 'lucide-react';
 import { api, ApiError } from '@/lib/api';
 import { AtTopbar, SignOutButton } from '@/components/autotech/kit';
+import { HIDDEN_FROM_STAFF } from '@/lib/staff-features';
 
 /**
  * Car history — a rego search on top, and beneath it a live DIRECTORY of everything moving through the
@@ -311,13 +312,15 @@ export function CarHistory() {
             {loaded.line && <div className="at-carsub">{loaded.line}</div>}
           </div>
 
-          <Link
-            href={`/inout/estimate?rego=${encodeURIComponent(loaded.rego)}`}
-            className="at-btn ghost"
-            style={{ marginTop: 10, display: 'inline-flex', width: 'auto' }}
-          >
-            <Sparkles size={16} /> New / update estimate
-          </Link>
+          {!HIDDEN_FROM_STAFF.instantEstimate && (
+            <Link
+              href={`/inout/estimate?rego=${encodeURIComponent(loaded.rego)}`}
+              className="at-btn ghost"
+              style={{ marginTop: 10, display: 'inline-flex', width: 'auto' }}
+            >
+              <Sparkles size={16} /> New / update estimate
+            </Link>
+          )}
 
           {/* Jobs — tap through to the full job detail */}
           {loaded.jobs.length > 0 && (

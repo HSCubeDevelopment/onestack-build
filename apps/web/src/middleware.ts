@@ -1,5 +1,6 @@
 import { NextResponse, type NextRequest } from 'next/server';
 import { SESSION_COOKIE } from '@/lib/session';
+import { STAFF_HIDDEN_PREFIXES } from '@/lib/staff-features';
 
 /**
  * Keep employees out of the owner surface.
@@ -43,6 +44,18 @@ export function middleware(req: NextRequest) {
   if (role !== 'STAFF') return NextResponse.next();
 
   const { pathname } = req.nextUrl;
+
+  // Switched-off features are checked BEFORE the allowlist: both live under `/inout`, which employees
+  // are otherwise allowed, so without this an old bookmark or a typed URL still reaches a screen the
+  // shop has decided to take away. See lib/staff-features.ts.
+  const hidden = STAFF_HIDDEN_PREFIXES.some((p) => pathname === p || pathname.startsWith(`${p}/`));
+  if (hidden) {
+    const url = req.nextUrl.clone();
+    url.pathname = STAFF_HOME;
+    url.search = '';
+    return NextResponse.redirect(url);
+  }
+
   const allowed = STAFF_PREFIXES.some((p) => pathname === p || pathname.startsWith(`${p}/`));
   if (allowed) return NextResponse.next();
 

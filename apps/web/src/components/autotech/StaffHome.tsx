@@ -11,6 +11,7 @@ import {
   UserCog,
 } from 'lucide-react';
 import { AtLogo, SignOutButton } from '@/components/autotech/kit';
+import { HIDDEN_FROM_STAFF } from '@/lib/staff-features';
 
 /**
  * The employee home — two big buttons and nothing else, exactly like the Auto Tech demo. Cars In / Out
@@ -40,13 +41,15 @@ export function StaffHome() {
         <span className="sub">Car in for repair · loan car out</span>
       </Link>
 
-      <Link href="/inout/estimate" className="at-bigbtn at-grad-estimate">
-        <span className="circ">
-          <Sparkles size={54} strokeWidth={2} />
-        </span>
-        <span className="lab">Instant estimate</span>
-        <span className="sub">Photo the damage · AI parts &amp; price draft</span>
-      </Link>
+      {!HIDDEN_FROM_STAFF.instantEstimate && (
+        <Link href="/inout/estimate" className="at-bigbtn at-grad-estimate">
+          <span className="circ">
+            <Sparkles size={54} strokeWidth={2} />
+          </span>
+          <span className="lab">Instant estimate</span>
+          <span className="sub">Photo the damage · AI parts &amp; price draft</span>
+        </Link>
+      )}
 
       <Link href="/inout/repair-photos" className="at-bigbtn at-grad-photos">
         <span className="circ">
@@ -72,13 +75,15 @@ export function StaffHome() {
         <span className="sub">Cars parked in the yards · tow a car in</span>
       </Link>
 
-      <Link href="/inout/ticket" className="at-bigbtn at-grad-ticket">
-        <span className="circ">
-          <ShieldAlert size={54} strokeWidth={2} />
-        </span>
-        <span className="lab">File a ticket</span>
-        <span className="sub">Log a police / infringement notice on a car</span>
-      </Link>
+      {!HIDDEN_FROM_STAFF.fileTicket && (
+        <Link href="/inout/ticket" className="at-bigbtn at-grad-ticket">
+          <span className="circ">
+            <ShieldAlert size={54} strokeWidth={2} />
+          </span>
+          <span className="lab">File a ticket</span>
+          <span className="sub">Log a police / infringement notice on a car</span>
+        </Link>
+      )}
 
       <Link href="/inout/clock" className="at-bigbtn at-grad-clock">
         <span className="circ">

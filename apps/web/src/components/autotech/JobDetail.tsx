@@ -23,6 +23,7 @@ import {
 import { api, ApiError, money } from '@/lib/api';
 import { parseEstimateNote, type ParsedEstimateNote } from '@/lib/estimate-note';
 import { AtTopbar, SignOutButton } from '@/components/autotech/kit';
+import { HIDDEN_FROM_STAFF } from '@/lib/staff-features';
 
 /**
  * Job details for the employee (opened from Car history) — the same picture the owner's job page shows,
@@ -566,8 +567,9 @@ export function JobDetail({ jobId }: { jobId: string }) {
           <SectionHead title="Estimate" />
           <div className="at-tk">
             <EstimateBreakdown data={estimate.data} summary={estimate.summary} />
+            {/* The saved breakdown stays visible — only the way back into the estimate flow is hidden. */}
             <div className="act">
-              {rego && (
+              {rego && !HIDDEN_FROM_STAFF.instantEstimate && (
                 <Link
                   className="at-chip on"
                   href={`/inout/estimate?rego=${encodeURIComponent(rego)}`}
@@ -579,7 +581,8 @@ export function JobDetail({ jobId }: { jobId: string }) {
           </div>
         </>
       ) : (
-        rego && (
+        rego &&
+        !HIDDEN_FROM_STAFF.instantEstimate && (
           <Link
             href={`/inout/estimate?rego=${encodeURIComponent(rego)}`}
             className="at-btn ghost"
