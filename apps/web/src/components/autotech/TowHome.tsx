@@ -2,6 +2,7 @@
 import Link from 'next/link';
 import { Truck, ClipboardList, Clock } from 'lucide-react';
 import { AtLogo, SignOutButton } from '@/components/autotech/kit';
+import { TowPickups } from '@/components/autotech/TowPickups';
 
 /**
  * The tow driver's home — the same Auto Tech look as the staff home, but surfacing the tow worker's
@@ -23,6 +24,12 @@ export function TowHome() {
           <p>Tow driver</p>
         </div>
       </div>
+
+      {/* Dispatched work first — it is what the driver opened the app for. */}
+      <div className="at-h2" style={{ margin: '4px 0 10px' }}>
+        My pickups
+      </div>
+      <TowPickups />
 
       <Link href="/yards" className="at-bigbtn at-grad-tow">
         <span className="circ">

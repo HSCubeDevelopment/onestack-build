@@ -18,6 +18,11 @@ export const PHOTO_CATEGORIES = [
   'supplementary_damage',
   'progress',
   'handover',
+  // Tow dispatch: the driver's condition record at each end of the trip. Kept here with the other
+  // categories because the caption IS the stored value — a category defined anywhere else would
+  // silently split in two.
+  'tow_pickup',
+  'tow_dropoff',
 ] as const;
 export type PhotoCategory = (typeof PHOTO_CATEGORIES)[number];
 
@@ -41,6 +46,8 @@ const CAPTION: Record<RepairPhase, string> = {
   supplementary_damage: 'Supplementary damage',
   progress: 'Progress',
   handover: 'Handover',
+  tow_pickup: 'Tow pickup',
+  tow_dropoff: 'Tow drop-off',
   before: 'Before repair',
   during: 'During repair',
   after: 'After repair',

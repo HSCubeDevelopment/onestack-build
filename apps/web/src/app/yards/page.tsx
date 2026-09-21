@@ -13,6 +13,7 @@ import {
   YardDrop,
 } from '@/lib/yards';
 import { EmptyState, ErrorBanner, Loading, Modal, PageHead, useAsync } from '@/components/ui';
+import { BookTowModal } from '@/components/BookTowModal';
 
 /**
  * Yards & vehicle logistics (YRD-1). Park an incoming car at one of the shop's yards before a job
@@ -34,11 +35,17 @@ export default function YardsPage() {
 
   const [addingYard, setAddingYard] = useState(false);
   const [towing, setTowing] = useState(false);
+  const [booking, setBooking] = useState(false);
 
   return (
     <>
       <PageHead title="Yards" sub="Cars parked across the yard network, before a job exists">
         {/* Tow-in is open to staff — a tow driver records a pickup and a job file is created. */}
+        {/* Dispatch: send a driver out. Distinct from "Tow in a car", which records a pickup that
+            has already happened. Staff can book, matching the API. */}
+        <button className="btn primary" onClick={() => setBooking(true)}>
+          <Truck size={15} /> Book a tow
+        </button>
         <button className="btn" onClick={() => setTowing(true)}>
           <Truck size={15} /> Tow in a car
         </button>
@@ -87,6 +94,9 @@ export default function YardsPage() {
       )}
 
       {towing && <TowCollectionModal onClose={() => setTowing(false)} />}
+      {booking && (
+        <BookTowModal yards={yards} onClose={() => setBooking(false)} onBooked={reload} />
+      )}
     </>
   );
 }
