@@ -30,7 +30,11 @@ export interface TagLocation {
 const BASE = 'https://citytag.yuminstall.top';
 const TOKEN_TTL_MS = 6 * 60 * 60 * 1000; // reuse a login for up to 6h (token valid ~24h)
 const DEVICES_TTL_MS = 20 * 1000; // the whole ~300-tag list comes in one call; cache briefly
-const FETCH_TIMEOUT_MS = 8000;
+// 8 s was too tight and made the whole feature intermittent: the device list is one bulk call, and at
+// this shop's real size (411 tags) it takes right on 8 s, so it aborted about as often as it succeeded.
+// Sized for the payload we actually see, with headroom; the 20 s device cache means a slow call is paid
+// at most once per 20 s, not per request.
+const FETCH_TIMEOUT_MS = 25_000;
 
 const normRego = (s: string) => (s || '').toUpperCase().replace(/[^A-Z0-9]/g, '');
 const firstWord = (s: string) => (s || '').trim().split(/\s+/)[0] || '';

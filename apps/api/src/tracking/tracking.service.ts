@@ -18,6 +18,13 @@ export interface TrackingResult {
   error?: string;
 }
 
+/** Every tag this tenant's account can see. Same shape as `locate`, one level up. */
+export interface FleetTrackingResult {
+  configured: boolean;
+  devices: TagLocation[];
+  error?: string;
+}
+
 @Injectable()
 export class TrackingService {
   constructor(private readonly citytag: CityTagConnector) {}
@@ -30,6 +37,27 @@ export class TrackingService {
       return { configured: true, device };
     } catch (e) {
       return { configured: true, device: null, error: (e as Error)?.message };
+    }
+  }
+
+  /**
+   * Every tag on the calling tenant's account, with a usable fix.
+   *
+   * The upstream call is already bulk — one request returns the whole list — so asking per rego for a
+   * yard full of cars would be the same fetch repeated. Devices without coordinates are dropped here
+   * rather than by the caller, so no consumer has to decide what a null position means.
+   *
+   * Nothing is stored. As with `locate`, this is read-through to CityTag behind the connector's short
+   * cache; positions exist for the length of the response and no longer.
+   */
+  async fleet(tenantId: string): Promise<FleetTrackingResult> {
+    const creds = this.resolveCreds(tenantId);
+    if (!creds) return { configured: false, devices: [] };
+    try {
+      const all = await this.citytag.listDevices(creds);
+      return { configured: true, devices: all.filter((d) => d.lat !== null && d.lng !== null) };
+    } catch (e) {
+      return { configured: true, devices: [], error: (e as Error)?.message };
     }
   }
 

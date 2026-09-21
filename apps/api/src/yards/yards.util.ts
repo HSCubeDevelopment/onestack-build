@@ -44,3 +44,48 @@ export function nearestYardId<
   }
   return best?.id ?? null;
 }
+
+/** Two yards whose distances from a fix differ by less than this cannot be told apart by that fix. */
+export const AMBIGUOUS_METRES = 60;
+/** A car within this distance of a yard's centre is treated as being at it. */
+export const YARD_RADIUS_METRES = 150;
+
+export interface YardMatch {
+  /** The yard the fix is closest to. */
+  yardId: string;
+  metresAway: number;
+  /**
+   * Id of another yard that is nearly as close, or null. Several of this shop's yards sit closer
+   * together than a tag's own error — 4 and 6 Milne are 18 m apart, 55 and 57 Temple 19 m — so for
+   * those a fix genuinely cannot say which one a car is in. Callers must surface that rather than
+   * presenting the nearer one as fact.
+   */
+  ambiguousWithYardId: string | null;
+}
+
+/**
+ * Which yard a position is at, if any. Returns null when the fix is outside every yard.
+ *
+ * Deliberately refuses to break a near-tie: being 3 m closer to one of two neighbouring yards is noise,
+ * not evidence. Staff act on these, so an honest "could be either" beats a confident wrong answer.
+ */
+export function matchYard<
+  T extends { id: string; latitude: number | null; longitude: number | null },
+>(position: LatLng, yards: T[], radiusMetres: number = YARD_RADIUS_METRES): YardMatch | null {
+  const ranked = yards
+    .filter((y) => y.latitude != null && y.longitude != null)
+    .map((y) => ({
+      id: y.id,
+      d: haversineMetres(position, { latitude: y.latitude!, longitude: y.longitude! }),
+    }))
+    .sort((a, b) => a.d - b.d);
+
+  const best = ranked[0];
+  if (!best || best.d > radiusMetres) return null;
+  const runnerUp = ranked[1];
+  return {
+    yardId: best.id,
+    metresAway: best.d,
+    ambiguousWithYardId: runnerUp && runnerUp.d - best.d < AMBIGUOUS_METRES ? runnerUp.id : null,
+  };
+}
