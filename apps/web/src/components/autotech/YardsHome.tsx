@@ -6,6 +6,7 @@ import { Truck, ParkingSquare, Warehouse } from 'lucide-react';
 import { api } from '@/lib/api';
 import { Yard, YardDrop } from '@/lib/yards';
 import { useAsync } from '@/components/ui';
+import { useYardTagCounts } from '@/lib/use-yard-tags';
 import { AtTopbar, SignOutButton } from '@/components/autotech/kit';
 
 /**
@@ -21,6 +22,7 @@ export function YardsHome() {
     [],
   );
   const yards = data?.[0] ?? [];
+  const tags = useYardTagCounts(data?.[0] ?? []);
   const awaiting = data?.[1] ?? [];
 
   // How many cars are parked in each yard right now — group the "in yard" drops by yard id.
@@ -60,7 +62,12 @@ export function YardsHome() {
       ) : (
         <div className="at-list">
           {yards.map((y) => {
-            const n = countByYard[y.id] ?? 0;
+            const logged = countByYard[y.id] ?? 0;
+            // A yard drop is a record someone made; a tag is where the car physically is. Show the
+            // second as the headline — it reads 0 for every yard until staff start logging drops,
+            // which is what made these screens look empty while 59 cars sat in the yards.
+            const here = tags.countByYard[y.id] ?? 0;
+            const n = tags.configured ? here : logged;
             return (
               <div
                 key={y.id}
@@ -73,7 +80,13 @@ export function YardsHome() {
                 <div className="body">
                   <div className="ti">{y.name}</div>
                   <div className="st">
-                    {n === 0 ? 'No cars parked' : n === 1 ? '1 car parked' : `${n} cars parked`}
+                    {tags.configured
+                      ? `${here === 0 ? 'No cars' : here === 1 ? '1 car' : `${here} cars`} here now · ${logged} logged`
+                      : logged === 0
+                        ? 'No cars parked'
+                        : logged === 1
+                          ? '1 car parked'
+                          : `${logged} cars parked`}
                   </div>
                 </div>
                 <span className={`at-badge ${n > 0 ? 'amber' : 'gray'}`}>{n}</span>

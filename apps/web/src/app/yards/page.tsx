@@ -14,6 +14,7 @@ import {
 } from '@/lib/yards';
 import { EmptyState, ErrorBanner, Loading, Modal, PageHead, useAsync } from '@/components/ui';
 import { BookTowModal } from '@/components/BookTowModal';
+import { useYardTagCounts } from '@/lib/use-yard-tags';
 
 /**
  * Yards & vehicle logistics (YRD-1). Park an incoming car at one of the shop's yards before a job
@@ -415,6 +416,7 @@ function YardNetwork({
 }) {
   const [busy, setBusy] = useState<string | null>(null);
   const [err, setErr] = useState<string | null>(null);
+  const tags = useYardTagCounts(yards);
 
   async function remove(y: Yard) {
     if (!confirm(`Remove yard "${y.name}"? Cars already parked there stay on record.`)) return;
@@ -434,6 +436,9 @@ function YardNetwork({
     <div className="card">
       <div className="card-head">
         <h2>Yard network</h2>
+        {tags.configured && (
+          <span className="job-cust">{tags.atYards} car(s) across the yards</span>
+        )}
         <button className="btn sm" onClick={onAdd}>
           <Plus size={14} /> Add
         </button>
@@ -448,9 +453,11 @@ function YardNetwork({
             <div style={{ minWidth: 0 }}>
               <b style={{ fontSize: 13.5 }}>{y.name}</b>
               <div className="job-cust">
-                {y.latitude != null && y.longitude != null
-                  ? `${y.latitude.toFixed(4)}, ${y.longitude.toFixed(4)}`
-                  : 'No coordinates — set them to enable “nearest yard”'}
+                {y.latitude == null || y.longitude == null
+                  ? 'No coordinates — set them to enable “nearest yard”'
+                  : tags.configured
+                    ? `${tags.countByYard[y.id] ?? 0} car(s) here now`
+                    : `${y.latitude.toFixed(4)}, ${y.longitude.toFixed(4)}`}
               </div>
             </div>
           </div>
