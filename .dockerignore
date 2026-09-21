@@ -14,3 +14,5 @@
 coverage
 playwright-report
 **/*.log
+# Refresh working data — customer PII, and up to ~1.6 GB of it. Never belongs in a build context.
+**/.innout-work/
