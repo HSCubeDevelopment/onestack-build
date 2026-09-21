@@ -68,7 +68,8 @@ async function main() {
   let heldRecords = 0;
 
   for (const group of byName.values()) {
-    if (group.length < 2) continue;
+    const first = group[0];
+    if (group.length < 2 || !first) continue;
     const phones = new Set(group.map((r) => normalisePhone(r.phone)).filter(Boolean));
     if (phones.size > 1) {
       // Same name, genuinely different numbers — near-certainly different people. Leave for a human;
@@ -78,7 +79,7 @@ async function main() {
       continue;
     }
     // Keep the most informative record: one that has a phone, else the oldest (already sorted).
-    const primary = group.find((r) => normalisePhone(r.phone)) ?? group[0];
+    const primary = group.find((r) => normalisePhone(r.phone)) ?? first;
     safe.push({ primary, dups: group.filter((r) => r.id !== primary.id) });
   }
 

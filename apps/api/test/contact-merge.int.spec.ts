@@ -76,7 +76,7 @@ describe.skipIf(!hasDb)('Duplicate detection & merge (Phase 4)', () => {
         a.tenantId,
         dupId,
       )
-    )[0].id;
+    )[0]!.id;
     dupReturnId = (
       await admin.$queryRawUnsafe<{ id: string }[]>(
         `INSERT INTO "onestack_fleet_return"
@@ -88,7 +88,7 @@ describe.skipIf(!hasDb)('Duplicate detection & merge (Phase 4)', () => {
         a.tenantId,
         dupId,
       )
-    )[0].id;
+    )[0]!.id;
   });
 
   afterAll(async () => {
@@ -166,8 +166,8 @@ describe.skipIf(!hasDb)('Duplicate detection & merge (Phase 4)', () => {
       `SELECT "contactId" FROM "onestack_fleet_return" WHERE id = $1::uuid`,
       dupReturnId,
     );
-    expect(mov.contactId).toBe(primaryId);
-    expect(ret.contactId).toBe(primaryId);
+    expect(mov?.contactId).toBe(primaryId);
+    expect(ret?.contactId).toBe(primaryId);
 
     // And the contact they point at is actually visible, not soft-deleted.
     await http().get(`/api/v1/contacts/${primaryId}`).set(auth(a)).expect(200);
