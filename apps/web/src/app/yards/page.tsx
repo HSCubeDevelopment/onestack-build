@@ -601,7 +601,9 @@ function TagsByYard({ yards }: { yards: Yard[] }) {
               {yard.name} <span style={{ color: 'var(--text-faint)' }}>· {sightings.length}</span>
             </div>
             {sightings.map((s) => (
-              <div key={s.tag.rego} className="job-row">
+              // Keyed on rego AND position: at least one rego (1YW4UP) has two physical tags, so
+              // rego alone collides and React drops one of the rows.
+              <div key={`${s.tag.rego}-${s.tag.lat},${s.tag.lng}`} className="job-row">
                 <div className="job-row-main">
                   <span className="more-icon" aria-hidden>
                     <MapPin size={15} />

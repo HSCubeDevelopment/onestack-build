@@ -14,6 +14,7 @@ import {
 import { api, ApiError } from '@/lib/api';
 import { AtTopbar, SignOutButton } from '@/components/autotech/kit';
 import { HIDDEN_FROM_STAFF } from '@/lib/staff-features';
+import { LiveLocation } from '@/components/LiveLocation';
 
 /**
  * Car history — a rego search on top, and beneath it a live DIRECTORY of everything moving through the
@@ -311,6 +312,10 @@ export function CarHistory() {
             <div className="at-carrego">{loaded.rego}</div>
             {loaded.line && <div className="at-carsub">{loaded.line}</div>}
           </div>
+
+          {/* Where the car is now. This is the screen staff actually search a rego on, so the map
+              belongs here as much as on the owner's car record. */}
+          <LiveLocation rego={loaded.rego} />
 
           {!HIDDEN_FROM_STAFF.instantEstimate && (
             <Link
