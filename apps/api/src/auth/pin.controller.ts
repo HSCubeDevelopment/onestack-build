@@ -11,6 +11,12 @@ export class PinLoginDto {
   pin!: string;
 }
 
+/** Sign in as a named person with no PIN. Only honoured while PIN checks are switched off. */
+export class OpenLoginDto {
+  @IsUUID()
+  userId!: string;
+}
+
 /**
  * PIN sign-in (shop-floor). `pin-directory` lists who can sign in (for the name-picker) and is gated the
  * same way as the demo directory; `pin-login` is the actual sign-in and is always available. Neither
@@ -32,5 +38,22 @@ export class PinController {
   @HttpCode(200)
   pinLogin(@Body() dto: PinLoginDto): Promise<PinLoginResult> {
     return this.pinAuth.pinLogin(dto.userId, dto.pin);
+  }
+
+  /**
+   * Whether the sign-in screen should ask for a PIN. Public and deliberately boring — it reveals only
+   * which of two sign-in screens to draw, and lying to it would get nobody in: `open-login` re-checks
+   * the same gate before it mints anything.
+   */
+  @Get('mode')
+  mode(): { pinsRequired: boolean } {
+    return { pinsRequired: PinAuthService.pinsRequired() };
+  }
+
+  /** Sign in without a PIN. 403 unless PIN checks are switched off — see PinAuthService.pinsRequired. */
+  @Post('open-login')
+  @HttpCode(200)
+  openLogin(@Body() dto: OpenLoginDto): Promise<PinLoginResult> {
+    return this.pinAuth.openLogin(dto.userId);
   }
 }

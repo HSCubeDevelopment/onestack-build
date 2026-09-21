@@ -140,8 +140,48 @@ export class PinAuthService {
 
     // Success — clear any failure state.
     await this.persistLock(userId, meta, clearedLockState());
+    return this.mintSession(userId);
+  }
 
-    // Resolve tenant + role, then mint the same claim shape the password login uses.
+  /**
+   * Whether a PIN is currently being checked at sign-in.
+   *
+   * OFF is a deliberate, local-only convenience: it lets the shop's owner step through every profile to
+   * review what each role sees, without 23 PINs. Three things must ALL be true, and the default of every
+   * one of them is the secure answer — an unset variable never opens the door:
+   *
+   *   NODE_ENV !== 'production'   · never in production, whatever else is set
+   *   DEV_LOGIN_ENABLED === true  · the same switch that already gates the name directory
+   *   AUTH_PINS_REQUIRED === false · an explicit opt-out, typed in full
+   *
+   * Nothing is deleted when it is off: the salted hashes, failure counts and lockouts stay exactly where
+   * they are in app_metadata, and `pinLogin` below is untouched. Flipping the variable back restores the
+   * previous behaviour with no migration and no reset.
+   */
+  static pinsRequired(): boolean {
+    if (process.env.NODE_ENV === 'production') return true;
+    if (process.env.DEV_LOGIN_ENABLED !== 'true') return true;
+    return process.env.AUTH_PINS_REQUIRED !== 'false';
+  }
+
+  /**
+   * Sign in as someone WITHOUT their PIN. Refuses unless `pinsRequired()` is false.
+   *
+   * Deliberately a separate method rather than a branch inside `pinLogin`: the verification path above
+   * keeps every check it had, so there is no condition in it that could be got wrong and quietly admit
+   * a bad PIN. This one has a single job and one guard.
+   */
+  async openLogin(userId: string): Promise<PinLoginResult> {
+    if (PinAuthService.pinsRequired()) {
+      throw new ForbiddenException('PIN sign-in is required.');
+    }
+    const user = await this.supabase.getUser(userId);
+    if (!user) throw new UnauthorizedException('Unknown login.');
+    return this.mintSession(userId);
+  }
+
+  /** Resolve tenant + role and mint the same claim shape the password login uses. */
+  private async mintSession(userId: string): Promise<PinLoginResult> {
     const membership = await this.prisma.membership.findFirst({
       where: { userId },
       orderBy: { createdAt: 'asc' },

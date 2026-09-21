@@ -29,6 +29,11 @@ export default function LoginPage() {
   const [error, setError] = useState<string | null>(null);
   /** Why the directory is unavailable — distinct from it being legitimately empty. */
   const [directoryError, setDirectoryError] = useState<string | null>(null);
+  /**
+   * Whether a PIN is asked for. Starts TRUE and only ever relaxes if the server says so, so a slow or
+   * failed check shows the keypad rather than briefly offering one-tap sign-in.
+   */
+  const [pinsRequired, setPinsRequired] = useState(true);
 
   useEffect(() => {
     fetch('/api/auth/pin-directory')
@@ -45,7 +50,33 @@ export default function LoginPage() {
       })
       .catch(() => setDirectoryError('Cannot reach the OneStack API'))
       .finally(() => setLoaded(true));
+
+    fetch('/api/auth/mode')
+      .then((r) => r.json())
+      .then((m: { pinsRequired?: boolean }) => setPinsRequired(m.pinsRequired !== false))
+      .catch(() => setPinsRequired(true));
   }, []);
+
+  /** Sign in as someone with no PIN. Only reachable while the server has PIN checks switched off. */
+  async function signInOpen(person: Person) {
+    setBusy(true);
+    setError(null);
+    try {
+      const res = await fetch('/api/auth/open-login', {
+        method: 'POST',
+        headers: { 'content-type': 'application/json' },
+        body: JSON.stringify({ userId: person.userId }),
+      });
+      if (!res.ok) {
+        const d = (await res.json().catch(() => ({}))) as { error?: string };
+        throw new Error(d.error || 'Could not sign in');
+      }
+      window.location.assign('/');
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Sign in failed');
+      setBusy(false);
+    }
+  }
 
   /** Group by role so the dropdown reads sensibly once the roster grows. */
   const grouped = useMemo(() => {
@@ -131,9 +162,14 @@ export default function LoginPage() {
                   style={{ width: '100%', fontSize: 16, padding: '12px 14px', borderRadius: 12 }}
                   onChange={(e) => {
                     const person = people.find((p) => p.userId === e.target.value) ?? null;
-                    setSelected(person);
                     setPin('');
                     setError(null);
+                    if (person && !pinsRequired) {
+                      // No PIN step to go to — become them straight away.
+                      void signInOpen(person);
+                      return;
+                    }
+                    setSelected(person);
                   }}
                 >
                   <option value="" disabled>
@@ -151,8 +187,26 @@ export default function LoginPage() {
                   ))}
                 </select>
                 <p style={{ color: 'var(--text-faint)', fontSize: 13, margin: '10px 0 0' }}>
-                  Pick your name, then enter your 4-digit PIN.
+                  {busy
+                    ? 'Signing in…'
+                    : pinsRequired
+                      ? 'Pick your name, then enter your 4-digit PIN.'
+                      : 'Pick a name to sign in as them.'}
                 </p>
+                {!pinsRequired && (
+                  // Say it out loud. Anyone who can open this page can become anyone, including the
+                  // owner — that is the point while it is on, and it should never be a surprise.
+                  <div className="notif" style={{ marginTop: 12, fontSize: 13 }} role="status">
+                    PIN checks are switched off, so any name here signs in without one.
+                    Everyone&apos;s PIN is still stored and starts working again the moment it is
+                    switched back on.
+                  </div>
+                )}
+                {error && (
+                  <div className="err" role="alert" style={{ marginTop: 12 }}>
+                    {error}
+                  </div>
+                )}
               </>
             )}
           </>
