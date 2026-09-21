@@ -24,14 +24,54 @@ export class TenantService implements OnModuleInit, OnModuleDestroy {
   private readonly app: PrismaClient;
 
   constructor() {
+    // Fail closed on the two misconfigurations that silently disable tenant isolation.
+    //
+    // Unset: Prisma falls back to the schema's env("DATABASE_URL") — the migration/owner role, which
+    // has BYPASSRLS. Every request-path query would then bypass RLS entirely, with nothing logged.
+    // Identical to DATABASE_URL: same outcome, reached by a copy-paste in an env file.
+    const appUrl = process.env.APP_DATABASE_URL;
+    if (!appUrl) {
+      throw new Error(
+        'APP_DATABASE_URL is not set. Without it Prisma falls back to DATABASE_URL (the BYPASSRLS ' +
+          'owner role) for every request-path query, which disables tenant isolation.',
+      );
+    }
+    if (appUrl === process.env.DATABASE_URL) {
+      throw new Error(
+        'APP_DATABASE_URL must not equal DATABASE_URL. The request path has to connect as a ' +
+          'NOSUPERUSER, NOBYPASSRLS role or RLS is not enforced.',
+      );
+    }
+
     // app_user connection. Keep the pool small so the leak test exercises connection reuse.
     this.app = new PrismaClient({
-      datasourceUrl: process.env.APP_DATABASE_URL,
+      datasourceUrl: appUrl,
     });
   }
 
   async onModuleInit(): Promise<void> {
     await this.app.$connect();
+    await this.assertNotPrivileged();
+  }
+
+  /**
+   * RLS is only a guarantee if the role we connect as cannot step over it. A correct-looking
+   * connection string pointed at a privileged role would make every policy in the database
+   * decorative, so prove the role's attributes at boot rather than trusting the URL.
+   */
+  private async assertNotPrivileged(): Promise<void> {
+    const rows = await this.app.$queryRaw<
+      { rolsuper: boolean; rolbypassrls: boolean; rolname: string }[]
+    >`SELECT rolname, rolsuper, rolbypassrls FROM pg_roles WHERE rolname = current_user`;
+    const role = rows[0];
+    if (!role) return; // Cannot read pg_roles — leave the connection to speak for itself.
+    if (role.rolsuper || role.rolbypassrls) {
+      throw new Error(
+        `APP_DATABASE_URL connects as "${role.rolname}", which is ` +
+          `${role.rolsuper ? 'a SUPERUSER' : 'BYPASSRLS'}. Row-level security would not be ` +
+          'enforced on the request path. Use the least-privilege app_user role.',
+      );
+    }
   }
 
   async onModuleDestroy(): Promise<void> {
