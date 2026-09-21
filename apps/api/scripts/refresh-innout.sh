@@ -28,10 +28,18 @@ done
 say() { printf '\n\033[1m── %s\033[0m\n' "$1"; }
 
 # ── Target credentials ───────────────────────────────────────────────────────────────────────
-[ -f "$API/.env" ] || { echo "missing $API/.env" >&2; exit 1; }
-set -a; . "$API/.env"; set +a
-: "${DATABASE_URL:?DATABASE_URL not set in apps/api/.env}"
-: "${DEMO_TENANT_ID:?DEMO_TENANT_ID not set in apps/api/.env}"
+# ONESTACK_ENV_FILE selects the target (e.g. .env.supabase). Relative paths resolve against apps/api.
+ENV_FILE="${ONESTACK_ENV_FILE:-$API/.env}"
+case "$ENV_FILE" in /*) ;; *) ENV_FILE="$API/$ENV_FILE" ;; esac
+[ -f "$ENV_FILE" ] || { echo "missing env file: $ENV_FILE" >&2; exit 1; }
+set -a; . "$ENV_FILE"; set +a
+: "${DATABASE_URL:?DATABASE_URL not set in $ENV_FILE}"
+: "${DEMO_TENANT_ID:?DEMO_TENANT_ID not set in $ENV_FILE}"
+
+# Say out loud which database is about to be overwritten — this script is destructive by design, and
+# pointing it at a remote target should never be a surprise. Credentials stripped.
+printf '\n\033[1m── target: %s → %s\033[0m\n' \
+  "$ENV_FILE" "$(printf '%s' "$DATABASE_URL" | sed -E 's#://[^@]*@#://***@#')"
 
 # ── Source credentials — read ONLY these two values. Do NOT source this file. ────────────────
 # Sourcing it would export SUPABASE_URL + SUPABASE_SERVICE_ROLE_KEY into the environment, and
@@ -106,18 +114,31 @@ node "$SCRIPTS/innout-photos-jsonl-to-csv.mjs" "$WORK/photos_done.jsonl" "$WORK/
 # Every photo ROW must have bytes on disk, or GET /fleet/photos/:id/content 404s. The reverse
 # (bytes with no row) is expected and fine — OneStack-native uploads live here too.
 say "verifying photo bytes"
+# Set the tenant context explicitly rather than relying on the connection bypassing RLS. Locally the
+# superuser does bypass it, but against a target where it does not, an unscoped read returns zero rows,
+# `missing` computes to 0, and this prints "all photo rows have bytes on disk" — a false green over a
+# completely empty result. Asserting the row count separately makes that failure impossible to miss.
+photo_rows=$(psql "$DATABASE_URL" -tA -c "
+  select set_config('app.current_tenant_id', '$DEMO_TENANT_ID', false);
+  select count(*) from onestack_fleet_photo where \"tenantId\" = '$DEMO_TENANT_ID';" | tail -1)
+if [ "${photo_rows:-0}" = "0" ]; then
+  echo "  ⚠ read 0 photo rows — either none are imported, or this connection cannot see them (RLS)" >&2
+  exit 1
+fi
+
 # NB: use `if`, not an `&&` chain — under `set -o pipefail` a loop body that ends false makes the
 # whole pipeline non-zero, so a fully-healthy run would abort here.
-missing=$(psql "$DATABASE_URL" -tA \
-  -c "select \"storagePath\" from onestack_fleet_photo where \"tenantId\" = '$DEMO_TENANT_ID'" \
+missing=$(psql "$DATABASE_URL" -tA -c "
+  select set_config('app.current_tenant_id', '$DEMO_TENANT_ID', false);
+  select \"storagePath\" from onestack_fleet_photo where \"tenantId\" = '$DEMO_TENANT_ID';" \
   | while read -r p; do
-      if [ -n "$p" ] && [ ! -f "$FLEET_PHOTO_DIR/$p" ]; then echo "$p"; fi
+      if [ -n "$p" ] && [ "$p" != "$DEMO_TENANT_ID" ] && [ ! -f "$FLEET_PHOTO_DIR/$p" ]; then echo "$p"; fi
     done | wc -l | tr -d ' ')
 if [ "$missing" != "0" ]; then
   echo "  ⚠ $missing photo row(s) have NO bytes on disk — those will 404" >&2
   exit 1
 fi
-echo "  all photo rows have bytes on disk"
+echo "  all $photo_rows photo rows have bytes on disk"
 echo "  disk: $(du -sh "$FLEET_PHOTO_DIR" | cut -f1) across $(find "$FLEET_PHOTO_DIR" -type f | wc -l | tr -d ' ') files"
 
 say "done"
