@@ -32,11 +32,15 @@ SPECS = [
         "id", "driver_name", "driver_phone", "owner_name", "owner_phone", "cars_in_rego",
         "cars_in_rego_raw", "cars_out_vehicle_id", "cars_out_rego", "cars_out_rego_raw", "purpose",
         "moved_at", "status", "needs_review", "review_reason", "notes", "staff_name",
-        "created_at", "updated_at"]),
+        "created_at", "updated_at", "customer_id"]),
     ("ret.csv", "vehicle_returns", [
         "id", "movement_id", "returned_vehicle_id", "returned_rego", "returned_rego_raw",
         "driver_name", "mobile_number", "returned_at", "bond_status", "notes", "needs_review",
-        "review_reason", "staff_name", "created_at", "updated_at"]),
+        "review_reason", "staff_name", "created_at", "updated_at", "customer_id"]),
+    # The people behind the movements — these become onestack_contact rows, which is what the
+    # Customers page lists and what contactId on fleet records points at.
+    ("cus.csv", "customers", [
+        "id", "driver_name", "mobile_number", "notes", "created_at", "updated_at"]),
     ("bok.csv", "bookings", [
         "id", "vehicle_id", "vehicle_rego", "booking_name", "booking_mobile", "start_at",
         "expected_return_at", "purpose", "status", "notes", "created_at", "updated_at"]),

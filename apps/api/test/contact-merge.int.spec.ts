@@ -16,6 +16,8 @@ describe.skipIf(!hasDb)('Duplicate detection & merge (Phase 4)', () => {
   let primaryId: string;
   let dupId: string;
   let dupJobId: string;
+  let dupMovementId: string;
+  let dupReturnId: string;
 
   const http = () => request(app.getHttpServer());
   const auth = (t: TestTenant) => ({ Authorization: `Bearer ${t.ownerToken}` });
@@ -58,6 +60,35 @@ describe.skipIf(!hasDb)('Duplicate detection & merge (Phase 4)', () => {
         .send({ type: 'job', fields: { customerId: dupId }, subjectIds: [vehicleId] })
         .expect(201)
     ).body.id;
+
+    // Loan-car history on the DUPLICATE. Fleet rows carry contactId but were not repointed by merge
+    // until customers were imported from In N Out — at which point a merge would have silently
+    // orphaned this history onto a soft-deleted contact.
+    dupMovementId = (
+      await admin.$queryRawUnsafe<{ id: string }[]>(
+        `INSERT INTO "onestack_fleet_movement"
+           ("id","tenantId","contactId","driverName","driverPhone","ownerName","ownerPhone",
+            "carsInRego","carsInRegoRaw","carsOutRego","carsOutRegoRaw","purpose","status",
+            "needsReview","reviewReason","notes","staffName","createdAt","updatedAt")
+         VALUES (gen_random_uuid(), $1::uuid, $2::uuid, 'J Smith','','','','','','LOAN01','LOAN01',
+                 'COURTESY','active',false,'','','', now(), now())
+         RETURNING id`,
+        a.tenantId,
+        dupId,
+      )
+    )[0].id;
+    dupReturnId = (
+      await admin.$queryRawUnsafe<{ id: string }[]>(
+        `INSERT INTO "onestack_fleet_return"
+           ("id","tenantId","contactId","returnedRego","returnedRegoRaw","driverName","mobileNumber",
+            "bondStatus","notes","staffName","needsReview","reviewReason","createdAt","updatedAt")
+         VALUES (gen_random_uuid(), $1::uuid, $2::uuid, 'LOAN01','LOAN01','J Smith','','','','',
+                 false,'', now(), now())
+         RETURNING id`,
+        a.tenantId,
+        dupId,
+      )
+    )[0].id;
   });
 
   afterAll(async () => {
@@ -67,6 +98,8 @@ describe.skipIf(!hasDb)('Duplicate detection & merge (Phase 4)', () => {
         'onestack_work_item_subject',
         'onestack_work_item',
         'onestack_work_item_counter',
+        'onestack_fleet_return',
+        'onestack_fleet_movement',
         'onestack_subject',
         'onestack_contact',
       ]) {
@@ -117,6 +150,27 @@ describe.skipIf(!hasDb)('Duplicate detection & merge (Phase 4)', () => {
     expect(
       (await http().get('/api/v1/contacts/duplicates').set(auth(a)).expect(200)).body,
     ).toHaveLength(0);
+
+    expect(res.reassigned.fleetMovements).toBe(1);
+    expect(res.reassigned.fleetReturns).toBe(1);
+  });
+
+  it('keeps the loan-car history attached to a live contact after the merge', async () => {
+    // The regression this guards: fleet rows left on the soft-deleted duplicate would vanish from
+    // every read path, because those filter on deletedAt: null.
+    const [mov] = await admin.$queryRawUnsafe<{ contactId: string }[]>(
+      `SELECT "contactId" FROM "onestack_fleet_movement" WHERE id = $1::uuid`,
+      dupMovementId,
+    );
+    const [ret] = await admin.$queryRawUnsafe<{ contactId: string }[]>(
+      `SELECT "contactId" FROM "onestack_fleet_return" WHERE id = $1::uuid`,
+      dupReturnId,
+    );
+    expect(mov.contactId).toBe(primaryId);
+    expect(ret.contactId).toBe(primaryId);
+
+    // And the contact they point at is actually visible, not soft-deleted.
+    await http().get(`/api/v1/contacts/${primaryId}`).set(auth(a)).expect(200);
   });
 
   it("is tenant-isolated: shop B can't see or merge shop A's contacts", async () => {

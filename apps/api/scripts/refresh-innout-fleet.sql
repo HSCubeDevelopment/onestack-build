@@ -24,10 +24,12 @@
 
 create temp table s_veh(id uuid, rego text, rego_raw text, make text, model text, vtype text, status text, is_company boolean, notes text, created_at timestamptz, updated_at timestamptz);
 \copy s_veh from 'veh.csv' csv header
-create temp table s_mov(id uuid, driver_name text, driver_phone text, owner_name text, owner_phone text, cars_in_rego text, cars_in_rego_raw text, cars_out_vehicle_id uuid, cars_out_rego text, cars_out_rego_raw text, purpose text, moved_at timestamptz, status text, needs_review boolean, review_reason text, notes text, staff_name text, created_at timestamptz, updated_at timestamptz);
+create temp table s_mov(id uuid, driver_name text, driver_phone text, owner_name text, owner_phone text, cars_in_rego text, cars_in_rego_raw text, cars_out_vehicle_id uuid, cars_out_rego text, cars_out_rego_raw text, purpose text, moved_at timestamptz, status text, needs_review boolean, review_reason text, notes text, staff_name text, created_at timestamptz, updated_at timestamptz, customer_id uuid);
 \copy s_mov from 'mov.csv' csv header
-create temp table s_ret(id uuid, movement_id uuid, returned_vehicle_id uuid, returned_rego text, returned_rego_raw text, driver_name text, mobile_number text, returned_at timestamptz, bond_status text, notes text, needs_review boolean, review_reason text, staff_name text, created_at timestamptz, updated_at timestamptz);
+create temp table s_ret(id uuid, movement_id uuid, returned_vehicle_id uuid, returned_rego text, returned_rego_raw text, driver_name text, mobile_number text, returned_at timestamptz, bond_status text, notes text, needs_review boolean, review_reason text, staff_name text, created_at timestamptz, updated_at timestamptz, customer_id uuid);
 \copy s_ret from 'ret.csv' csv header
+create temp table s_cus(id uuid, driver_name text, mobile_number text, notes text, created_at timestamptz, updated_at timestamptz);
+\copy s_cus from 'cus.csv' csv header
 create temp table s_bok(id uuid, vehicle_id uuid, vehicle_rego text, booking_name text, booking_mobile text, start_at timestamptz, expected_return_at timestamptz, purpose text, status text, notes text, created_at timestamptz, updated_at timestamptz);
 \copy s_bok from 'bok.csv' csv header
 
@@ -72,6 +74,43 @@ set rego = '~ORPHAN~' || v.id::text
 where v."tenantId" = :'DEMO'
   and exists (select 1 from s_veh s where s.rego = v.rego and s.id <> v.id);
 
+-- ── Customers → contacts ─────────────────────────────────────────────────────────────────────
+-- The source's `customers` become core Contact records, which is what the Customers page lists and
+-- what contactId on fleet rows points at. Source ids are preserved, so the fleet links below are a
+-- plain id match. Upserts a previously MERGED contact back to visible only if the source still has
+-- it — deletedAt is deliberately NOT reset here (see the DO UPDATE list), so a human merge sticks.
+insert into onestack_contact (id,"tenantId","displayName",email,phone,"createdAt","updatedAt",fields,"customFields")
+select s.id, :'DEMO',
+       nullif(btrim(coalesce(s.driver_name,'')),''),
+       null,
+       nullif(btrim(coalesce(s.mobile_number,'')),''),
+       coalesce(s.created_at, now()), coalesce(s.updated_at, now()),
+       case when coalesce(btrim(s.notes),'') <> '' then jsonb_build_object('notes', s.notes)
+            else '{}'::jsonb end,
+       '{}'::jsonb
+from s_cus s
+where nullif(btrim(coalesce(s.driver_name,'')),'') is not null   -- displayName is NOT NULL
+on conflict (id) do update set
+  "displayName" = excluded."displayName",
+  phone         = excluded.phone,
+  "createdAt"   = excluded."createdAt",
+  "updatedAt"   = excluded."updatedAt",
+  fields        = onestack_contact.fields || excluded.fields
+where onestack_contact."tenantId" = :'DEMO';
+-- DELIBERATELY NOT SET: id, "tenantId", email (source has none — would wipe one added in OneStack),
+-- "deletedAt" (resetting it would resurrect every contact a human merged away),
+-- "customFields" (OneStack-side). `fields` is MERGED, not replaced, to preserve mergedIntoId.
+
+-- Where each source customer should actually point: itself, or the primary it was merged into. Without
+-- this, a refresh after a human merge would re-point fleet rows back at the soft-deleted duplicate and
+-- silently undo the merge.
+create temp table c_map as
+select c.id as src_id,
+       coalesce(nullif(c.fields->>'mergedIntoId','')::uuid, c.id) as eff_id
+from onestack_contact c
+where c."tenantId" = :'DEMO';
+create index on c_map (src_id);
+
 -- ── Vehicles ─────────────────────────────────────────────────────────────────────────────────
 insert into onestack_fleet_vehicle
   (id,"tenantId",rego,"regoRaw",make,model,"vehicleType",status,"isCompanyCar",notes,"createdAt","updatedAt")
@@ -100,7 +139,9 @@ insert into onestack_fleet_movement
   (id,"tenantId","contactId","driverName","driverPhone","ownerName","ownerPhone","carsInRego","carsInRegoRaw",
    "carsOutVehicleId","carsOutRego","carsOutRegoRaw",purpose,"movedAt",status,"needsReview","reviewReason",
    notes,"staffName","createdByUserId","updatedByUserId","createdAt","updatedAt")
-select s.id, :'DEMO', null, coalesce(s.driver_name,''), coalesce(s.driver_phone,''),
+select s.id, :'DEMO',
+       (select m.eff_id from c_map m where m.src_id = s.customer_id),
+       coalesce(s.driver_name,''), coalesce(s.driver_phone,''),
        coalesce(s.owner_name,''), coalesce(s.owner_phone,''), coalesce(s.cars_in_rego,''),
        coalesce(s.cars_in_rego_raw,''),
        case when exists (select 1 from onestack_fleet_vehicle v
@@ -113,6 +154,9 @@ select s.id, :'DEMO', null, coalesce(s.driver_name,''), coalesce(s.driver_phone,
        coalesce(s.created_at, now()), coalesce(s.updated_at, now())
 from s_mov s
 on conflict (id) do update set
+  -- coalesce, not a plain overwrite: when the source has no customer_id we must not wipe a link made
+  -- in OneStack. Resolved through c_map, so a human merge is preserved across refreshes.
+  "contactId"        = coalesce(excluded."contactId", onestack_fleet_movement."contactId"),
   "driverName"       = excluded."driverName",
   "driverPhone"      = excluded."driverPhone",
   "ownerName"        = excluded."ownerName",
@@ -132,9 +176,10 @@ on conflict (id) do update set
   "createdAt"        = excluded."createdAt",
   "updatedAt"        = excluded."updatedAt"
 where onestack_fleet_movement."tenantId" = :'DEMO';
--- DELIBERATELY NOT SET: id, "tenantId", "contactId", "createdByUserId", "updatedByUserId".
--- Those are OneStack-side; the source knows nothing about them, so excluded.* is ALWAYS NULL and
--- adding them here would wipe real data the moment contact/user mapping ships.
+-- DELIBERATELY NOT SET: id, "tenantId", "createdByUserId", "updatedByUserId" — still OneStack-side,
+-- so excluded.* is always NULL for those and setting them would wipe real data.
+-- "contactId" IS now set, because the source DOES know it (customers are imported above). It is
+-- coalesced rather than overwritten so a null source value never clears an existing link.
 
 -- ── Returns ──────────────────────────────────────────────────────────────────────────────────
 insert into onestack_fleet_return
@@ -145,7 +190,7 @@ select s.id, :'DEMO',
        case when exists (select 1 from onestack_fleet_movement m
                          where m.id = s.movement_id and m."tenantId" = :'DEMO')
             then s.movement_id end,
-       null,
+       (select m.eff_id from c_map m where m.src_id = s.customer_id),
        case when exists (select 1 from onestack_fleet_vehicle v
                          where v.id = s.returned_vehicle_id and v."tenantId" = :'DEMO')
             then s.returned_vehicle_id end,
@@ -155,6 +200,7 @@ select s.id, :'DEMO',
        null, null, coalesce(s.created_at, now()), coalesce(s.updated_at, now())
 from s_ret s
 on conflict (id) do update set
+  "contactId"         = coalesce(excluded."contactId", onestack_fleet_return."contactId"),
   "movementId"        = excluded."movementId",
   "returnedVehicleId" = excluded."returnedVehicleId",
   "returnedRego"      = excluded."returnedRego",
@@ -170,7 +216,8 @@ on conflict (id) do update set
   "createdAt"         = excluded."createdAt",
   "updatedAt"         = excluded."updatedAt"
 where onestack_fleet_return."tenantId" = :'DEMO';
--- DELIBERATELY NOT SET: id, "tenantId", "contactId", "createdByUserId", "updatedByUserId".
+-- DELIBERATELY NOT SET: id, "tenantId", "createdByUserId", "updatedByUserId". "contactId" is set
+-- from the source (coalesced) — see the movement upsert above.
 
 -- ── Bookings ─────────────────────────────────────────────────────────────────────────────────
 insert into onestack_fleet_booking
@@ -269,9 +316,15 @@ from onestack_fleet_movement where "tenantId"=:'DEMO';
 
 select status, count(*) from onestack_fleet_vehicle where "tenantId"=:'DEMO' group by 1 order by 2 desc;
 
+\echo '── contacts + linkage ──'
+select (select count(*) from s_cus)                                                     source_customers,
+       (select count(*) from onestack_contact where "tenantId"=:'DEMO' and "deletedAt" is null) visible_contacts,
+       (select count(*) from onestack_contact where "tenantId"=:'DEMO' and "deletedAt" is not null) merged_away,
+       (select count(*) from onestack_fleet_movement where "tenantId"=:'DEMO' and "contactId" is not null) movements_linked,
+       (select count(*) from onestack_fleet_return   where "tenantId"=:'DEMO' and "contactId" is not null) returns_linked;
+
 \echo '── OneStack-only columns (these must NEVER decrease between runs) ──'
-select count(*) filter (where "contactId"       is not null) contact_id,
-       count(*) filter (where "createdByUserId" is not null) created_by,
+select count(*) filter (where "createdByUserId" is not null) created_by,
        count(*) filter (where "updatedByUserId" is not null) updated_by
 from onestack_fleet_movement where "tenantId"=:'DEMO';
 
