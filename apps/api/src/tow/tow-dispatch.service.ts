@@ -1,4 +1,5 @@
 import { BadRequestException, Injectable, NotFoundException } from '@nestjs/common';
+import { SupabaseAuthService } from '../auth/supabase-auth.service';
 import { ContactsService } from '../contacts/contacts.service';
 import { NoteService } from '../work-items/note.service';
 import { SubjectService } from '../subjects/subject.service';
@@ -43,17 +44,35 @@ export class TowDispatchService {
     private readonly subjects: SubjectService,
     private readonly contacts: ContactsService,
     private readonly notes: NoteService,
+    private readonly supabase: SupabaseAuthService,
   ) {}
 
-  /** Members of this shop who can be sent on a tow. */
-  async drivers(tenantId: string): Promise<{ userId: string; role: string }[]> {
-    return this.tenants.runInTenant(tenantId, async (tx) => {
-      const rows = await tx.membership.findMany({
+  /**
+   * Members of this shop who can be sent on a tow, by NAME.
+   *
+   * The name comes from the Supabase identity, the same source the PIN name-picker uses. Without it
+   * the booking form offered "0d15ea5e" as a driver, which nobody in the office can match to a person.
+   * A driver with no resolvable profile still appears — they are a real driver and must be bookable —
+   * but is labelled so, rather than silently dropped.
+   */
+  async drivers(tenantId: string): Promise<{ userId: string; name: string; role: string }[]> {
+    const rows = await this.tenants.runInTenant(tenantId, (tx) =>
+      tx.membership.findMany({
         where: { role: 'TOW' },
         select: { userId: true, role: true },
         orderBy: { createdAt: 'asc' },
-      });
-      return rows.map((r) => ({ userId: r.userId, role: String(r.role) }));
+      }),
+    );
+    const profiles = await this.supabase
+      .profilesByUserId(rows.map((r) => r.userId))
+      .catch(() => new Map<string, { email: string | null; name: string | null }>());
+    return rows.map((r) => {
+      const p = profiles.get(r.userId);
+      return {
+        userId: r.userId,
+        name: p?.name || p?.email || `Driver ${r.userId.slice(0, 8)}`,
+        role: String(r.role),
+      };
     });
   }
 

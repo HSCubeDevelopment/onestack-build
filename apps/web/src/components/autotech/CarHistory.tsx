@@ -13,6 +13,7 @@ import {
 } from 'lucide-react';
 import { api, ApiError } from '@/lib/api';
 import { AtTopbar, SignOutButton } from '@/components/autotech/kit';
+import { RegoInput } from '@/components/fleet/RegoInput';
 import { HIDDEN_FROM_STAFF } from '@/lib/staff-features';
 import { LiveLocation } from '@/components/LiveLocation';
 
@@ -220,19 +221,14 @@ export function CarHistory() {
             Search a registration to see everything on that car — or browse the whole yard below.
           </div>
           {err && <div className="at-errbanner">{err}</div>}
-          <div className="at-field" style={{ marginTop: 10 }}>
-            <div className="at-flabel">Registration</div>
-            <input
-              className="at-input rego"
-              value={rego}
-              onChange={(e) => setRego(e.target.value.toUpperCase())}
-              onKeyDown={(e) => e.key === 'Enter' && void view()}
-              placeholder="1XY 4KP"
-              autoFocus
-              autoCapitalize="characters"
-              autoCorrect="off"
-            />
-          </div>
+          <RegoInput
+            label="Registration"
+            value={rego}
+            onChange={setRego}
+            onPick={(r) => void view(r)}
+            onEnter={() => void view()}
+            autoFocus
+          />
           <button
             className="at-btn primary"
             style={{ marginTop: 12 }}

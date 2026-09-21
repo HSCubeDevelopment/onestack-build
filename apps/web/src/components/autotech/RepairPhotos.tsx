@@ -4,6 +4,7 @@ import { Camera, Car, Plus, Search } from 'lucide-react';
 import { api, ApiError } from '@/lib/api';
 import { compressToBase64 } from '@/lib/image';
 import { AtTopbar, SignOutButton } from '@/components/autotech/kit';
+import { RegoInput } from '@/components/fleet/RegoInput';
 
 /**
  * Repair photos — enter a rego, then add Before / During / After photos to the car's current job.
@@ -106,8 +107,10 @@ export function RepairPhotos() {
     setJobId(target?.id ?? null);
   }
 
-  async function search(): Promise<void> {
-    const q = rego.trim();
+  // `override` lets a picked suggestion search immediately: setRego won't have landed yet when
+  // the click handler runs, so reading state here would search the half-typed plate.
+  async function search(override?: string): Promise<void> {
+    const q = (override ?? rego).trim();
     if (!q) return;
     setSearching(true);
     setErr(null);
@@ -203,19 +206,14 @@ export function RepairPhotos() {
 
         {err && <div className="at-errbanner">{err}</div>}
 
-        <div className="at-field" style={{ marginTop: 10 }}>
-          <div className="at-flabel">Registration</div>
-          <input
-            className="at-input rego"
-            value={rego}
-            onChange={(e) => setRego(e.target.value.toUpperCase())}
-            onKeyDown={(e) => e.key === 'Enter' && void search()}
-            placeholder="1XY 4KP"
-            autoFocus
-            autoCapitalize="characters"
-            autoCorrect="off"
-          />
-        </div>
+        <RegoInput
+          label="Registration"
+          value={rego}
+          onChange={setRego}
+          onPick={(r) => void search(r)}
+          onEnter={() => void search()}
+          autoFocus
+        />
         <button
           className="at-btn primary"
           style={{ marginTop: 12 }}

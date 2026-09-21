@@ -2,14 +2,18 @@
 import Link from 'next/link';
 import { Truck, ClipboardList, Clock } from 'lucide-react';
 import { AtLogo, SignOutButton } from '@/components/autotech/kit';
-import { TowPickups } from '@/components/autotech/TowPickups';
+import { useMyTows } from '@/lib/tow';
 
 /**
- * The tow driver's home — the same Auto Tech look as the staff home, but surfacing the tow worker's
- * OWN functions. Nothing about what these do changes: "Tow in a car" opens the existing yards tow-in
- * flow, "My jobs" the existing assigned-jobs list, "Clock In / Out" the shift clock.
+ * The tow driver's home — four buttons, nothing else.
+ *
+ * Dispatched work used to be listed inline here, which pushed everything below it off the screen as
+ * soon as the driver had more than a job or two. It now lives on /tow/jobs and this page just carries
+ * the count, so the home screen stays a launcher and the work gets a screen of its own.
  */
 export function TowHome() {
+  const { open } = useMyTows();
+
   return (
     <>
       <div className="at-topbar">
@@ -25,11 +29,19 @@ export function TowHome() {
         </div>
       </div>
 
-      {/* Dispatched work first — it is what the driver opened the app for. */}
-      <div className="at-h2" style={{ margin: '4px 0 10px' }}>
-        My pickups
-      </div>
-      <TowPickups />
+      {/* The work first — it is what the driver opened the app for. */}
+      <Link href="/tow/jobs" className="at-bigbtn at-grad-jobs">
+        {open.length > 0 && <span className="count">{open.length}</span>}
+        <span className="circ">
+          <ClipboardList size={54} strokeWidth={2} />
+        </span>
+        <span className="lab">Jobs</span>
+        <span className="sub">
+          {open.length === 0
+            ? 'Cars you have been sent to collect'
+            : `${open.length} car${open.length === 1 ? '' : 's'} to tow`}
+        </span>
+      </Link>
 
       <Link href="/yards" className="at-bigbtn at-grad-tow">
         <span className="circ">
@@ -37,14 +49,6 @@ export function TowHome() {
         </span>
         <span className="lab">Tow in a car</span>
         <span className="sub">Collect a car · creates the job</span>
-      </Link>
-
-      <Link href="/jobs" className="at-bigbtn at-grad-jobs">
-        <span className="circ">
-          <ClipboardList size={54} strokeWidth={2} />
-        </span>
-        <span className="lab">My jobs</span>
-        <span className="sub">Jobs assigned to you</span>
       </Link>
 
       <Link href="/inout/clock" className="at-bigbtn at-grad-clock">

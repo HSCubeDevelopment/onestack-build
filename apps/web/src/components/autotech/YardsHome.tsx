@@ -1,22 +1,28 @@
 'use client';
-import { useMemo } from 'react';
+import { useMemo, useState } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
-import { Truck, ParkingSquare, Warehouse } from 'lucide-react';
+import { Truck, ParkingSquare, PhoneCall, Warehouse } from 'lucide-react';
 import { api } from '@/lib/api';
 import { Yard, YardDrop } from '@/lib/yards';
 import { useAsync } from '@/components/ui';
 import { useYardTagCounts } from '@/lib/use-yard-tags';
 import { AtTopbar, SignOutButton } from '@/components/autotech/kit';
+import { BookTowModal } from '@/components/BookTowModal';
 
 /**
  * The employee Yards home — the screen behind the "Yards" button. Two actions at the top (tow a car in,
  * park a car in a yard) and then the list of yards, each with a live count of how many cars are parked
  * there. Tapping a yard drills into the cars sitting in it. All reads/writes here are open to staff, so
  * a floor worker sees exactly this without needing owner access.
+ *
+ * Three actions, and the difference between the first two matters: "Book a tow" SENDS a driver out to
+ * collect a car; "Tow a car in" records a pickup that has already happened. The front desk books tows,
+ * not just the owner, so booking lives here rather than only on the owner's yards page.
  */
 export function YardsHome() {
   const router = useRouter();
+  const [booking, setBooking] = useState(false);
   const { data, loading, error } = useAsync(
     () => Promise.all([api.get<Yard[]>('/yards'), api.get<YardDrop[]>('/yards/awaiting')]),
     [],
@@ -38,6 +44,13 @@ export function YardsHome() {
       <div className="at-h2">Yards</div>
 
       <div className="at-tiles">
+        <button type="button" className="at-tile" onClick={() => setBooking(true)}>
+          <span className="ti-ic" style={{ background: 'var(--at-red)' }}>
+            <PhoneCall size={30} strokeWidth={2} color="#fff" />
+          </span>
+          <span className="ti-lab">Book a tow</span>
+          <span className="ti-sub">Send a driver to collect a car</span>
+        </button>
         <Link href="/inout/yards/tow" className="at-tile">
           <span className="ti-ic" style={{ background: 'var(--at-orange)' }}>
             <Truck size={30} strokeWidth={2} color="#fff" />
@@ -94,6 +107,14 @@ export function YardsHome() {
             );
           })}
         </div>
+      )}
+
+      {booking && (
+        <BookTowModal
+          yards={yards}
+          onClose={() => setBooking(false)}
+          onBooked={() => setBooking(false)}
+        />
       )}
     </>
   );

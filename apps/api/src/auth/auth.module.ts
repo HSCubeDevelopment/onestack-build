@@ -12,6 +12,9 @@ import { SupabaseAuthService } from './supabase-auth.service';
 @Module({
   controllers: [DevLoginController, LoginController, PinController, MeController],
   providers: [JwtAuthGuard, RolesGuard, SupabaseAuthService, PinAuthService],
-  exports: [JwtAuthGuard, RolesGuard],
+  // SupabaseAuthService is exported for its profile lookup only (user id -> name/email), which the tow
+  // booking form needs so drivers are listed by name instead of a truncated uuid. It is read-only and
+  // already reachable to everything in this module; nothing about how auth decisions are made moves.
+  exports: [JwtAuthGuard, RolesGuard, SupabaseAuthService],
 })
 export class AuthModule {}

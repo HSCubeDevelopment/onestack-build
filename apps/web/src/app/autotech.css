@@ -196,6 +196,7 @@ html.dark {
 
 /* ---- two big home buttons ---- */
 .at-bigbtn {
+  position: relative; /* anchors the live job count badge */
   width: 100%;
   border: none;
   border-radius: 28px;
@@ -1330,4 +1331,399 @@ textarea.at-input {
   letter-spacing: 0.4px;
   color: var(--at-label2);
   margin: 12px 0 2px;
+}
+
+/* ======================================================================
+ * Tow driver — jobs screen.
+ *
+ * The driver reads this one-handed, often in the cab with the engine running, so the card leads with
+ * the car and the two addresses and pushes everything else down. The status buttons animate on press
+ * and on success: a tap on a phone gives no physical feedback, and without it drivers double-tap and
+ * advance a job twice.
+ * ====================================================================== */
+
+.at-link {
+  color: var(--at-blue);
+  font-weight: 700;
+  text-decoration: none;
+}
+
+/* ---- the job card ---- */
+.at-job {
+  background: var(--at-card);
+  border: 1px solid var(--at-sep);
+  border-radius: 18px;
+  padding: 16px;
+  margin-bottom: 14px;
+  box-shadow: 0 2px 10px rgba(0, 0, 0, 0.05);
+  animation: at-job-in 0.28s ease both;
+}
+@keyframes at-job-in {
+  from {
+    opacity: 0;
+    transform: translateY(8px);
+  }
+}
+.at-job-head {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 10px;
+  margin-bottom: 12px;
+}
+.at-job-rego {
+  font-size: 23px;
+  font-weight: 800;
+  letter-spacing: 1px;
+  color: var(--at-label);
+  line-height: 1.1;
+}
+.at-job-car {
+  font-size: 14px;
+  color: var(--at-label2);
+  margin-top: 2px;
+}
+
+/* ---- status pill, colour-coded to where the job is up to ---- */
+.at-status {
+  flex: none;
+  font-size: 12px;
+  font-weight: 800;
+  text-transform: uppercase;
+  letter-spacing: 0.4px;
+  padding: 6px 11px;
+  border-radius: 20px;
+  background: rgba(142, 142, 147, 0.16);
+  color: var(--at-gray);
+  transition:
+    background 0.25s ease,
+    color 0.25s ease;
+}
+.at-status.dispatched {
+  background: rgba(255, 149, 0, 0.16);
+  color: #b06a00;
+}
+.at-status.en_route {
+  background: rgba(0, 122, 255, 0.14);
+  color: var(--at-blue);
+}
+.at-status.on_site {
+  background: rgba(175, 82, 222, 0.14);
+  color: var(--at-purple);
+}
+.at-status.completed {
+  background: rgba(52, 199, 89, 0.16);
+  color: var(--at-green-text);
+}
+/* Flashes once when the driver advances the job, so the change is impossible to miss. */
+.at-status.bumped {
+  animation: at-status-bump 0.5s ease;
+}
+@keyframes at-status-bump {
+  35% {
+    transform: scale(1.18);
+  }
+  70% {
+    transform: scale(0.97);
+  }
+}
+
+/* ---- the two addresses: the biggest tap targets on the card ---- */
+.at-leg {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  width: 100%;
+  text-align: left;
+  background: var(--at-chip);
+  border: none;
+  border-radius: 14px;
+  padding: 13px 14px;
+  margin-bottom: 8px;
+  font-family: inherit;
+  color: var(--at-chip-ink);
+  text-decoration: none;
+  transition: transform 0.12s ease;
+}
+.at-leg:active {
+  transform: scale(0.985);
+}
+.at-leg .ic {
+  flex: none;
+  width: 34px;
+  height: 34px;
+  border-radius: 10px;
+  display: grid;
+  place-items: center;
+  color: #fff;
+  background: var(--at-orange);
+}
+.at-leg.drop .ic {
+  background: var(--at-teal);
+}
+.at-leg .body {
+  flex: 1;
+  min-width: 0;
+}
+.at-leg .lab {
+  display: block;
+  font-size: 11.5px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  color: var(--at-label2);
+}
+.at-leg .val {
+  display: block;
+  font-size: 15.5px;
+  font-weight: 700;
+  margin-top: 1px;
+  color: var(--at-chip-ink);
+}
+.at-leg .go {
+  flex: none;
+  font-size: 12px;
+  font-weight: 800;
+  color: var(--at-blue);
+  white-space: nowrap;
+}
+
+/* ---- meta rows (customer, notes) ---- */
+.at-job-meta {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 9px 2px;
+  border-top: 1px solid var(--at-sep);
+  font-size: 14.5px;
+  color: var(--at-label);
+}
+.at-job-meta .k {
+  color: var(--at-label2);
+  font-size: 13px;
+}
+
+/* ---- photo prompt ---- */
+.at-shot {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  background: rgba(0, 122, 255, 0.07);
+  border: 1px dashed rgba(0, 122, 255, 0.35);
+  border-radius: 14px;
+  padding: 12px 13px;
+  margin-top: 10px;
+  font-size: 14px;
+  font-weight: 650;
+  color: var(--at-label);
+  cursor: pointer;
+  transition: transform 0.12s ease;
+}
+.at-shot:active {
+  transform: scale(0.985);
+}
+.at-shot.done {
+  background: rgba(52, 199, 89, 0.09);
+  border-color: rgba(52, 199, 89, 0.4);
+}
+
+/* ---- the advance button ---- */
+.at-advance {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 9px;
+  width: 100%;
+  margin-top: 12px;
+  border: none;
+  border-radius: 16px;
+  padding: 17px;
+  font-family: inherit;
+  font-size: 18px;
+  font-weight: 800;
+  color: #fff;
+  background: var(--at-blue);
+  cursor: pointer;
+  transition:
+    transform 0.12s ease,
+    background 0.25s ease;
+}
+.at-advance:active:not(:disabled) {
+  transform: scale(0.97);
+}
+.at-advance:disabled {
+  opacity: 0.45;
+}
+.at-advance.collect {
+  background: var(--at-purple);
+}
+.at-advance.finish {
+  background: var(--at-green-d);
+}
+/* Runs for the moment the server confirms, before the card re-renders in its new state. */
+.at-advance.ok {
+  animation: at-advance-ok 0.6s ease;
+}
+@keyframes at-advance-ok {
+  30% {
+    transform: scale(1.04);
+    background: var(--at-green);
+  }
+  100% {
+    background: var(--at-green);
+  }
+}
+
+/* ---- the note the driver must write before starting ---- */
+.at-notegate {
+  margin-top: 12px;
+  animation: at-gate-in 0.22s ease both;
+}
+@keyframes at-gate-in {
+  from {
+    opacity: 0;
+    transform: translateY(-6px);
+  }
+}
+.at-notegate .why {
+  font-size: 13px;
+  color: var(--at-label2);
+  margin-bottom: 7px;
+}
+.at-notegate textarea {
+  width: 100%;
+  background: var(--at-card);
+  border: 1px solid var(--at-sep);
+  border-radius: 14px;
+  padding: 13px;
+  font-family: inherit;
+  font-size: 16px;
+  color: var(--at-label);
+  min-height: 80px;
+  resize: none;
+}
+.at-notegate textarea:focus {
+  outline: none;
+  border-color: var(--at-blue);
+  box-shadow: 0 0 0 4px rgba(0, 122, 255, 0.12);
+}
+.at-gate-row {
+  display: flex;
+  gap: 8px;
+  margin-top: 8px;
+}
+.at-gate-row button {
+  flex: 1;
+  border: none;
+  border-radius: 14px;
+  padding: 14px;
+  font-family: inherit;
+  font-size: 16px;
+  font-weight: 800;
+  cursor: pointer;
+  transition: transform 0.12s ease;
+}
+.at-gate-row button:active:not(:disabled) {
+  transform: scale(0.97);
+}
+.at-gate-row .go {
+  background: var(--at-blue);
+  color: #fff;
+}
+.at-gate-row .go:disabled {
+  opacity: 0.45;
+}
+.at-gate-row .cancel {
+  background: var(--at-chip);
+  color: var(--at-chip-ink);
+  flex: 0 0 34%;
+}
+
+/* ---- the "Jobs" button's live count on the tow home ---- */
+.at-bigbtn .count {
+  position: absolute;
+  top: 14px;
+  right: 16px;
+  min-width: 30px;
+  height: 30px;
+  padding: 0 9px;
+  border-radius: 15px;
+  background: rgba(255, 255, 255, 0.28);
+  color: #fff;
+  font-size: 15px;
+  font-weight: 800;
+  display: grid;
+  place-items: center;
+  animation: at-status-bump 0.5s ease;
+}
+
+/* ---- registration suggestions (RegoInput) ------------------------------
+ * Plates are typed from memory and differ by one glyph, so the field offers the real cars it could
+ * be. The list overlays the page rather than pushing it down — on a phone, a field that grows as you
+ * type moves the button you were reaching for.
+ */
+.at-regofield {
+  position: relative;
+}
+.at-regolist {
+  position: absolute;
+  z-index: 40;
+  top: calc(100% + 6px);
+  left: 0;
+  right: 0;
+  margin: 0;
+  padding: 6px;
+  list-style: none;
+  background: var(--at-card);
+  border: 1px solid var(--at-sep);
+  border-radius: 14px;
+  box-shadow: 0 12px 28px rgba(0, 0, 0, 0.16);
+  max-height: 320px;
+  overflow-y: auto;
+  animation: at-regolist-in 0.14s ease both;
+}
+@keyframes at-regolist-in {
+  from {
+    opacity: 0;
+    transform: translateY(-4px);
+  }
+}
+.at-regoitem {
+  display: flex;
+  align-items: baseline;
+  gap: 10px;
+  width: 100%;
+  border: none;
+  background: none;
+  font-family: inherit;
+  text-align: left;
+  padding: 11px 10px;
+  border-radius: 10px;
+  cursor: pointer;
+}
+.at-regoitem.on,
+.at-regoitem:hover {
+  background: var(--at-chip);
+}
+.at-regoitem .r {
+  font-size: 17px;
+  font-weight: 800;
+  letter-spacing: 1px;
+  color: var(--at-label);
+  flex: none;
+}
+.at-regoitem .m {
+  flex: 1;
+  min-width: 0;
+  font-size: 13px;
+  color: var(--at-label2);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.at-regoitem .s {
+  flex: none;
+  font-size: 11.5px;
+  font-weight: 700;
+  color: var(--at-label2);
 }

@@ -6,6 +6,8 @@ import { Yard } from '@/lib/yards';
 
 interface Driver {
   userId: string;
+  /** Resolved from the driver's sign-in identity — the form used to offer a truncated uuid. */
+  name: string;
   role: string;
 }
 
@@ -84,7 +86,7 @@ export function BookTowModal({
         <option value="">Choose a driver…</option>
         {(drivers ?? []).map((d) => (
           <option key={d.userId} value={d.userId}>
-            {d.userId.slice(0, 8)}
+            {d.name}
           </option>
         ))}
       </select>
