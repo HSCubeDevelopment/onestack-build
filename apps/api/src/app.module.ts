@@ -59,6 +59,7 @@ import { TerminologyModule } from './terminology/terminology.module';
 import { PipelineModule } from './pipeline/pipeline.module';
 import { VehicleProfileModule } from './vehicle-profile/vehicle-profile.module';
 import { WorkItemModule } from './work-items/work-item.module';
+import { TowModule } from './tow/tow.module';
 import { TrackingModule } from './tracking/tracking.module';
 
 @Module({
@@ -119,6 +120,7 @@ import { TrackingModule } from './tracking/tracking.module';
     TicketsModule, // infringement / police tickets: upload PDF or photo → AI extraction → confirmed store (0052)
     EstimateDraftModule, // saved editable photo-estimate drafts — reopen & edit in place (0053)
     ActivityModule, // cross-car activity directory (employee Car-history feed): movements + tickets + jobs
+    TowModule,
     TrackingModule, // fleet live-location via CityTag (In N Out migration §9, Phase 2; per-tenant secrets)
     YardsModule, // yards & vehicle logistics: park an incoming car at a yard before a job exists (YRD-1)
     SitesModule, // multi-site: a shop's locations/branches; a job optionally belongs to a site (SITE-1)
