@@ -82,51 +82,68 @@ export const YARD_RADIUS_METRES = 150;
 const AMBIGUOUS_METRES = 60;
 
 /**
- * Which tags are sitting at `yard` right now.
+ * Assign every tag to the ONE yard it is nearest to, and group the result.
  *
- * Deliberately does NOT pick a winner between neighbouring yards: where a second yard is nearly as
- * close, the sighting is flagged so the screen can say so rather than asserting the wrong one. Staff
- * act on these, and a confident wrong answer is worse than an honest uncertain one.
+ * Assigning per-yard independently double-counts: 19 and 34 Lipton are 81 m apart, so with a 150 m
+ * radius a car sitting at either falls inside both and appears twice. Each car is somewhere singular,
+ * so it gets one home — its nearest yard — and the ambiguity is carried on the sighting instead.
+ *
+ * Returns yards that actually have cars, busiest first.
  */
-export function sightingsAtYard(
-  yard: Yard,
+export function groupTagsByNearestYard(
   yards: Yard[],
   tags: TagLocation[],
   nowMs: number = Date.now(),
-): YardSighting[] {
-  if (yard.latitude == null || yard.longitude == null) return [];
-  const here = { latitude: yard.latitude, longitude: yard.longitude };
-  const others = yards.filter((y) => y.id !== yard.id && y.latitude != null && y.longitude != null);
+): { yard: Yard; sightings: YardSighting[] }[] {
+  const positioned = yards.filter((y) => y.latitude != null && y.longitude != null);
+  const byYard = new Map<string, YardSighting[]>();
 
-  const out: YardSighting[] = [];
   for (const tag of tags) {
     if (tag.lat == null || tag.lng == null) continue;
     const pos = { latitude: tag.lat, longitude: tag.lng };
-    const metresAway = haversineMetres(pos, here);
-    if (metresAway > YARD_RADIUS_METRES) continue;
 
-    let ambiguousWith: string | null = null;
-    for (const o of others) {
-      const d = haversineMetres(pos, { latitude: o.latitude!, longitude: o.longitude! });
-      if (d - metresAway < AMBIGUOUS_METRES) {
-        ambiguousWith = o.name;
-        break;
-      }
-    }
+    const ranked = positioned
+      .map((y) => ({
+        y,
+        d: haversineMetres(pos, { latitude: y.latitude!, longitude: y.longitude! }),
+      }))
+      .sort((a, b) => a.d - b.d);
 
-    // CityTag reports UTC with no zone marker, so say so explicitly rather than letting the browser
-    // read it as local time and under-report the age by the timezone offset.
-    let ageHours: number | null = null;
-    if (tag.time) {
-      const t = Date.parse(
-        tag.time.replace(' ', 'T') + (/[Zz]|[+-]\d\d:?\d\d$/.test(tag.time) ? '' : 'Z'),
-      );
-      if (Number.isFinite(t)) ageHours = (nowMs - t) / 3_600_000;
-    }
+    const best = ranked[0];
+    if (!best || best.d > YARD_RADIUS_METRES) continue;
+    const runnerUp = ranked[1];
 
-    out.push({ tag, metresAway, ageHours, ambiguousWith });
+    const sighting: YardSighting = {
+      tag,
+      metresAway: best.d,
+      ageHours: tagAgeHours(tag, nowMs),
+      ambiguousWith: runnerUp && runnerUp.d - best.d < AMBIGUOUS_METRES ? runnerUp.y.name : null,
+    };
+    const list = byYard.get(best.y.id);
+    if (list) list.push(sighting);
+    else byYard.set(best.y.id, [sighting]);
   }
-  return out.sort((a, b) => a.metresAway - b.metresAway);
+
+  return positioned
+    .filter((y) => byYard.has(y.id))
+    .map((y) => ({
+      yard: y,
+      sightings: byYard.get(y.id)!.sort((a, b) => a.metresAway - b.metresAway),
+    }))
+    .sort((a, b) => b.sightings.length - a.sightings.length);
+}
+
+/**
+ * Hours since a tag last reported, or null if it never has.
+ *
+ * CityTag sends UTC with no zone marker. Read as local time it would under-report the age by the whole
+ * timezone offset, making a stale fix look fresh — so the marker is added explicitly.
+ */
+function tagAgeHours(tag: TagLocation, nowMs: number): number | null {
+  if (!tag.time) return null;
+  const hasZone = /[Zz]|[+-]\d\d:?\d\d$/.test(tag.time);
+  const t = Date.parse(tag.time.replace(' ', 'T') + (hasZone ? '' : 'Z'));
+  return Number.isFinite(t) ? (nowMs - t) / 3_600_000 : null;
 }
 
 /** "2h ago", "3d ago", "just now" — how long a car has been sitting in a yard. */
