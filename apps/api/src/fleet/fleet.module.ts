@@ -3,6 +3,7 @@ import { FleetController } from './fleet.controller';
 import { FleetPhotoService } from './fleet-photo.service';
 import {
   FLEET_PHOTO_STORAGE,
+  FilesystemFleetPhotoStorage,
   InMemoryFleetPhotoStorage,
   SupabaseFleetPhotoStorage,
 } from './fleet-photo-storage';
@@ -11,7 +12,8 @@ import { FleetService } from './fleet.service';
 /**
  * Fleet & courtesy cars — migrated 1:1 from the standalone "In N Out" staff app. Owns the fleet vehicle /
  * movement / return / booking / photo tables. GENERIC core (Scheduling & Ops). TenantService + AuditService
- * are global. Photos use Supabase Storage when a bucket is configured, in-memory otherwise (pure-unit runs).
+ * are global. Photos use Supabase Storage when a bucket is configured, then a local directory if
+ * FLEET_PHOTO_DIR is set (local development against a plain Postgres), in-memory otherwise (pure-unit runs).
  */
 @Module({
   controllers: [FleetController],
@@ -20,7 +22,10 @@ import { FleetService } from './fleet.service';
     FleetPhotoService,
     {
       provide: FLEET_PHOTO_STORAGE,
-      useFactory: () => SupabaseFleetPhotoStorage.fromEnv() ?? new InMemoryFleetPhotoStorage(),
+      useFactory: () =>
+        SupabaseFleetPhotoStorage.fromEnv() ??
+        FilesystemFleetPhotoStorage.fromEnv() ??
+        new InMemoryFleetPhotoStorage(),
     },
   ],
   exports: [FleetService],

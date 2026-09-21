@@ -1,11 +1,14 @@
 import { randomUUID } from 'node:crypto';
+import { mkdir, readFile, rm, writeFile } from 'node:fs/promises';
+import { dirname, resolve, sep } from 'node:path';
 
 /**
  * Binary storage for fleet before/after photos. Keyed by tenantId so every implementation MUST scope
  * access — a tenant can only reach files under its own `<tenantId>/…` prefix (defence in depth alongside
  * the DB row's RLS). Mirrors work-items' attachment storage; kept self-contained so the fleet module does
  * not import another module's files (could later be promoted to a shared core provider under review).
- * Two implementations: Supabase Storage (production) and in-memory (tests without a bucket).
+ * Three implementations: Supabase Storage (production), filesystem (local development against a plain
+ * Postgres, where no bucket exists), and in-memory (tests without a bucket).
  */
 export interface FleetPhotoStorage {
   put(tenantId: string, bytes: Buffer, contentType: string): Promise<string>;
@@ -36,6 +39,64 @@ export class InMemoryFleetPhotoStorage implements FleetPhotoStorage {
 
   async remove(tenantId: string, ref: string): Promise<void> {
     if (ref.startsWith(`${tenantId}/`)) this.files.delete(ref);
+  }
+}
+
+/**
+ * Filesystem implementation — for local development, where there is no Supabase bucket but photos still
+ * need to survive a restart (in-memory loses them). Files live under `<root>/<tenantId>/<uuid>`.
+ *
+ * Opt-in via FLEET_PHOTO_DIR; never selected in production, which always has SUPABASE_URL set. The refs it
+ * stores are the same `<tenantId>/<uuid>` shape as Supabase, so rows are portable between the two.
+ */
+export class FilesystemFleetPhotoStorage implements FleetPhotoStorage {
+  constructor(private readonly root: string) {}
+
+  static fromEnv(): FilesystemFleetPhotoStorage | null {
+    const dir = process.env.FLEET_PHOTO_DIR;
+    if (!dir) return null;
+    return new FilesystemFleetPhotoStorage(resolve(dir));
+  }
+
+  /**
+   * Map a ref to an absolute path, refusing anything outside the caller's own tenant directory. The prefix
+   * check alone is not enough — `<tenantId>/../../etc/passwd` passes it — so the resolved path is also
+   * confined to the tenant directory, which is what actually stops traversal.
+   */
+  private pathFor(tenantId: string, ref: string): string {
+    if (!ref.startsWith(`${tenantId}/`)) throw new FleetPhotoStorageError('Photo not found');
+    const tenantRoot = resolve(this.root, tenantId);
+    const full = resolve(this.root, ref);
+    if (full !== tenantRoot && !full.startsWith(tenantRoot + sep))
+      throw new FleetPhotoStorageError('Photo not found');
+    return full;
+  }
+
+  async put(tenantId: string, bytes: Buffer, _contentType: string): Promise<string> {
+    const ref = `${tenantId}/${randomUUID()}`;
+    const full = this.pathFor(tenantId, ref);
+    await mkdir(dirname(full), { recursive: true });
+    await writeFile(full, bytes);
+    return ref;
+  }
+
+  async get(tenantId: string, ref: string): Promise<Buffer> {
+    const full = this.pathFor(tenantId, ref);
+    try {
+      return await readFile(full);
+    } catch {
+      throw new FleetPhotoStorageError('Photo not found');
+    }
+  }
+
+  async remove(tenantId: string, ref: string): Promise<void> {
+    let full: string;
+    try {
+      full = this.pathFor(tenantId, ref);
+    } catch {
+      return; // Out-of-tenant refs are ignored, matching the other implementations.
+    }
+    await rm(full, { force: true });
   }
 }
 
