@@ -1,5 +1,6 @@
 'use client';
 import { useCallback, useEffect, useState } from 'react';
+import { createPortal } from 'react-dom';
 import { ChevronLeft, ChevronRight, Download, X, ZoomIn, ZoomOut } from 'lucide-react';
 
 export interface LightboxPhoto {
@@ -65,7 +66,16 @@ export function PhotoLightbox({
 
   if (!photo) return null;
 
-  return (
+  /*
+   * Rendered into <body>, not where it was called from.
+   *
+   * `position: fixed` is only relative to the viewport while no ancestor establishes a containing
+   * block — and any ancestor with a transform, filter or running transform animation does. The tow
+   * cards animate in on a transform, which pinned this viewer inside a 398x414 card instead of
+   * filling the screen. A portal puts it beyond the reach of whatever the caller's layout does, so
+   * every gallery gets a full-screen viewer rather than the ones that happen to sit in plain boxes.
+   */
+  const overlay = (
     <div
       role="dialog"
       aria-modal="true"
@@ -173,6 +183,9 @@ export function PhotoLightbox({
       )}
     </div>
   );
+
+  // Guarded for the server pass, where there is no document to portal into.
+  return typeof document === 'undefined' ? overlay : createPortal(overlay, document.body);
 }
 
 const btnStyle: React.CSSProperties = {

@@ -9,6 +9,7 @@ import {
   ShieldAlert,
   History,
   UserCog,
+  Truck,
 } from 'lucide-react';
 import { AtLogo, SignOutButton } from '@/components/autotech/kit';
 import { HIDDEN_FROM_STAFF } from '@/lib/staff-features';
@@ -65,6 +66,15 @@ export function StaffHome() {
         </span>
         <span className="lab">Car history</span>
         <span className="sub">Every photo, estimate &amp; In / Out on a rego</span>
+      </Link>
+
+      {/* The office's view of tow work — where the driver is, and what he has already done. */}
+      <Link href="/inout/tow-driver" className="at-bigbtn at-grad-tow">
+        <span className="circ">
+          <Truck size={54} strokeWidth={2} />
+        </span>
+        <span className="lab">Tow driver</span>
+        <span className="sub">Where he is now · photos · past jobs</span>
       </Link>
 
       <Link href="/inout/yards" className="at-bigbtn at-grad-yards">

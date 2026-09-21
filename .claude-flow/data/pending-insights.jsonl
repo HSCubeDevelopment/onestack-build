@@ -66,3 +66,8 @@
 {"type":"edit","file":"/Users/jaidenchopra/code/onestack-build/apps/api/src/auth/pin.controller.ts","timestamp":1789992460036,"sessionId":null}
 {"type":"edit","file":"/Users/jaidenchopra/code/onestack-build/apps/api/src/auth/pin.controller.ts","timestamp":1789992466159,"sessionId":null}
 {"type":"edit","file":"/Users/jaidenchopra/code/onestack-build/apps/api/src/auth/pins-required.test.ts","timestamp":1789992482062,"sessionId":null}
+{"type":"edit","file":"/Users/jaidenchopra/code/onestack-build/apps/api/src/tow/tow-dispatch.service.ts","timestamp":1789993476150,"sessionId":null}
+{"type":"edit","file":"/Users/jaidenchopra/code/onestack-build/apps/api/src/tow/tow-dispatch.service.ts","timestamp":1789993495108,"sessionId":null}
+{"type":"edit","file":"/Users/jaidenchopra/code/onestack-build/apps/api/src/tow/tow.controller.ts","timestamp":1789993514852,"sessionId":null}
+{"type":"edit","file":"/Users/jaidenchopra/code/onestack-build/apps/api/src/tow/tow.controller.ts","timestamp":1789993521503,"sessionId":null}
+{"type":"edit","file":"/Users/jaidenchopra/code/onestack-build/apps/api/src/tow/tow-visibility.test.ts","timestamp":1789993556970,"sessionId":null}
