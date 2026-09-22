@@ -1891,3 +1891,33 @@ textarea.at-input {
   color: #fff;
   background: rgba(0, 0, 0, 0.55);
 }
+
+/* ---- yard detail: two lists, and why they differ -----------------------
+ * "Here now" is where trackers put the cars; "Logged in" is what someone wrote down. They disagree
+ * often enough that the screen has to label which is which, or the numbers look like a bug.
+ */
+.yd-sec {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  margin: 20px 0 9px;
+  font-size: 12px;
+  font-weight: 800;
+  text-transform: uppercase;
+  letter-spacing: 0.6px;
+  color: var(--at-label2);
+}
+.yd-sec .n {
+  margin-left: auto;
+  font-size: 13px;
+  font-weight: 800;
+  color: var(--at-blue);
+  text-transform: none;
+  letter-spacing: 0;
+}
+.yd-warn {
+  font-size: 12px;
+  color: var(--at-orange);
+  margin-top: 2px;
+  font-weight: 600;
+}

@@ -14,7 +14,7 @@ import {
 } from '@/lib/yards';
 import { EmptyState, ErrorBanner, Loading, Modal, PageHead, useAsync } from '@/components/ui';
 import { BookTowModal } from '@/components/BookTowModal';
-import { useYardTagCounts } from '@/lib/use-yard-tags';
+import { useYardTags } from '@/lib/use-yard-tags';
 
 /**
  * Yards & vehicle logistics (YRD-1). Park an incoming car at one of the shop's yards before a job
@@ -416,7 +416,7 @@ function YardNetwork({
 }) {
   const [busy, setBusy] = useState<string | null>(null);
   const [err, setErr] = useState<string | null>(null);
-  const tags = useYardTagCounts(yards);
+  const tags = useYardTags(yards);
 
   async function remove(y: Yard) {
     if (!confirm(`Remove yard "${y.name}"? Cars already parked there stay on record.`)) return;

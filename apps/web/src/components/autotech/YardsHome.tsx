@@ -6,7 +6,7 @@ import { Truck, ParkingSquare, PhoneCall, Warehouse } from 'lucide-react';
 import { api } from '@/lib/api';
 import { Yard, YardDrop } from '@/lib/yards';
 import { useAsync } from '@/components/ui';
-import { useYardTagCounts } from '@/lib/use-yard-tags';
+import { useYardTags } from '@/lib/use-yard-tags';
 import { AtTopbar, SignOutButton } from '@/components/autotech/kit';
 import { BookTowModal } from '@/components/BookTowModal';
 
@@ -28,7 +28,7 @@ export function YardsHome() {
     [],
   );
   const yards = data?.[0] ?? [];
-  const tags = useYardTagCounts(data?.[0] ?? []);
+  const tags = useYardTags(yards);
   const awaiting = data?.[1] ?? [];
 
   // How many cars are parked in each yard right now — group the "in yard" drops by yard id.
@@ -93,16 +93,25 @@ export function YardsHome() {
                 <div className="body">
                   <div className="ti">{y.name}</div>
                   <div className="st">
-                    {tags.configured
-                      ? `${here === 0 ? 'No cars' : here === 1 ? '1 car' : `${here} cars`} here now · ${logged} logged`
-                      : logged === 0
-                        ? 'No cars parked'
-                        : logged === 1
-                          ? '1 car parked'
-                          : `${logged} cars parked`}
+                    {/*
+                      While the trackers are still answering, say so. It used to print "No cars parked"
+                      during the wait — which is not "we don't know yet", it is a wrong answer, and the
+                      bulk CityTag call takes ~18 s on a cold cache.
+                    */}
+                    {tags.loading
+                      ? 'Finding cars…'
+                      : tags.configured
+                        ? `${here === 0 ? 'No cars' : here === 1 ? '1 car' : `${here} cars`} here now · ${logged} logged`
+                        : logged === 0
+                          ? 'No cars parked'
+                          : logged === 1
+                            ? '1 car parked'
+                            : `${logged} cars parked`}
                   </div>
                 </div>
-                <span className={`at-badge ${n > 0 ? 'amber' : 'gray'}`}>{n}</span>
+                <span className={`at-badge ${n > 0 ? 'amber' : 'gray'}`}>
+                  {tags.loading ? '…' : n}
+                </span>
               </div>
             );
           })}

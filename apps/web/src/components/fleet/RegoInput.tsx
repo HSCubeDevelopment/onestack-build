@@ -1,7 +1,7 @@
 'use client';
 import { useEffect, useMemo, useRef, useState } from 'react';
-import { api } from '@/lib/api';
 import { FleetVehicle, vehicleStatusLabel } from '@/lib/fleet';
+import { allVehicles } from '@/lib/fleet-cache';
 
 /**
  * A registration field that suggests real cars as you type.
@@ -14,16 +14,6 @@ import { FleetVehicle, vehicleStatusLabel } from '@/lib/fleet';
  * prefix-search endpoint — `/fleet/vehicles/lookup` resolves one exact rego — and a request per
  * keystroke against 1,374 cars would be far worse than the single list this already loads elsewhere.
  */
-
-let cache: Promise<FleetVehicle[]> | null = null;
-/** One in-flight/complete fetch shared by every rego field on the page. */
-function allVehicles(): Promise<FleetVehicle[]> {
-  cache ??= api.get<FleetVehicle[]>('/fleet/vehicles').catch(() => {
-    cache = null; // let the next field retry rather than caching a failure forever
-    return [];
-  });
-  return cache;
-}
 
 const MAX_SUGGESTIONS = 8;
 
