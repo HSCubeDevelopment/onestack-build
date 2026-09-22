@@ -1,0 +1,13 @@
+# This project's root is apps/api, so the repo-root .vercelignore does NOT apply here — Vercel reads
+# the one next to the deployment root. Without this file, .env and .env.supabase were uploaded into
+# the build container.
+.env
+.env.*
+!.env.example
+node_modules
+dist
+coverage
+e2e
+test
+scripts
+playwright.config.ts

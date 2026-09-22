@@ -1,6 +1,23 @@
 {
-  "extends": "../../tsconfig.base.json",
+  // Self-contained ON PURPOSE. This used to `extend` ../../tsconfig.base.json, which is fine on a
+  // developer's machine but not on a host that only uploads apps/api: the build then ran with TypeScript's
+  // defaults instead — `strict` off — and failed with errors that appear nowhere else
+  // (contact.contract.ts: "Type 'true' is not assignable to type 'never'"). The options below are the
+  // base's, inlined, so the compiler behaves identically whether or not the repo root is present.
+  //
+  // If you change a shared option, change ../../tsconfig.base.json too.
   "compilerOptions": {
+    // --- from tsconfig.base.json ---
+    "strict": true,
+    "noUncheckedIndexedAccess": true,
+    "noImplicitOverride": true,
+    "noFallthroughCasesInSwitch": true,
+    "forceConsistentCasingInFileNames": true,
+    "esModuleInterop": true,
+    "declaration": true,
+    "sourceMap": true,
+
+    // --- API-specific (these already overrode the base) ---
     "module": "commonjs",
     "moduleResolution": "node",
     "target": "ES2022",
