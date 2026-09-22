@@ -1,22 +1,45 @@
-# Fly.io — OneStack API + background workers. Sydney region (AU data residency).
-# Real deploy is activated in the card #1 hand-off (create the app + set FLY_API_TOKEN).
-app = "onestack-api-staging"
+# OneStack API on Fly.io.
+#
+# Sydney (syd) on purpose: the Supabase database is ap-southeast-2 and CLAUDE.md §2 says data stays in
+# Australia. Railway and Render have no Australian region — their closest is Singapore — so every
+# request carrying a customer's name, address and phone would leave the country on the way to the
+# database. Fly is the option that keeps the rule.
+#
+# Deploy from the REPO ROOT so the Dockerfile's build context is the monorepo:
+#     fly deploy --config apps/api/fly.toml
+app = "onestack-api"
 primary_region = "syd"
 
 [build]
+  dockerfile = "Dockerfile"
 
 [env]
-  NODE_ENV = "production"
-  PORT = "8080"
+  PORT = "3001"
+  # NODE_ENV=production is set in the image. It is what closes the dev-identity and PIN bypasses, so
+  # it is deliberately NOT overridable from here.
 
 [http_service]
-  internal_port = 8080
+  internal_port = 3001
   force_https = true
-  auto_stop_machines = true
+  # The API holds pooled Postgres connections; stopping and cold-starting on every gap in traffic
+  # makes the first request after idle slow and churns the pool. One machine always up.
+  auto_stop_machines = false
   auto_start_machines = true
   min_machines_running = 1
 
-# Workers + the transactional-outbox relay run HERE (never on Vercel serverless).
+  [http_service.concurrency]
+    type = "requests"
+    soft_limit = 200
+    hard_limit = 250
+
+# Fly restarts a machine that fails this. /api/v1/health is unauthenticated and touches no tenant data.
+[[http_service.checks]]
+  interval = "30s"
+  timeout = "5s"
+  grace_period = "20s"
+  method = "GET"
+  path = "/api/v1/health"
+
 [[vm]]
   size = "shared-cpu-1x"
-  memory = "512mb"
+  memory = "1gb"
