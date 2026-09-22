@@ -18,11 +18,15 @@ const KEYS = [
 ] as const;
 const saved = Object.fromEntries(KEYS.map((k) => [k, process.env[k]]));
 
+// @types/node declares NODE_ENV readonly. Overwriting it is the entire point here — the production
+// case is the one that matters — so the env bag is written through a mutable view of itself.
+const mutableEnv = process.env as Record<string, string | undefined>;
+
 function env(vals: Partial<Record<(typeof KEYS)[number], string | undefined>>): void {
   for (const k of KEYS) {
     const v = vals[k];
-    if (v === undefined) delete process.env[k];
-    else process.env[k] = v;
+    if (v === undefined) delete mutableEnv[k];
+    else mutableEnv[k] = v;
   }
 }
 
@@ -36,8 +40,8 @@ const CONFIGURED = {
 afterEach(() => {
   for (const k of KEYS) {
     const v = saved[k];
-    if (v === undefined) delete process.env[k];
-    else process.env[k] = v;
+    if (v === undefined) delete mutableEnv[k];
+    else mutableEnv[k] = v;
   }
 });
 

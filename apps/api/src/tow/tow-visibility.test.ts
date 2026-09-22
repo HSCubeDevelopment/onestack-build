@@ -14,7 +14,10 @@ import { TowDispatchService } from './tow-dispatch.service';
  */
 
 /** A tenant wrapper that hands the callback one stubbed table set and records what was asked for. */
-function serviceWith(dispatchRow: unknown, attachments: { id: string }[] = []) {
+/** Attachment rows as AttachmentService.list returns them; only `id` matters to the guard. */
+type StubAttachment = { id: string } & Record<string, unknown>;
+
+function serviceWith(dispatchRow: unknown, attachments: StubAttachment[] = []) {
   const seen: { where?: unknown }[] = [];
   const tenants = {
     runInTenant: <T>(_t: string, fn: (tx: unknown) => Promise<T>): Promise<T> =>

@@ -29,7 +29,10 @@ export async function createApp() {
 async function bootstrap() {
   const app = await createApp();
   const port = Number(process.env.PORT ?? 3001);
-  await app.listen(port);
+  // Bind all interfaces explicitly. Railway, Render and Fly reach the container from outside, and a
+  // server listening only on loopback passes its own health check while every external request times
+  // out — which presents as "deployed, but nothing works".
+  await app.listen(port, '0.0.0.0');
   // eslint-disable-next-line no-console
   console.log(`OneStack API listening on :${port} (prefix /api/v1)`);
   logWorkshopFence();

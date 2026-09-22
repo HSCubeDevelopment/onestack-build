@@ -1,18 +1,12 @@
-# Never copy host build artefacts or deps — the image installs its own (host node_modules is macOS-native
-# and would break a Linux container). Each service Dockerfile copies only the workspace it needs.
-#
-# NOTE: this used to also exclude apps/web/src and apps/web/next.config.mjs (it was written for an
-# API-only image). That silently broke the web container — `next build` with no src produces an empty
-# app. Kept generic now so both the API and web images build from the same context.
+# Keep the build context small and, more importantly, keep secrets out of the image.
+node_modules
 **/node_modules
 **/dist
 **/.next
-**/.turbo
+**/coverage
 .git
-**/*.env
-**/*.env.*
-coverage
-playwright-report
+.vercel
+**/.env
+**/.env.*
+!**/.env.example
 **/*.log
-# Refresh working data — customer PII, and up to ~1.6 GB of it. Never belongs in a build context.
-**/.innout-work/
