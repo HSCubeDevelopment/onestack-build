@@ -52,13 +52,21 @@ const CATEGORIES = [
 type PhaseKey = (typeof CATEGORIES)[number]['key'];
 
 /**
- * Photos taken under the original Before/During/After flow. Shown (read-only) when a job actually has
- * them, so history isn't hidden — but not offered for new capture.
+ * Categories this screen SHOWS but does not capture — so history is never hidden just because it was
+ * recorded somewhere else. Must stay in step with PHOTO_CATEGORIES / LEGACY_PHASES in the API's
+ * repair-photos.ts, where the caption is the stored value.
+ *
+ *  - before/during/after : the original Before/During/After flow.
+ *  - Before/After service: taken by a mechanic on /inout/work.
+ *  - Service photo       : backfilled from the workshop WhatsApp group.
  */
 const LEGACY_CATEGORIES = [
   { key: 'before', title: 'Before repair', caption: 'Before repair' },
   { key: 'during', title: 'During repair', caption: 'During repair' },
   { key: 'after', title: 'After repair', caption: 'After repair' },
+  { key: 'service_before', title: 'Before service', caption: 'Before service' },
+  { key: 'service_after', title: 'After service', caption: 'After service' },
+  { key: 'service_record', title: 'Service photo', caption: 'Service photo' },
 ] as const;
 
 const regoOf = (v: SubjectView): string =>

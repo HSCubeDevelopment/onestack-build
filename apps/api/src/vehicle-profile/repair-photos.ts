@@ -28,6 +28,10 @@ export const PHOTO_CATEGORIES = [
   // history that has nothing to do with them.
   'service_before',
   'service_after',
+  // Backfilled from the workshop WhatsApp group. Its own category on purpose: those messages carry no
+  // stated before/after, so filing them as either would assert something the source does not say. It
+  // also keeps two years of imported history visually separable from photos taken in the app.
+  'service_record',
 ] as const;
 export type PhotoCategory = (typeof PHOTO_CATEGORIES)[number];
 
@@ -57,6 +61,7 @@ const CAPTION: Record<RepairPhase, string> = {
   // never confused with a body-repair one when read back.
   service_before: 'Before service',
   service_after: 'After service',
+  service_record: 'Service photo',
   before: 'Before repair',
   during: 'During repair',
   after: 'After repair',
