@@ -18,6 +18,7 @@ import { AtTopbar, SignOutButton } from '@/components/autotech/kit';
 import { RegoInput } from '@/components/fleet/RegoInput';
 import { HIDDEN_FROM_STAFF } from '@/lib/staff-features';
 import { LiveLocation } from '@/components/LiveLocation';
+import { PhotoLightbox, useLightbox, type LightboxPhoto } from '@/components/PhotoLightbox';
 
 /**
  * Car history — a rego search on top, and beneath it a live DIRECTORY of everything moving through the
@@ -115,6 +116,7 @@ export function CarHistory() {
   const [err, setErr] = useState<string | null>(null);
   const [feed, setFeed] = useState<ActivityEvent[] | null>(null);
   const router = useRouter();
+  const lightbox = useLightbox();
   const [loaded, setLoaded] = useState<{
     rego: string;
     line: string;
@@ -398,13 +400,34 @@ export function CarHistory() {
             </div>
           ) : (
             <div className="at-photorow">
+              {/* Tappable: this is the screen the shop looks a car up on, and a 90px tile is no use
+                  for seeing what it is actually a photo of. */}
               {loaded.photos.map((p, i) => (
-                <div key={i} className="at-photothumb" title={p.label}>
+                <button
+                  key={i}
+                  className="at-photothumb"
+                  title={p.label}
+                  onClick={() => lightbox.open(i)}
+                  aria-label={`Open ${p.label}`}
+                >
                   {/* eslint-disable-next-line @next/next/no-img-element */}
                   <img src={p.url} alt={p.label} />
-                </div>
+                </button>
               ))}
             </div>
+          )}
+
+          {lightbox.isOpen && loaded.photos.length > 0 && (
+            <PhotoLightbox
+              photos={loaded.photos.map((p): LightboxPhoto => ({
+                src: p.url,
+                caption: `${loaded.rego} · ${p.label}`,
+                fileName: `${loaded.rego}-${p.label.replace(/\s+/g, '-').toLowerCase()}.jpg`,
+              }))}
+              index={lightbox.index ?? 0}
+              onClose={lightbox.close}
+              onIndex={lightbox.setIndex}
+            />
           )}
 
           {/* Activity */}

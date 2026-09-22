@@ -24,6 +24,7 @@ import {
   StatusBadge,
   useAsync,
 } from '@/components/ui';
+import { PhotoLightbox, useLightbox, type LightboxPhoto } from '@/components/PhotoLightbox';
 import { makeModelOf, regoOf, StatePill } from '@/lib/job-display';
 import {
   ClaimFileTab,
@@ -1395,6 +1396,8 @@ function PhotosTab({
   act: (fn: () => Promise<unknown>) => Promise<void>;
   setActionErr: (s: string | null) => void;
 }) {
+  // Full-screen viewer for the job's photos — a thumbnail is no use for judging damage.
+  const photoBox = useLightbox();
   const [uploading, setUploading] = useState(false);
 
   async function onFile(e: React.ChangeEvent<HTMLInputElement>) {
@@ -1462,8 +1465,17 @@ function PhotosTab({
               {/* eslint-disable-next-line @next/next/no-img-element */}
               <img
                 className="thumb"
+                style={{ cursor: 'zoom-in' }}
                 src={`/api/backend/work-items/${jobId}/attachments/${att.id}/content`}
                 alt={att.caption ?? att.fileName}
+                onClick={() =>
+                  photoBox.open(
+                    Math.max(
+                      0,
+                      attachments.findIndex((a) => a.id === att.id),
+                    ),
+                  )
+                }
               />
               <div className="row" style={{ marginTop: 8 }}>
                 <span className="faint" style={{ fontSize: 12 }}>
@@ -1482,6 +1494,19 @@ function PhotosTab({
             </div>
           ))}
         </div>
+      )}
+
+      {photoBox.isOpen && attachments.length > 0 && (
+        <PhotoLightbox
+          photos={attachments.map((a): LightboxPhoto => ({
+            src: `/api/backend/work-items/${jobId}/attachments/${a.id}/content`,
+            caption: a.caption ?? a.fileName,
+            fileName: a.fileName,
+          }))}
+          index={photoBox.index ?? 0}
+          onClose={photoBox.close}
+          onIndex={photoBox.setIndex}
+        />
       )}
     </div>
   );

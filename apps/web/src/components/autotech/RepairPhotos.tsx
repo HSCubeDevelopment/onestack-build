@@ -5,6 +5,7 @@ import { api, ApiError } from '@/lib/api';
 import { compressToBase64 } from '@/lib/image';
 import { AtTopbar, SignOutButton } from '@/components/autotech/kit';
 import { RegoInput } from '@/components/fleet/RegoInput';
+import { PhotoLightbox, useLightbox, type LightboxPhoto } from '@/components/PhotoLightbox';
 
 /**
  * Repair photos — enter a rego, then add Before / During / After photos to the car's current job.
@@ -202,6 +203,20 @@ export function RepairPhotos() {
     return profile.photos.filter((p) => p.workItemId === jobId && p.caption === caption);
   }
 
+  /*
+   * One flat album across every category on this job, in the order the categories are shown, so the
+   * viewer steps through the whole car rather than restarting inside each section.
+   */
+  const album: Attachment[] = [...CATEGORIES, ...LEGACY_CATEGORIES].flatMap((c) =>
+    photosFor(c.caption),
+  );
+  const albumIndex = (id: string) =>
+    Math.max(
+      0,
+      album.findIndex((a) => a.id === id),
+    );
+  const lightbox = useLightbox();
+
   // ---- Screen 1: enter registration ----
   if (!profile) {
     return (
@@ -356,13 +371,18 @@ export function RepairPhotos() {
               </div>
               <div className="at-photorow">
                 {shots.map((s) => (
-                  <div key={s.id} className="at-photothumb">
+                  <button
+                    key={s.id}
+                    className="at-photothumb"
+                    onClick={() => lightbox.open(albumIndex(s.id))}
+                    aria-label={`Open ${ph.title} photo`}
+                  >
                     {/* eslint-disable-next-line @next/next/no-img-element */}
                     <img
                       src={`/api/backend/vehicle-profile/${v.id}/photos/${s.id}/content`}
                       alt={`${ph.title} photo`}
                     />
-                  </div>
+                  </button>
                 ))}
                 <button
                   type="button"
@@ -397,13 +417,18 @@ export function RepairPhotos() {
               </div>
               <div className="at-photorow">
                 {shots.map((s) => (
-                  <div key={s.id} className="at-photothumb">
+                  <button
+                    key={s.id}
+                    className="at-photothumb"
+                    onClick={() => lightbox.open(albumIndex(s.id))}
+                    aria-label={`Open ${ph.title} photo`}
+                  >
                     {/* eslint-disable-next-line @next/next/no-img-element */}
                     <img
                       src={`/api/backend/vehicle-profile/${v.id}/photos/${s.id}/content`}
                       alt={`${ph.title} photo`}
                     />
-                  </div>
+                  </button>
                 ))}
               </div>
             </div>
@@ -422,6 +447,19 @@ export function RepairPhotos() {
           if (e.target.files?.length && pendingCat) void addPhotos(pendingCat, e.target.files);
         }}
       />
+
+      {lightbox.isOpen && album.length > 0 && v && (
+        <PhotoLightbox
+          photos={album.map((a): LightboxPhoto => ({
+            src: `/api/backend/vehicle-profile/${v.id}/photos/${a.id}/content`,
+            caption: `${regoOf(v)} · ${a.caption ?? 'Photo'}`,
+            fileName: `${regoOf(v)}-${(a.caption ?? 'photo').replace(/\s+/g, '-').toLowerCase()}.jpg`,
+          }))}
+          index={lightbox.index ?? 0}
+          onClose={lightbox.close}
+          onIndex={lightbox.setIndex}
+        />
+      )}
     </>
   );
 }

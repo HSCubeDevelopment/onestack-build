@@ -23,6 +23,7 @@ import {
 import { api, ApiError, money } from '@/lib/api';
 import { parseEstimateNote, type ParsedEstimateNote } from '@/lib/estimate-note';
 import { AtTopbar, SignOutButton } from '@/components/autotech/kit';
+import { PhotoLightbox, useLightbox, type LightboxPhoto } from '@/components/PhotoLightbox';
 import { HIDDEN_FROM_STAFF } from '@/lib/staff-features';
 
 /**
@@ -437,6 +438,9 @@ function SectionHead({ title, count }: { title: string; count?: number }) {
 }
 
 export function JobDetail({ jobId }: { jobId: string }) {
+  // Declared with the other hooks: the early returns below mean anything after them would run
+  // conditionally, which React forbids.
+  const lightbox = useLightbox();
   const [data, setData] = useState<JobDetailData | null>(null);
   const [err, setErr] = useState<string | null>(null);
 
@@ -703,13 +707,26 @@ export function JobDetail({ jobId }: { jobId: string }) {
             </div>
             <div className="at-photorow">
               {g.shots.map((p) => (
-                <div key={p.id} className="at-photothumb" title={p.caption ?? 'Photo'}>
+                <button
+                  key={p.id}
+                  className="at-photothumb"
+                  title={p.caption ?? 'Photo'}
+                  onClick={() =>
+                    lightbox.open(
+                      Math.max(
+                        0,
+                        photos.findIndex((x) => x.id === p.id),
+                      ),
+                    )
+                  }
+                  aria-label={`Open ${p.caption ?? 'photo'}`}
+                >
                   {/* eslint-disable-next-line @next/next/no-img-element */}
                   <img
                     src={`/api/backend/vehicle-profile/${vehicle?.id}/photos/${p.id}/content`}
                     alt={p.caption ?? 'Photo'}
                   />
-                </div>
+                </button>
               ))}
             </div>
           </div>
@@ -838,6 +855,19 @@ export function JobDetail({ jobId }: { jobId: string }) {
         <div className="mt">Opened {fmt(job.createdAt)}</div>
         <div className="mt">Updated {fmt(job.updatedAt)}</div>
       </div>
+
+      {lightbox.isOpen && photos.length > 0 && (
+        <PhotoLightbox
+          photos={photos.map((a): LightboxPhoto => ({
+            src: `/api/backend/vehicle-profile/${vehicle?.id}/photos/${a.id}/content`,
+            caption: `${job.reference} · ${a.caption ?? 'Photo'}`,
+            fileName: `${job.reference}-${(a.caption ?? 'photo').replace(/\s+/g, '-').toLowerCase()}.jpg`,
+          }))}
+          index={lightbox.index ?? 0}
+          onClose={lightbox.close}
+          onIndex={lightbox.setIndex}
+        />
+      )}
     </>
   );
 }
