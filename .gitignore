@@ -53,3 +53,4 @@ bok.csv
 photos.jsonl
 photos_done.jsonl
 photos_load.csv
+.env*
