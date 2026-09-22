@@ -1,3 +1,5 @@
+import { drawStamp, type StampText } from './photo-stamp';
+
 /**
  * Client-side image downscale → base64. Shrinks a captured photo to at most 1600px on the long edge and
  * re-encodes it as JPEG before upload, so phone photos don't blow out request size (or the vision API's
@@ -24,9 +26,16 @@ export async function fileToBase64(
   };
 }
 
+/**
+ * Optionally burn a time-and-place caption into the image before it is encoded.
+ *
+ * Only passed for tow photos. Everything else is unstamped, keeping the app's normal stance that a
+ * position is not recorded — see lib/photo-stamp.ts for why this is a deliberate exception.
+ */
 export async function compressToBase64(
   file: File,
   maxEdge = 1600,
+  stamp?: StampText,
 ): Promise<{ dataBase64: string; contentType: string }> {
   const dataUrl = await new Promise<string>((res, rej) => {
     const r = new FileReader();
@@ -53,9 +62,13 @@ export async function compressToBase64(
     const ctx = canvas.getContext('2d');
     if (!ctx) throw new Error('no canvas');
     ctx.drawImage(img, 0, 0, w, h);
+    // After the draw, so it sits on top of the photo rather than being scaled with it.
+    if (stamp) drawStamp(ctx, w, h, stamp);
     const out = canvas.toDataURL('image/jpeg', 0.82);
     return { dataBase64: out.split(',')[1] ?? '', contentType: 'image/jpeg' };
   } catch {
+    // Canvas unavailable — the photo still uploads, just without the stamp. Losing the caption is
+    // recoverable; losing the photo the driver just took is not.
     return { dataBase64: dataUrl.split(',')[1] ?? '', contentType: file.type || 'image/jpeg' };
   }
 }

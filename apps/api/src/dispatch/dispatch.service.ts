@@ -45,6 +45,12 @@ export class DispatchService {
     jobId: string,
     input: SetDispatchInput,
     userId: string,
+    /**
+     * The caller's job scope — undefined for an owner, their own user id for anyone else. Threading it
+     * is what makes this endpoint safe to open beyond owners: without it a worker could advance any
+     * job in the shop, including ones they cannot even see.
+     */
+    assignedTo?: string,
   ): Promise<DispatchView> {
     if (!isDispatchStatus(input.status)) throw new BadRequestException('Invalid dispatch status');
     let etaAt: Date | null | undefined;
@@ -56,7 +62,7 @@ export class DispatchService {
           throw new BadRequestException('etaAt is not a valid date/time');
       }
     }
-    await this.workItems.get(tenantId, jobId); // 404s for a missing/other-tenant job
+    await this.workItems.get(tenantId, jobId, assignedTo); // 404s for a job the caller cannot see
 
     return this.tenants.runInTenant(tenantId, async (tx) => {
       const existing = await tx.dispatch.findFirst({ where: { workItemId: jobId } });
@@ -75,8 +81,8 @@ export class DispatchService {
     });
   }
 
-  async get(tenantId: string, jobId: string): Promise<DispatchView> {
-    await this.workItems.get(tenantId, jobId);
+  async get(tenantId: string, jobId: string, assignedTo?: string): Promise<DispatchView> {
+    await this.workItems.get(tenantId, jobId, assignedTo);
     const row = await this.tenants.runInTenant(tenantId, (tx) =>
       tx.dispatch.findFirst({ where: { workItemId: jobId } }),
     );

@@ -4,7 +4,7 @@ import type { Metadata, Viewport } from 'next';
 import { cookies } from 'next/headers';
 import { AppShell } from '@/components/AppShell';
 import { themeInitScript } from '@/components/ThemeToggle';
-import { apiBase, SESSION_COOKIE, decodeToken } from '@/lib/session';
+import { apiBase, SESSION_COOKIE, decodeToken, devIdentityAllowed } from '@/lib/session';
 
 export const metadata: Metadata = {
   title: 'OneStack — Panel & Paint',
@@ -54,9 +54,24 @@ export default async function RootLayout({ children }: { children: React.ReactNo
   const store = await cookies();
   const token = store.get(SESSION_COOKIE)?.value;
   const claimRole = token ? decodeToken(token)?.role : undefined;
-  // Map the token role to the app's three roles; anything unknown falls back to OWNER (the demo default).
+  /*
+   * Map the token role to the app's three roles.
+   *
+   * With no token there is no role to map, and the answer used to be OWNER — "the demo default". On a
+   * laptop that is a convenience; on a public URL it renders the owner's admin to every visitor. So
+   * the fallback now applies only where a dev identity is allowed at all (never in production), and
+   * otherwise an anonymous caller is treated as the least-privileged role. The API is still the
+   * enforcement — this only decides what gets drawn — and the proxy answers 401 without a session, so
+   * an anonymous visitor sees a shell with nothing in it and the sign-in screen.
+   */
   const role: 'OWNER' | 'STAFF' | 'TOW' =
-    claimRole === 'STAFF' ? 'STAFF' : claimRole === 'TOW' ? 'TOW' : 'OWNER';
+    claimRole === 'STAFF'
+      ? 'STAFF'
+      : claimRole === 'TOW'
+        ? 'TOW'
+        : claimRole === 'OWNER' || devIdentityAllowed()
+          ? 'OWNER'
+          : 'STAFF';
   // 40.8: an owner always sees money; a non-owner only if the owner granted finance access. Resolve it
   // server-side so the money nav is decided before render (the API still enforces it either way).
   let canViewFinance = role === 'OWNER';

@@ -29,8 +29,25 @@ export interface TagLocation {
 
 const BASE = 'https://citytag.yuminstall.top';
 const TOKEN_TTL_MS = 6 * 60 * 60 * 1000; // reuse a login for up to 6h (token valid ~24h)
-const DEVICES_TTL_MS = 20 * 1000; // the whole ~300-tag list comes in one call; cache briefly
-const FETCH_TIMEOUT_MS = 8000;
+/*
+ * How long a device list is served without asking upstream again.
+ *
+ * 20 s was shorter than the call itself — the bulk fetch takes ~18 s at this shop's 412 tags — so the
+ * cache had almost always expired by the time anyone came back, and every visit to the yards screen
+ * paid the full wait staring at zeros.
+ *
+ * 3 minutes is still far tighter than the data's real freshness: CityTag positions are crowd-sourced
+ * and only update when a phone passes the car, so a fix is routinely hours old. Nothing is persisted —
+ * this is process memory that dies with the instance, as before.
+ */
+const DEVICES_TTL_MS = 3 * 60 * 1000;
+/** Beyond the TTL a cached list is still served while a refresh runs behind it, up to this age. */
+const DEVICES_STALE_MS = 30 * 60 * 1000;
+// 8 s was too tight and made the whole feature intermittent: the device list is one bulk call, and at
+// this shop's real size (411 tags) it takes right on 8 s, so it aborted about as often as it succeeded.
+// Sized for the payload we actually see, with headroom; the 20 s device cache means a slow call is paid
+// at most once per 20 s, not per request.
+const FETCH_TIMEOUT_MS = 25_000;
 
 const normRego = (s: string) => (s || '').toUpperCase().replace(/[^A-Z0-9]/g, '');
 const firstWord = (s: string) => (s || '').trim().split(/\s+/)[0] || '';
@@ -47,6 +64,8 @@ export class CityTagConnector {
   // Caches keyed by account username, so different tenants' accounts never share a session or device list.
   private sessions = new Map<string, Session>();
   private devices = new Map<string, { at: number; devices: TagLocation[] }>();
+  /** Accounts with a background refresh already running, so a burst does not start several. */
+  private refreshing = new Set<string>();
 
   /** Look up one car's last-known location by rego. Resolves null when unavailable. */
   async getLocation(creds: CityTagCreds, rego: string): Promise<TagLocation | null> {
@@ -60,12 +79,33 @@ export class CityTagConnector {
     );
   }
 
-  /** All tags with a valid position. Resolves [] on any failure (graceful degrade). */
+  /**
+   * All tags with a valid position. Resolves [] on any failure (graceful degrade).
+   *
+   * Stale-while-revalidate: a list past its TTL but still within DEVICES_STALE_MS is returned
+   * immediately and refreshed in the background. The upstream call takes ~18 s, and a screen that
+   * shows hour-old positions instantly is more useful than one that shows nothing for 18 s to get
+   * positions that are merely 18 s fresher.
+   */
   async listDevices(creds: CityTagCreds): Promise<TagLocation[]> {
-    try {
-      const cached = this.devices.get(creds.username);
-      if (cached && Date.now() - cached.at < DEVICES_TTL_MS) return cached.devices;
+    const cached = this.devices.get(creds.username);
+    const age = cached ? Date.now() - cached.at : Infinity;
+    if (cached && age < DEVICES_TTL_MS) return cached.devices;
+    if (cached && age < DEVICES_STALE_MS) {
+      // Refresh behind the response. Errors are already swallowed by fetchDevices, and an in-flight
+      // guard stops a burst of requests each starting their own 18-second call.
+      if (!this.refreshing.has(creds.username)) {
+        this.refreshing.add(creds.username);
+        void this.fetchDevices(creds).finally(() => this.refreshing.delete(creds.username));
+      }
+      return cached.devices;
+    }
+    return this.fetchDevices(creds);
+  }
 
+  /** Go to CityTag for the list, cache it, and never throw. */
+  private async fetchDevices(creds: CityTagCreds): Promise<TagLocation[]> {
+    try {
       let raw = await this.selectPage(await this.getSession(creds));
       const dead = raw && !Array.isArray(raw) && !Array.isArray((raw as { data?: unknown }).data);
       if (dead) {

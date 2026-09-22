@@ -8,3 +8,6 @@ coverage/
 # prototype.html is exported from the design tool and is read for exact CSS values (card 302);
 # reformatting it would create diff noise against the export and risk altering the reference.
 design/
+
+# In N Out refresh working data — customer PII, and prettier has no business rewriting it.
+**/.innout-work/

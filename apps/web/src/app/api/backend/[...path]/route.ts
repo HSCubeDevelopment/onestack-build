@@ -15,7 +15,13 @@ async function forward(req: NextRequest, path: string[]): Promise<NextResponse> 
   const method = req.method;
 
   const session = req.cookies.get(SESSION_COOKIE)?.value;
+  // No session and no dev identity available -> the caller is simply not signed in. Answering 401 is
+  // the whole difference between a laptop convenience and a public site that hands every visitor an
+  // owner token; see devIdentityAllowed in lib/session.
   const token = session || mintDevToken();
+  if (!token) {
+    return NextResponse.json({ error: 'Not signed in' }, { status: 401 });
+  }
   const headers: Record<string, string> = { Authorization: `Bearer ${token}` };
   const contentType = req.headers.get('content-type');
   if (contentType) headers['content-type'] = contentType;

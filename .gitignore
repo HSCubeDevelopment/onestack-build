@@ -39,3 +39,18 @@ npm-debug.log*
 # Fly / Vercel local
 .vercel
 .fly
+
+# In N Out → OneStack refresh working data. The CSV/JSONL exports carry customer PII (driver and owner
+# names, phone numbers, free-text notes) and the photo-download ledger. NEVER commit.
+apps/api/scripts/.innout-work/
+
+# Safety net: the exporter writes these bare names, so a run with the wrong cwd would otherwise drop
+# PII wherever it was invoked.
+veh.csv
+mov.csv
+ret.csv
+bok.csv
+photos.jsonl
+photos_done.jsonl
+photos_load.csv
+.env*

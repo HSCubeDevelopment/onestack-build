@@ -1,6 +1,7 @@
 'use client';
 import { useEffect, useState } from 'react';
 import Link from 'next/link';
+import { useRouter, useSearchParams } from 'next/navigation';
 import {
   Search,
   Wrench,
@@ -10,9 +11,14 @@ import {
   ImageOff,
   Sparkles,
   ReceiptText,
+  ChevronRight,
 } from 'lucide-react';
 import { api, ApiError } from '@/lib/api';
 import { AtTopbar, SignOutButton } from '@/components/autotech/kit';
+import { RegoInput } from '@/components/fleet/RegoInput';
+import { HIDDEN_FROM_STAFF } from '@/lib/staff-features';
+import { LiveLocation } from '@/components/LiveLocation';
+import { PhotoLightbox, useLightbox, type LightboxPhoto } from '@/components/PhotoLightbox';
 
 /**
  * Car history — a rego search on top, and beneath it a live DIRECTORY of everything moving through the
@@ -46,6 +52,8 @@ interface VehicleProfile {
   photos: Attachment[];
   timeline: TimelineEvent[];
   jobs: JobRow[];
+  /** How many times this car has been serviced. 0 means there is no service screen to offer. */
+  serviceCount?: number;
 }
 interface FleetVehicle {
   id: string;
@@ -107,17 +115,38 @@ export function CarHistory() {
   const [searching, setSearching] = useState(false);
   const [err, setErr] = useState<string | null>(null);
   const [feed, setFeed] = useState<ActivityEvent[] | null>(null);
+  const router = useRouter();
+  const lightbox = useLightbox();
   const [loaded, setLoaded] = useState<{
     rego: string;
     line: string;
     photos: PhotoItem[];
     events: Event[];
     jobs: JobRow[];
+    /** Kept so the service-history button knows the vehicle id and whether to appear at all. */
+    profile: VehicleProfile | null;
   } | null>(null);
 
   useEffect(() => {
     void api.getOr<ActivityEvent[]>('/activity/feed?limit=40', []).then(setFeed);
   }, []);
+
+  /*
+   * Open a car straight from the URL.
+   *
+   * Without this the screen is only reachable by typing, so anything linking back to a car — the
+   * service-history screen's back button, a shared link, a browser Back — lands on an empty search box
+   * and the car has to be looked up again.
+   */
+  const searchParams = useSearchParams();
+  const regoParam = (searchParams.get('rego') ?? '').toUpperCase();
+  useEffect(() => {
+    if (!regoParam) return;
+    setRego(regoParam);
+    void view(regoParam);
+    // Only when the URL changes — re-running on every render would refetch in a loop.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [regoParam]);
 
   async function view(override?: string): Promise<void> {
     const q = (override ?? rego).trim();
@@ -180,7 +209,7 @@ export function CarHistory() {
         : fleet
           ? [fleet.make, fleet.model].filter((x) => cleanUnknown(x)).join(' ')
           : '';
-      setLoaded({ rego: rego2, line, photos, events, jobs: profile?.jobs ?? [] });
+      setLoaded({ rego: rego2, line, photos, events, jobs: profile?.jobs ?? [], profile });
     } catch (e) {
       setErr(e instanceof ApiError ? e.message : 'Could not load history — try again.');
     } finally {
@@ -218,19 +247,14 @@ export function CarHistory() {
             Search a registration to see everything on that car — or browse the whole yard below.
           </div>
           {err && <div className="at-errbanner">{err}</div>}
-          <div className="at-field" style={{ marginTop: 10 }}>
-            <div className="at-flabel">Registration</div>
-            <input
-              className="at-input rego"
-              value={rego}
-              onChange={(e) => setRego(e.target.value.toUpperCase())}
-              onKeyDown={(e) => e.key === 'Enter' && void view()}
-              placeholder="1XY 4KP"
-              autoFocus
-              autoCapitalize="characters"
-              autoCorrect="off"
-            />
-          </div>
+          <RegoInput
+            label="Registration"
+            value={rego}
+            onChange={setRego}
+            onPick={(r) => void view(r)}
+            onEnter={() => void view()}
+            autoFocus
+          />
           <button
             className="at-btn primary"
             style={{ marginTop: 12 }}
@@ -311,13 +335,50 @@ export function CarHistory() {
             {loaded.line && <div className="at-carsub">{loaded.line}</div>}
           </div>
 
-          <Link
-            href={`/inout/estimate?rego=${encodeURIComponent(loaded.rego)}`}
-            className="at-btn ghost"
-            style={{ marginTop: 10, display: 'inline-flex', width: 'auto' }}
-          >
-            <Sparkles size={16} /> New / update estimate
-          </Link>
+          {/* Where the car is now. This is the screen staff actually search a rego on, so the map
+              belongs here as much as on the owner's car record. */}
+          <LiveLocation rego={loaded.rego} />
+
+          {/* Servicing has its own screen — it is a different question from "what happened to this
+              car", and its records are far too many to sit in the activity feed. Offered only when
+              there is something behind it. */}
+          {(loaded.profile?.serviceCount ?? 0) > 0 && loaded.profile && (
+            <button
+              className="sv-enter"
+              onClick={() =>
+                router.push(
+                  `/inout/service-history?vehicleId=${encodeURIComponent(
+                    loaded.profile!.vehicle.id,
+                  )}&rego=${encodeURIComponent(loaded.rego)}`,
+                )
+              }
+            >
+              <span className="ic">
+                <Wrench size={20} strokeWidth={2} />
+              </span>
+              <span style={{ flex: 1, minWidth: 0 }}>
+                <span className="t" style={{ display: 'block' }}>
+                  Service history
+                </span>
+                <span className="s" style={{ display: 'block' }}>
+                  {loaded.profile.serviceCount} service
+                  {loaded.profile.serviceCount === 1 ? '' : 's'} recorded · what was done &amp;
+                  photos
+                </span>
+              </span>
+              <ChevronRight size={18} strokeWidth={2.5} style={{ opacity: 0.35, flex: 'none' }} />
+            </button>
+          )}
+
+          {!HIDDEN_FROM_STAFF.instantEstimate && (
+            <Link
+              href={`/inout/estimate?rego=${encodeURIComponent(loaded.rego)}`}
+              className="at-btn ghost"
+              style={{ marginTop: 10, display: 'inline-flex', width: 'auto' }}
+            >
+              <Sparkles size={16} /> New / update estimate
+            </Link>
+          )}
 
           {/* Jobs — tap through to the full job detail */}
           {loaded.jobs.length > 0 && (
@@ -356,13 +417,34 @@ export function CarHistory() {
             </div>
           ) : (
             <div className="at-photorow">
+              {/* Tappable: this is the screen the shop looks a car up on, and a 90px tile is no use
+                  for seeing what it is actually a photo of. */}
               {loaded.photos.map((p, i) => (
-                <div key={i} className="at-photothumb" title={p.label}>
+                <button
+                  key={i}
+                  className="at-photothumb"
+                  title={p.label}
+                  onClick={() => lightbox.open(i)}
+                  aria-label={`Open ${p.label}`}
+                >
                   {/* eslint-disable-next-line @next/next/no-img-element */}
                   <img src={p.url} alt={p.label} />
-                </div>
+                </button>
               ))}
             </div>
+          )}
+
+          {lightbox.isOpen && loaded.photos.length > 0 && (
+            <PhotoLightbox
+              photos={loaded.photos.map((p): LightboxPhoto => ({
+                src: p.url,
+                caption: `${loaded.rego} · ${p.label}`,
+                fileName: `${loaded.rego}-${p.label.replace(/\s+/g, '-').toLowerCase()}.jpg`,
+              }))}
+              index={lightbox.index ?? 0}
+              onClose={lightbox.close}
+              onIndex={lightbox.setIndex}
+            />
           )}
 
           {/* Activity */}

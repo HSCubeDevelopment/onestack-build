@@ -1,0 +1,8 @@
+{
+  "$schema": "https://openapi.vercel.sh/vercel.json",
+  "framework": "nextjs",
+  "regions": ["syd1"],
+  "installCommand": "npm ci",
+  "buildCommand": "npm run build --workspace @onestack/web",
+  "outputDirectory": "apps/web/.next"
+}

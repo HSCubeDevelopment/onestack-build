@@ -4,8 +4,17 @@ import { useRouter } from 'next/navigation';
 import { MapPin, Plus, Trash2, Truck } from 'lucide-react';
 import { api, ApiError, getBrowserPosition, WorkItem } from '@/lib/api';
 import { useRole } from '@/lib/use-role';
-import { nearestYardId, timeSince, Yard, YardDrop } from '@/lib/yards';
+import {
+  nearestYardId,
+  groupTagsByNearestYard,
+  type TagLocation,
+  timeSince,
+  Yard,
+  YardDrop,
+} from '@/lib/yards';
 import { EmptyState, ErrorBanner, Loading, Modal, PageHead, useAsync } from '@/components/ui';
+import { BookTowModal } from '@/components/BookTowModal';
+import { useYardTags } from '@/lib/use-yard-tags';
 
 /**
  * Yards & vehicle logistics (YRD-1). Park an incoming car at one of the shop's yards before a job
@@ -27,11 +36,17 @@ export default function YardsPage() {
 
   const [addingYard, setAddingYard] = useState(false);
   const [towing, setTowing] = useState(false);
+  const [booking, setBooking] = useState(false);
 
   return (
     <>
       <PageHead title="Yards" sub="Cars parked across the yard network, before a job exists">
         {/* Tow-in is open to staff — a tow driver records a pickup and a job file is created. */}
+        {/* Dispatch: send a driver out. Distinct from "Tow in a car", which records a pickup that
+            has already happened. Staff can book, matching the API. */}
+        <button className="btn primary" onClick={() => setBooking(true)}>
+          <Truck size={15} /> Book a tow
+        </button>
         <button className="btn" onClick={() => setTowing(true)}>
           <Truck size={15} /> Tow in a car
         </button>
@@ -61,6 +76,8 @@ export default function YardsPage() {
 
           <AwaitingList awaiting={awaiting} onCollected={reload} />
 
+          {yards.length > 0 && <TagsByYard yards={yards} />}
+
           {isOwner && yards.length > 0 && (
             <YardNetwork yards={yards} onChanged={reload} onAdd={() => setAddingYard(true)} />
           )}
@@ -78,6 +95,9 @@ export default function YardsPage() {
       )}
 
       {towing && <TowCollectionModal onClose={() => setTowing(false)} />}
+      {booking && (
+        <BookTowModal yards={yards} onClose={() => setBooking(false)} onBooked={reload} />
+      )}
     </>
   );
 }
@@ -396,6 +416,7 @@ function YardNetwork({
 }) {
   const [busy, setBusy] = useState<string | null>(null);
   const [err, setErr] = useState<string | null>(null);
+  const tags = useYardTags(yards);
 
   async function remove(y: Yard) {
     if (!confirm(`Remove yard "${y.name}"? Cars already parked there stay on record.`)) return;
@@ -415,6 +436,9 @@ function YardNetwork({
     <div className="card">
       <div className="card-head">
         <h2>Yard network</h2>
+        {tags.configured && (
+          <span className="job-cust">{tags.atYards} car(s) across the yards</span>
+        )}
         <button className="btn sm" onClick={onAdd}>
           <Plus size={14} /> Add
         </button>
@@ -429,9 +453,11 @@ function YardNetwork({
             <div style={{ minWidth: 0 }}>
               <b style={{ fontSize: 13.5 }}>{y.name}</b>
               <div className="job-cust">
-                {y.latitude != null && y.longitude != null
-                  ? `${y.latitude.toFixed(4)}, ${y.longitude.toFixed(4)}`
-                  : 'No coordinates — set them to enable “nearest yard”'}
+                {y.latitude == null || y.longitude == null
+                  ? 'No coordinates — set them to enable “nearest yard”'
+                  : tags.configured
+                    ? `${tags.countByYard[y.id] ?? 0} car(s) here now`
+                    : `${y.latitude.toFixed(4)}, ${y.longitude.toFixed(4)}`}
               </div>
             </div>
           </div>
@@ -522,5 +548,98 @@ function AddYardModal({ onClose, onSaved }: { onClose: () => void; onSaved: () =
         </div>
       </div>
     </Modal>
+  );
+}
+
+/**
+ * What the GPS tags say is sitting in each yard, right now.
+ *
+ * Live only — positions are read through to CityTag and never stored, so this is a view of the tags,
+ * not a record of what is parked. The drop list above is the record; this is the reality check against
+ * it. A car can be here and not dropped (nobody logged it) or dropped and not here (it left).
+ */
+function TagsByYard({ yards }: { yards: Yard[] }) {
+  const { data, loading, error } = useAsync(
+    () => api.get<{ configured: boolean; devices: TagLocation[] }>('/tracking/fleet'),
+    [],
+  );
+
+  if (loading) return <Loading />;
+  if (error) return <ErrorBanner message="Could not reach CityTag" />;
+  if (!data?.configured) {
+    return (
+      <div className="card">
+        <div className="card-head">
+          <h2>Where the tags are</h2>
+        </div>
+        <EmptyState>CityTag isn&rsquo;t connected for this workshop.</EmptyState>
+      </div>
+    );
+  }
+
+  // Each car is assigned to ONE yard — its nearest — so a car between two neighbouring yards is
+  // counted once, not twice.
+  const rows = groupTagsByNearestYard(yards, data.devices);
+  const atYards = rows.reduce((n, r) => n + r.sightings.length, 0);
+  const elsewhere = data.devices.length - atYards;
+
+  return (
+    <div className="card">
+      <div className="card-head">
+        <h2>Where the tags are</h2>
+        <span className="job-cust">
+          {atYards} of {data.devices.length} tagged cars at a yard
+        </span>
+      </div>
+
+      {rows.length === 0 ? (
+        <EmptyState>No tagged car is at any yard right now.</EmptyState>
+      ) : (
+        rows.map(({ yard, sightings }) => (
+          <div key={yard.id} style={{ marginBottom: 14 }}>
+            <div style={{ fontSize: 12.5, fontWeight: 700, margin: '0 0 6px' }}>
+              {yard.name} <span style={{ color: 'var(--text-faint)' }}>· {sightings.length}</span>
+            </div>
+            {sightings.map((s) => (
+              // Keyed on rego AND position: at least one rego (1YW4UP) has two physical tags, so
+              // rego alone collides and React drops one of the rows.
+              <div key={`${s.tag.rego}-${s.tag.lat},${s.tag.lng}`} className="job-row">
+                <div className="job-row-main">
+                  <span className="more-icon" aria-hidden>
+                    <MapPin size={15} />
+                  </span>
+                  <div style={{ minWidth: 0 }}>
+                    <b style={{ fontSize: 13.5 }}>{s.tag.rego}</b>
+                    <div className="job-cust">
+                      {Math.round(s.metresAway)} m away
+                      {s.ageHours == null
+                        ? ' · never reported'
+                        : s.ageHours < 1
+                          ? ' · just now'
+                          : s.ageHours < 24
+                            ? ` · ${Math.round(s.ageHours)}h ago`
+                            : ` · ${Math.round(s.ageHours / 24)}d ago`}
+                      {s.tag.battery != null ? ` · ${s.tag.battery}%` : ''}
+                    </div>
+                  </div>
+                </div>
+                {/* Some yards are closer together than a tag's own error, so say when we can't tell. */}
+                {s.ambiguousWith && (
+                  <span className="pill" title={`Could also be ${s.ambiguousWith}`}>
+                    or {s.ambiguousWith.split(',')[0]}
+                  </span>
+                )}
+                {s.ageHours != null && s.ageHours > 168 && <span className="pill">stale</span>}
+              </div>
+            ))}
+          </div>
+        ))
+      )}
+
+      <p className="job-cust" style={{ marginTop: 4 }}>
+        {elsewhere} tagged {elsewhere === 1 ? 'car is' : 'cars are'} away from the yards — out with
+        customers. Live from CityTag; positions are never stored.
+      </p>
+    </div>
   );
 }

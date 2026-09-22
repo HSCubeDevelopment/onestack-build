@@ -111,4 +111,56 @@ describe.skipIf(!hasDb)('Fleet & courtesy cars', () => {
     // B cannot read A's movement by id.
     await http().get(`/api/v1/fleet/movements/${movementId}`).set(auth(b)).expect(404);
   });
+
+  it("keeps the loan car's photos apart from the customer car's on the same movement", async () => {
+    // The bug this guards: a COURTESY movement names TWO cars — the customer's arriving for repair
+    // (carsInRego) and the loan car going out (carsOutRego) — and every photo hangs off the MOVEMENT,
+    // not off a car. Matching the movement alone showed the customer's damage on our loan car. In the
+    // real data, 1WZ1BY displayed a red Camry belonging to 2BX5YT.
+    const loan = await admin.fleetVehicle.create({
+      data: { tenantId: a.tenantId, rego: 'ZLOAN9', make: 'Toyota', model: 'Camry' },
+    });
+    const customer = await admin.fleetVehicle.create({
+      data: { tenantId: a.tenantId, rego: 'ZCUST9', make: 'Toyota', model: 'Camry' },
+    });
+    const mv = await admin.fleetMovement.create({
+      data: {
+        tenantId: a.tenantId,
+        carsInRego: 'ZCUST9', // theirs, in for repair
+        carsOutRego: 'ZLOAN9', // ours, going out
+        purpose: 'COURTESY',
+        status: 'active',
+      },
+    });
+    await admin.fleetPhoto.createMany({
+      data: [
+        {
+          tenantId: a.tenantId,
+          movementId: mv.id,
+          photoType: 'before_handover',
+          storagePath: `${a.tenantId}/p1`,
+          contentType: 'image/jpeg',
+        },
+        {
+          tenantId: a.tenantId,
+          movementId: mv.id,
+          photoType: 'damage',
+          storagePath: `${a.tenantId}/p2`,
+          contentType: 'image/jpeg',
+        },
+      ],
+    });
+
+    const forLoan = (
+      await http().get(`/api/v1/fleet/photos?vehicleId=${loan.id}`).set(auth(a)).expect(200)
+    ).body;
+    const forCustomer = (
+      await http().get(`/api/v1/fleet/photos?vehicleId=${customer.id}`).set(auth(a)).expect(200)
+    ).body;
+
+    // Our loan car gets its handover shot and NOT the damage to somebody else's vehicle.
+    expect(forLoan.map((p: { photoType: string }) => p.photoType)).toEqual(['before_handover']);
+    // Their car gets the damage, which is the whole reason those photos exist.
+    expect(forCustomer.map((p: { photoType: string }) => p.photoType)).toEqual(['damage']);
+  });
 });

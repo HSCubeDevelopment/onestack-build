@@ -2,6 +2,7 @@ import { BadRequestException, Inject, Injectable, NotFoundException } from '@nes
 import { TenantService } from '../tenancy/tenant.service';
 import { AddFleetPhotoDto } from './dto/fleet.dto';
 import { FLEET_PHOTO_STORAGE, FleetPhotoStorage } from './fleet-photo-storage';
+import { CUSTOMER_CAR_PHOTO_TYPES } from './fleet.util';
 
 export interface FleetPhotoView {
   id: string;
@@ -46,33 +47,141 @@ export class FleetPhotoService {
     }
     if (bytes.length === 0) throw new BadRequestException('Empty photo');
     const contentType = input.contentType ?? 'image/jpeg';
-    const storagePath = await this.storage.put(tenantId, bytes, contentType);
-    return this.tenants.runInTenant(tenantId, async (tx) => {
-      const row = await tx.fleetPhoto.create({
-        data: {
-          tenantId,
-          vehicleId: input.vehicleId ?? null,
-          movementId: input.movementId ?? null,
-          returnId: input.returnId ?? null,
-          bookingId: input.bookingId ?? null,
-          photoType: input.photoType,
-          storagePath,
-          contentType,
-          notes: input.notes ?? '',
-          uploadedByUserId: userId,
-        },
-      });
-      return toPhotoView(row);
+
+    // Check the parent EXISTS before writing any bytes. Uploading first meant a bad id left the file in
+    // storage with no row pointing at it — unreferenced, uncleanable, and billed for — while the caller
+    // got an opaque 500 from the foreign-key violation instead of a useful error.
+    await this.tenants.runInTenant(tenantId, async (tx) => {
+      const missing = await this.findMissingParent(tx, input);
+      if (missing) throw new NotFoundException(`${missing} not found`);
     });
+
+    const storagePath = await this.storage.put(tenantId, bytes, contentType);
+    try {
+      return await this.tenants.runInTenant(tenantId, async (tx) => {
+        const row = await tx.fleetPhoto.create({
+          data: {
+            tenantId,
+            vehicleId: input.vehicleId ?? null,
+            movementId: input.movementId ?? null,
+            returnId: input.returnId ?? null,
+            bookingId: input.bookingId ?? null,
+            photoType: input.photoType,
+            storagePath,
+            contentType,
+            notes: input.notes ?? '',
+            uploadedByUserId: userId,
+          },
+        });
+        return toPhotoView(row);
+      });
+    } catch (err) {
+      // The check above closes the ordinary case; this covers a parent deleted in the gap, or any other
+      // write failure. Without it the bytes would still be stranded.
+      await this.storage.remove(tenantId, storagePath).catch(() => {});
+      throw err;
+    }
+  }
+
+  /** Name of the first referenced record that does not exist in this tenant, or null when all are fine. */
+  private async findMissingParent(
+    tx: {
+      fleetVehicle: { findFirst(a: unknown): Promise<unknown> };
+      fleetMovement: { findFirst(a: unknown): Promise<unknown> };
+      fleetReturn: { findFirst(a: unknown): Promise<unknown> };
+      fleetBooking: { findFirst(a: unknown): Promise<unknown> };
+    },
+    input: AddFleetPhotoDto,
+  ): Promise<string | null> {
+    const checks: [string | undefined, () => Promise<unknown>, string][] = [
+      [
+        input.vehicleId,
+        () => tx.fleetVehicle.findFirst({ where: { id: input.vehicleId } }),
+        'Vehicle',
+      ],
+      [
+        input.movementId,
+        () => tx.fleetMovement.findFirst({ where: { id: input.movementId } }),
+        'Movement',
+      ],
+      [input.returnId, () => tx.fleetReturn.findFirst({ where: { id: input.returnId } }), 'Return'],
+      [
+        input.bookingId,
+        () => tx.fleetBooking.findFirst({ where: { id: input.bookingId } }),
+        'Booking',
+      ],
+    ];
+    for (const [id, load, label] of checks) {
+      if (id && !(await load())) return label;
+    }
+    return null;
   }
 
   async list(tenantId: string, filter: FleetPhotoFilter): Promise<FleetPhotoView[]> {
-    const where: Record<string, string> = {};
-    if (filter.vehicleId) where.vehicleId = filter.vehicleId;
+    const where: Record<string, unknown> = {};
     if (filter.movementId) where.movementId = filter.movementId;
     if (filter.returnId) where.returnId = filter.returnId;
     if (filter.bookingId) where.bookingId = filter.bookingId;
+
     return this.tenants.runInTenant(tenantId, async (tx) => {
+      if (filter.vehicleId) {
+        // Photos are taken at a handover, so they hang off the MOVEMENT, not the car: of 3541 imported
+        // photos only 9 carry a vehicleId. Matching the column alone therefore returned nothing for
+        // essentially every vehicle, and the car's whole photo history was unreachable in the UI.
+        //
+        // Reach them the way the data actually joins: the car's own photos, plus those on its movements
+        // and returns. Those link by id where one was resolved at import, and otherwise by rego — which
+        // is the only link the legacy spreadsheet had.
+        const vehicle = await tx.fleetVehicle.findFirst({ where: { id: filter.vehicleId } });
+        if (!vehicle) return [];
+        const rego = vehicle.rego?.trim() ? vehicle.rego : null;
+
+        // A movement names TWO cars — the customer's arriving for repair (carsInRego) and the loan car
+        // going out (carsOutRego) — and every photo on it hangs off the movement, not off a car. So the
+        // side this vehicle is on decides WHICH photos are of it. Matching the movement alone put the
+        // customer's damage photos on our loan car: 1WZ1BY showed a red Camry that was never ours.
+        const [asLoanCar, asCustomerCar, returns] = await Promise.all([
+          tx.fleetMovement.findMany({
+            where: {
+              OR: [
+                { carsOutVehicleId: filter.vehicleId },
+                ...(rego ? [{ carsOutRego: rego }] : []),
+              ],
+            },
+            select: { id: true },
+          }),
+          // Only ever matched by rego — a movement has no carsInVehicleId column.
+          rego
+            ? tx.fleetMovement.findMany({ where: { carsInRego: rego }, select: { id: true } })
+            : Promise.resolve([] as { id: string }[]),
+          tx.fleetReturn.findMany({
+            where: {
+              OR: [
+                { returnedVehicleId: filter.vehicleId },
+                ...(rego ? [{ returnedRego: rego }] : []),
+              ],
+            },
+            select: { id: true },
+          }),
+        ]);
+
+        const loanIds = asLoanCar.map((m) => m.id);
+        const customerIds = asCustomerCar.map((m) => m.id);
+
+        where.OR = [
+          { vehicleId: filter.vehicleId },
+          // Out on loan: everything documenting our car, but never the damage to theirs.
+          ...(loanIds.length
+            ? [{ movementId: { in: loanIds }, photoType: { notIn: CUSTOMER_CAR_PHOTO_TYPES } }]
+            : []),
+          // In for repair: the damage photos, which are the ones actually of this car.
+          ...(customerIds.length
+            ? [{ movementId: { in: customerIds }, photoType: { in: CUSTOMER_CAR_PHOTO_TYPES } }]
+            : []),
+          ...(returns.length ? [{ returnId: { in: returns.map((r) => r.id) } }] : []),
+        ];
+      }
+
       const rows = await tx.fleetPhoto.findMany({
         where,
         orderBy: { uploadedAt: 'desc' },

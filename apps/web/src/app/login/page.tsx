@@ -1,6 +1,6 @@
 'use client';
 import { useEffect, useMemo, useState } from 'react';
-import { ChevronLeft, Delete, Search, ShieldCheck } from 'lucide-react';
+import { ChevronLeft, Delete, ShieldCheck } from 'lucide-react';
 
 interface Person {
   userId: string;
@@ -24,23 +24,67 @@ export default function LoginPage() {
   const [people, setPeople] = useState<Person[]>([]);
   const [loaded, setLoaded] = useState(false);
   const [selected, setSelected] = useState<Person | null>(null);
-  const [query, setQuery] = useState('');
   const [pin, setPin] = useState('');
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  /** Why the directory is unavailable — distinct from it being legitimately empty. */
+  const [directoryError, setDirectoryError] = useState<string | null>(null);
+  /**
+   * Whether a PIN is asked for. Starts TRUE and only ever relaxes if the server says so, so a slow or
+   * failed check shows the keypad rather than briefly offering one-tap sign-in.
+   */
+  const [pinsRequired, setPinsRequired] = useState(true);
 
   useEffect(() => {
     fetch('/api/auth/pin-directory')
-      .then((r) => r.json())
-      .then((d) => setPeople(Array.isArray(d) ? d : []))
-      .catch(() => setPeople([]))
+      .then(async (r) => {
+        const body = (await r.json().catch(() => null)) as Person[] | { error?: string } | null;
+        if (!r.ok || !Array.isArray(body)) {
+          const msg =
+            body && !Array.isArray(body) && body.error ? body.error : 'PIN sign-in is unavailable';
+          setDirectoryError(msg);
+          setPeople([]);
+          return;
+        }
+        setPeople(body);
+      })
+      .catch(() => setDirectoryError('Cannot reach the OneStack API'))
       .finally(() => setLoaded(true));
+
+    fetch('/api/auth/mode')
+      .then((r) => r.json())
+      .then((m: { pinsRequired?: boolean }) => setPinsRequired(m.pinsRequired !== false))
+      .catch(() => setPinsRequired(true));
   }, []);
 
-  const shown = useMemo(() => {
-    const q = query.trim().toLowerCase();
-    return q ? people.filter((p) => p.name.toLowerCase().includes(q)) : people;
-  }, [people, query]);
+  /** Sign in as someone with no PIN. Only reachable while the server has PIN checks switched off. */
+  async function signInOpen(person: Person) {
+    setBusy(true);
+    setError(null);
+    try {
+      const res = await fetch('/api/auth/open-login', {
+        method: 'POST',
+        headers: { 'content-type': 'application/json' },
+        body: JSON.stringify({ userId: person.userId }),
+      });
+      if (!res.ok) {
+        const d = (await res.json().catch(() => ({}))) as { error?: string };
+        throw new Error(d.error || 'Could not sign in');
+      }
+      window.location.assign('/');
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Sign in failed');
+      setBusy(false);
+    }
+  }
+
+  /** Group by role so the dropdown reads sensibly once the roster grows. */
+  const grouped = useMemo(() => {
+    const order: Person['role'][] = ['OWNER', 'STAFF', 'TOW'];
+    return order
+      .map((role) => ({ role, members: people.filter((p) => p.role === role) }))
+      .filter((g) => g.members.length > 0);
+  }, [people]);
 
   async function submit(person: Person, code: string) {
     setBusy(true);
@@ -82,76 +126,88 @@ export default function LoginPage() {
         </div>
 
         {!selected ? (
-          /* Step 1 — pick who you are. */
+          /* Step 1 — pick who you are. A native <select> on purpose: on a phone it opens the system
+             wheel picker, which is faster and more accessible than a custom list, and it cannot have
+             the failure this screen used to have (a search box over an empty list, where typing did
+             nothing and never said why). */
           <>
-            <div
-              className="field"
-              style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 12 }}
-            >
-              <Search size={16} style={{ color: 'var(--text-faint)', flex: 'none' }} />
-              <input
-                className="input"
-                style={{ border: 'none', padding: 0, background: 'transparent' }}
-                placeholder="Search your name"
-                value={query}
-                onChange={(e) => setQuery(e.target.value)}
-                aria-label="Search your name"
-              />
-            </div>
-
             {!loaded ? (
               <p style={{ color: 'var(--text-faint)', fontSize: 14 }}>Loading…</p>
+            ) : directoryError ? (
+              <div className="err" role="alert">
+                {directoryError}
+              </div>
             ) : people.length === 0 ? (
               <p style={{ color: 'var(--text-faint)', fontSize: 14 }}>
-                PIN sign-in isn’t set up yet. Ask the owner to generate the PINs.
+                No one has a PIN yet. Ask the owner to generate them.
               </p>
             ) : (
-              <div
-                style={{
-                  display: 'grid',
-                  gap: 6,
-                  maxHeight: 340,
-                  overflowY: 'auto',
-                  margin: '0 -4px',
-                  padding: '0 4px',
-                }}
-              >
-                {shown.map((p) => (
-                  <button
-                    key={p.userId}
-                    type="button"
-                    onClick={() => {
-                      setSelected(p);
-                      setPin('');
-                      setError(null);
-                    }}
-                    style={{
-                      display: 'flex',
-                      alignItems: 'center',
-                      justifyContent: 'space-between',
-                      gap: 10,
-                      padding: '12px 14px',
-                      borderRadius: 12,
-                      border: '1px solid var(--border)',
-                      background: 'var(--panel-2, #f7f7f9)',
-                      cursor: 'pointer',
-                      textAlign: 'left',
-                      font: 'inherit',
-                    }}
-                  >
-                    <span style={{ fontWeight: 600, fontSize: 15 }}>{p.name}</span>
-                    <span style={{ fontSize: 12, color: 'var(--text-faint)' }}>
-                      {roleLabel[p.role]}
-                      {p.site ? ` · ${p.site.split(',')[0]}` : ''}
-                    </span>
-                  </button>
-                ))}
-                {shown.length === 0 && (
-                  <p style={{ color: 'var(--text-faint)', fontSize: 14 }}>
-                    No one matches “{query}”.
-                  </p>
+              <>
+                <label
+                  htmlFor="who"
+                  style={{
+                    display: 'block',
+                    fontSize: 13,
+                    fontWeight: 600,
+                    marginBottom: 6,
+                    color: 'var(--text-dim)',
+                  }}
+                >
+                  Who are you?
+                </label>
+                <select
+                  id="who"
+                  className="input"
+                  defaultValue=""
+                  style={{ width: '100%', fontSize: 16, padding: '12px 14px', borderRadius: 12 }}
+                  onChange={(e) => {
+                    const person = people.find((p) => p.userId === e.target.value) ?? null;
+                    setPin('');
+                    setError(null);
+                    if (person && !pinsRequired) {
+                      // No PIN step to go to — become them straight away.
+                      void signInOpen(person);
+                      return;
+                    }
+                    setSelected(person);
+                  }}
+                >
+                  <option value="" disabled>
+                    Select your name…
+                  </option>
+                  {grouped.map((g) => (
+                    <optgroup key={g.role} label={roleLabel[g.role]}>
+                      {g.members.map((p) => (
+                        <option key={p.userId} value={p.userId}>
+                          {p.name}
+                          {p.site ? ` — ${p.site.split(',')[0]}` : ''}
+                        </option>
+                      ))}
+                    </optgroup>
+                  ))}
+                </select>
+                <p style={{ color: 'var(--text-faint)', fontSize: 13, margin: '10px 0 0' }}>
+                  {busy
+                    ? 'Signing in…'
+                    : pinsRequired
+                      ? 'Pick your name, then enter your 4-digit PIN.'
+                      : 'Pick a name to sign in as them.'}
+                </p>
+                {!pinsRequired && (
+                  // Say it out loud. Anyone who can open this page can become anyone, including the
+                  // owner — that is the point while it is on, and it should never be a surprise.
+                  <div className="notif" style={{ marginTop: 12, fontSize: 13 }} role="status">
+                    PIN checks are switched off, so any name here signs in without one.
+                    Everyone&apos;s PIN is still stored and starts working again the moment it is
+                    switched back on.
+                  </div>
                 )}
-              </div>
+                {error && (
+                  <div className="err" role="alert" style={{ marginTop: 12 }}>
+                    {error}
+                  </div>
+                )}
+              </>
             )}
           </>
         ) : (

@@ -8,6 +8,7 @@ import { QuoteService } from '../quotes/quote.service';
 import { SubjectService, SubjectView } from '../subjects/subject.service';
 import { TicketsService, TicketView } from '../tickets/tickets.service';
 import { buildTimeline, TimelineEvent } from '../timeline/timeline';
+import { buildServiceHistory, isServiceNote, ServiceRecord } from './service-history';
 import { AttachmentService, AttachmentView } from '../work-items/attachment.service';
 import { NoteService } from '../work-items/note.service';
 import { WorkItemService, WorkItemView } from '../work-items/work-item.service';
@@ -52,6 +53,8 @@ export interface VehicleProfile {
   jobs: VehicleJobSummary[];
   photos: AttachmentView[];
   timeline: TimelineEvent[];
+  /** How many service visits this car has — 0 hides the service screen. */
+  serviceCount: number;
   /**
    * True when money was withheld rather than absent — so a UI can say "hidden" instead of "$0", which
    * would be a lie. Always true until card 40.8 exists.
@@ -183,15 +186,27 @@ export class VehicleProfileService {
         invoicePaidCents: 0,
       })),
       perJob.flatMap(({ job, notes }) =>
-        notes.map((n) => ({
-          jobId: job.id,
-          jobReference: job.reference,
-          body: n.body,
-          authorUserId: n.authorUserId,
-          createdAt: n.createdAt,
-        })),
+        notes
+          // Servicing has its own screen. Left in here, a car with two years of backfilled history
+          // showed nothing else — the activity feed became a wall of imported text and the repair
+          // events it exists for were buried. The notes are untouched; only this view skips them.
+          .filter((n) => !isServiceNote(n.body))
+          .map((n) => ({
+            jobId: job.id,
+            jobReference: job.reference,
+            body: n.body,
+            authorUserId: n.authorUserId,
+            createdAt: n.createdAt,
+          })),
       ),
     ).map((event) => ({ ...event, amountsCents: null }));
+
+    // How many times this car has been serviced — so the UI can offer the screen only when there is
+    // something on it, without fetching the whole history first.
+    const serviceCount = perJob.reduce(
+      (n, { notes }) => n + notes.filter((x) => isServiceNote(x.body)).length,
+      0,
+    );
 
     return {
       vehicle,
@@ -200,8 +215,39 @@ export class VehicleProfileService {
       jobs,
       photos: perJob.flatMap(({ photos }) => photos),
       timeline,
+      serviceCount,
       moneyHidden: true,
     };
+  }
+
+  /**
+   * The car's servicing, newest first, with each visit's photos attached.
+   *
+   * Assembled from the job notes rather than a table of its own: the note IS the record (append-only,
+   * with its author and provenance), and this turns it back into something the app can lay out.
+   */
+  async serviceHistory(tenantId: string, vehicleId: string): Promise<ServiceRecord[]> {
+    const vehicle = await this.subjects.get(tenantId, vehicleId);
+    if (!vehicle || vehicle.type !== 'vehicle') throw new NotFoundException('Vehicle not found');
+
+    const workItems = await this.workItems.listForSubject(tenantId, vehicleId);
+    const perJob = await Promise.all(
+      workItems.map(async (job) => ({
+        notes: await this.notes.list(tenantId, job.id),
+        photos: await this.attachments.list(tenantId, job.id),
+      })),
+    );
+    return buildServiceHistory(
+      perJob.flatMap(({ notes }) => notes.map((n) => ({ body: n.body, createdAt: n.createdAt }))),
+      perJob.flatMap(({ photos }) =>
+        photos.map((p) => ({
+          id: p.id,
+          fileName: p.fileName,
+          caption: p.caption,
+          createdAt: p.createdAt,
+        })),
+      ),
+    );
   }
 
   /**

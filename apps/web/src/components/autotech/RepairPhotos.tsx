@@ -4,6 +4,8 @@ import { Camera, Car, Plus, Search } from 'lucide-react';
 import { api, ApiError } from '@/lib/api';
 import { compressToBase64 } from '@/lib/image';
 import { AtTopbar, SignOutButton } from '@/components/autotech/kit';
+import { RegoInput } from '@/components/fleet/RegoInput';
+import { PhotoLightbox, useLightbox, type LightboxPhoto } from '@/components/PhotoLightbox';
 
 /**
  * Repair photos — enter a rego, then add Before / During / After photos to the car's current job.
@@ -51,13 +53,21 @@ const CATEGORIES = [
 type PhaseKey = (typeof CATEGORIES)[number]['key'];
 
 /**
- * Photos taken under the original Before/During/After flow. Shown (read-only) when a job actually has
- * them, so history isn't hidden — but not offered for new capture.
+ * Categories this screen SHOWS but does not capture — so history is never hidden just because it was
+ * recorded somewhere else. Must stay in step with PHOTO_CATEGORIES / LEGACY_PHASES in the API's
+ * repair-photos.ts, where the caption is the stored value.
+ *
+ *  - before/during/after : the original Before/During/After flow.
+ *  - Before/After service: taken by a mechanic on /inout/work.
+ *  - Service photo       : backfilled from the workshop WhatsApp group.
  */
 const LEGACY_CATEGORIES = [
   { key: 'before', title: 'Before repair', caption: 'Before repair' },
   { key: 'during', title: 'During repair', caption: 'During repair' },
   { key: 'after', title: 'After repair', caption: 'After repair' },
+  { key: 'service_before', title: 'Before service', caption: 'Before service' },
+  { key: 'service_after', title: 'After service', caption: 'After service' },
+  { key: 'service_record', title: 'Service photo', caption: 'Service photo' },
 ] as const;
 
 const regoOf = (v: SubjectView): string =>
@@ -106,8 +116,10 @@ export function RepairPhotos() {
     setJobId(target?.id ?? null);
   }
 
-  async function search(): Promise<void> {
-    const q = rego.trim();
+  // `override` lets a picked suggestion search immediately: setRego won't have landed yet when
+  // the click handler runs, so reading state here would search the half-typed plate.
+  async function search(override?: string): Promise<void> {
+    const q = (override ?? rego).trim();
     if (!q) return;
     setSearching(true);
     setErr(null);
@@ -191,6 +203,20 @@ export function RepairPhotos() {
     return profile.photos.filter((p) => p.workItemId === jobId && p.caption === caption);
   }
 
+  /*
+   * One flat album across every category on this job, in the order the categories are shown, so the
+   * viewer steps through the whole car rather than restarting inside each section.
+   */
+  const album: Attachment[] = [...CATEGORIES, ...LEGACY_CATEGORIES].flatMap((c) =>
+    photosFor(c.caption),
+  );
+  const albumIndex = (id: string) =>
+    Math.max(
+      0,
+      album.findIndex((a) => a.id === id),
+    );
+  const lightbox = useLightbox();
+
   // ---- Screen 1: enter registration ----
   if (!profile) {
     return (
@@ -203,19 +229,14 @@ export function RepairPhotos() {
 
         {err && <div className="at-errbanner">{err}</div>}
 
-        <div className="at-field" style={{ marginTop: 10 }}>
-          <div className="at-flabel">Registration</div>
-          <input
-            className="at-input rego"
-            value={rego}
-            onChange={(e) => setRego(e.target.value.toUpperCase())}
-            onKeyDown={(e) => e.key === 'Enter' && void search()}
-            placeholder="1XY 4KP"
-            autoFocus
-            autoCapitalize="characters"
-            autoCorrect="off"
-          />
-        </div>
+        <RegoInput
+          label="Registration"
+          value={rego}
+          onChange={setRego}
+          onPick={(r) => void search(r)}
+          onEnter={() => void search()}
+          autoFocus
+        />
         <button
           className="at-btn primary"
           style={{ marginTop: 12 }}
@@ -350,13 +371,18 @@ export function RepairPhotos() {
               </div>
               <div className="at-photorow">
                 {shots.map((s) => (
-                  <div key={s.id} className="at-photothumb">
+                  <button
+                    key={s.id}
+                    className="at-photothumb"
+                    onClick={() => lightbox.open(albumIndex(s.id))}
+                    aria-label={`Open ${ph.title} photo`}
+                  >
                     {/* eslint-disable-next-line @next/next/no-img-element */}
                     <img
                       src={`/api/backend/vehicle-profile/${v.id}/photos/${s.id}/content`}
                       alt={`${ph.title} photo`}
                     />
-                  </div>
+                  </button>
                 ))}
                 <button
                   type="button"
@@ -391,13 +417,18 @@ export function RepairPhotos() {
               </div>
               <div className="at-photorow">
                 {shots.map((s) => (
-                  <div key={s.id} className="at-photothumb">
+                  <button
+                    key={s.id}
+                    className="at-photothumb"
+                    onClick={() => lightbox.open(albumIndex(s.id))}
+                    aria-label={`Open ${ph.title} photo`}
+                  >
                     {/* eslint-disable-next-line @next/next/no-img-element */}
                     <img
                       src={`/api/backend/vehicle-profile/${v.id}/photos/${s.id}/content`}
                       alt={`${ph.title} photo`}
                     />
-                  </div>
+                  </button>
                 ))}
               </div>
             </div>
@@ -416,6 +447,19 @@ export function RepairPhotos() {
           if (e.target.files?.length && pendingCat) void addPhotos(pendingCat, e.target.files);
         }}
       />
+
+      {lightbox.isOpen && album.length > 0 && v && (
+        <PhotoLightbox
+          photos={album.map((a): LightboxPhoto => ({
+            src: `/api/backend/vehicle-profile/${v.id}/photos/${a.id}/content`,
+            caption: `${regoOf(v)} · ${a.caption ?? 'Photo'}`,
+            fileName: `${regoOf(v)}-${(a.caption ?? 'photo').replace(/\s+/g, '-').toLowerCase()}.jpg`,
+          }))}
+          index={lightbox.index ?? 0}
+          onClose={lightbox.close}
+          onIndex={lightbox.setIndex}
+        />
+      )}
     </>
   );
 }

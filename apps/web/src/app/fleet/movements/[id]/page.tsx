@@ -3,6 +3,7 @@ import { useState } from 'react';
 import { useParams } from 'next/navigation';
 import { api } from '@/lib/api';
 import { EmptyState, ErrorBanner, Loading, Modal, PageHead, useAsync } from '@/components/ui';
+import { PhotoLightbox, useLightbox } from '@/components/PhotoLightbox';
 import {
   FleetMovement,
   FleetPhoto,
@@ -143,6 +144,7 @@ function RentalHistory({ rego }: { rego: string }) {
 }
 
 function Photos({ movementId }: { movementId: string }) {
+  const lightbox = useLightbox();
   const { data, loading, reload } = useAsync(
     () => api.get<FleetPhoto[]>(`/fleet/photos?movementId=${movementId}`),
     [movementId],
@@ -200,23 +202,37 @@ function Photos({ movementId }: { movementId: string }) {
         <span className="muted">No photos yet.</span>
       ) : (
         <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap' }}>
-          {(data ?? []).map((p) => (
+          {(data ?? []).map((p, i) => (
             // eslint-disable-next-line @next/next/no-img-element
             <img
               key={p.id}
               src={`/api/backend/fleet/photos/${p.id}/content`}
               alt={p.photoType}
               title={p.photoType}
+              onClick={() => lightbox.open(i)}
               style={{
                 width: 120,
                 height: 120,
                 objectFit: 'cover',
                 borderRadius: 8,
                 border: '1px solid var(--border, #eee)',
+                cursor: 'zoom-in',
               }}
             />
           ))}
         </div>
+      )}
+      {lightbox.isOpen && (
+        <PhotoLightbox
+          photos={(data ?? []).map((p) => ({
+            src: `/api/backend/fleet/photos/${p.id}/content`,
+            caption: `${p.photoType} · ${new Date(p.uploadedAt).toLocaleString()}`,
+            fileName: `${p.photoType}-${p.id.slice(0, 8)}.jpg`,
+          }))}
+          index={lightbox.index!}
+          onIndex={lightbox.setIndex}
+          onClose={lightbox.close}
+        />
       )}
     </div>
   );

@@ -2,13 +2,14 @@
   "name": "@onestack/web",
   "version": "0.0.0",
   "private": true,
-  "description": "OneStack web frontend — the Phase-1 walking skeleton (card #4). Next.js App Router, proxies the OneStack API. Hosts on Vercel (syd1).",
+  "description": "OneStack web frontend \u2014 the Phase-1 walking skeleton (card #4). Next.js App Router, proxies the OneStack API. Hosts on Vercel (syd1).",
   "scripts": {
     "dev": "next dev -p 3000",
     "build": "next build",
     "start": "next start -p 3000",
     "seed": "tsx scripts/seed-demo.ts",
-    "typecheck": "tsc -p tsconfig.json --noEmit"
+    "typecheck": "tsc -p tsconfig.json --noEmit",
+    "test": "vitest run"
   },
   "dependencies": {
     "jsonwebtoken": "^9.0.2",

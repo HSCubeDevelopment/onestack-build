@@ -503,12 +503,18 @@ model Dispatch {
   status          String    @default("pending") // pending | dispatched | en_route | on_site | completed
   etaAt           DateTime?
   note            String?
+  /// Tow dispatch (0054). A typed human address, entered by whoever books the tow — never a device fix.
+  pickupAddress     String?
+  destinationYardId String?  @db.Uuid
+  pickupNotes       String?
   updatedByUserId String?   @db.Uuid
   updatedAt       DateTime  @updatedAt
   tenant          Tenant    @relation(fields: [tenantId], references: [id])
   workItem        WorkItem  @relation(fields: [workItemId], references: [id], onDelete: Cascade)
+  destinationYard Yard?     @relation(fields: [destinationYardId], references: [id])
 
   @@index([tenantId])
+  @@index([tenantId, destinationYardId])
   @@map("onestack_dispatch")
 }
 
@@ -1587,6 +1593,7 @@ model Yard {
   deletedAt DateTime?
   tenant    Tenant     @relation(fields: [tenantId], references: [id])
   drops     YardDrop[]
+  towDropOffs Dispatch[]
 
   @@unique([tenantId, name])
   @@index([tenantId])

@@ -119,6 +119,49 @@ describe.skipIf(!hasDb)('Dispatch & assignment (Phase 3)', () => {
     expect(job.customerName).toBe('Disp Cust');
   });
 
+  // These three cover a deliberate widening: the per-job dispatch routes used to be OWNER-only, and
+  // were opened so a tow driver can advance their own pickup from the road. That is only safe because
+  // the caller's job scope is threaded into the lookup, so the scoping is the thing worth testing.
+  it('lets a worker advance a job assigned to them', async () => {
+    await http()
+      .post(`/api/v1/work-items/${jobId}/assign`)
+      .set(auth(a))
+      .send({ assignees: [a.staffUserId] })
+      .expect(201);
+    await http()
+      .post(`/api/v1/work-items/${jobId}/dispatch`)
+      .set({ Authorization: `Bearer ${a.staffToken}` })
+      .send({ status: 'en_route' })
+      .expect(201);
+  });
+
+  it('404s a worker on a job that is not theirs', async () => {
+    // Hand the job to someone else; the original worker must lose both read and write.
+    await http()
+      .post(`/api/v1/work-items/${jobId}/assign`)
+      .set(auth(a))
+      .send({ assignees: [a.ownerUserId] })
+      .expect(201);
+    await http()
+      .post(`/api/v1/work-items/${jobId}/dispatch`)
+      .set({ Authorization: `Bearer ${a.staffToken}` })
+      .send({ status: 'completed' })
+      .expect(404);
+    await http()
+      .get(`/api/v1/work-items/${jobId}/dispatch`)
+      .set({ Authorization: `Bearer ${a.staffToken}` })
+      .expect(404);
+  });
+
+  it('keeps the dispatch board owner-only', async () => {
+    // The board lists every job and customer in the tenant, so a worker must never reach it.
+    await http()
+      .get('/api/v1/dispatch/board')
+      .set({ Authorization: `Bearer ${a.staffToken}` })
+      .expect(403);
+    await http().get('/api/v1/dispatch/board').set(auth(a)).expect(200);
+  });
+
   it("is tenant-isolated: shop B cannot read or set dispatch on shop A's job, or see it on the board", async () => {
     await http().get(`/api/v1/work-items/${jobId}/dispatch`).set(auth(b)).expect(404);
     await http()

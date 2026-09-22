@@ -10,3 +10,9 @@ coverage
 playwright-report
 **/*.log
 onestack-mobile
+# Secrets — this file previously had no .env rule at all, unlike .dockerignore, so a local .env would
+# have been uploaded with the build source.
+**/*.env
+**/*.env.*
+# Refresh working data — customer PII, and up to ~1.6 GB of it.
+**/.innout-work/

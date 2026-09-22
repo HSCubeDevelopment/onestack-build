@@ -1,6 +1,7 @@
 'use client';
 import { usePathname } from 'next/navigation';
 import { MobileTabBar } from '@/components/MobileTabBar';
+import { ProfileSwitcher } from '@/components/ProfileSwitcher';
 import { Sidebar } from '@/components/Sidebar';
 import { Topbar } from '@/components/Topbar';
 
@@ -18,6 +19,10 @@ import { Topbar } from '@/components/Topbar';
  *
  * Client component only so it can read the pathname; the role still comes from the server layout,
  * which decoded it from the session cookie.
+ *
+ * ProfileSwitcher rides along on both app surfaces (never on /login, which has its own picker). It
+ * renders nothing unless the API reports PIN checks are switched off, so on any normal build it is
+ * absent entirely.
  */
 export function AppShell({
   role,
@@ -39,6 +44,7 @@ export function AppShell({
     return (
       <div className="at-shell">
         <div className="at-frame">{children}</div>
+        <ProfileSwitcher />
       </div>
     );
   }
@@ -51,6 +57,7 @@ export function AppShell({
         <main className="main">{children}</main>
       </div>
       <MobileTabBar role={role} canViewFinance={canViewFinance} />
+      <ProfileSwitcher />
     </div>
   );
 }

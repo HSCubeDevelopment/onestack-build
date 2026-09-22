@@ -17,6 +17,14 @@ export interface MergeResult {
     intakeSubmissions: number;
     reviews: number;
     assistantMessages: number;
+    fleetMovements: number;
+    fleetReturns: number;
+    fleetBookings: number;
+    loyaltyAccounts: number;
+    loyaltyTxns: number;
+    referralCodes: number;
+    sales: number;
+    waitlistEntries: number;
   };
 }
 
@@ -62,6 +70,11 @@ export class ContactMergeService {
         throw new NotFoundException('Both contacts must exist and not be already merged');
 
       // 1) Repoint scalar-FK references (no unique conflicts on these).
+      //
+      // Every table carrying a contactId must appear here. A table omitted is not a cosmetic gap: the
+      // merge soft-deletes the duplicate, so any surviving reference points at a contact the read paths
+      // filter out (`deletedAt: null`), and that record silently loses its customer. The fleet tables
+      // were missing until loan history was linked to contacts, which is exactly when it would have bitten.
       const [
         vehicles,
         invoices,
@@ -71,6 +84,12 @@ export class ContactMergeService {
         intakeSubmissions,
         reviews,
         assistantMessages,
+        fleetMovements,
+        fleetReturns,
+        fleetBookings,
+        loyaltyTxns,
+        sales,
+        waitlistEntries,
       ] = await Promise.all([
         tx.subject.updateMany({
           where: { contactId: duplicateId },
@@ -101,9 +120,58 @@ export class ContactMergeService {
           where: { contactId: duplicateId },
           data: { contactId: primaryId },
         }),
+        tx.fleetMovement.updateMany({
+          where: { contactId: duplicateId },
+          data: { contactId: primaryId },
+        }),
+        tx.fleetReturn.updateMany({
+          where: { contactId: duplicateId },
+          data: { contactId: primaryId },
+        }),
+        tx.fleetBooking.updateMany({
+          where: { contactId: duplicateId },
+          data: { contactId: primaryId },
+        }),
+        tx.loyaltyTxn.updateMany({
+          where: { contactId: duplicateId },
+          data: { contactId: primaryId },
+        }),
+        tx.sale.updateMany({ where: { contactId: duplicateId }, data: { contactId: primaryId } }),
+        tx.waitlistEntry.updateMany({
+          where: { contactId: duplicateId },
+          data: { contactId: primaryId },
+        }),
       ]);
 
-      // 2) Tags carry a unique (tenantId, tagId, contactId): drop the duplicate's tags the primary already
+      // 2a) loyalty_account and referral_code carry a unique (tenantId, contactId), so a blind repoint
+      //     throws when BOTH contacts have one. A referral code is just an identifier — the primary keeps
+      //     theirs and the duplicate's is dropped, same as tags. A loyalty balance is not ours to guess at:
+      //     combining two balances is a business decision, so refuse rather than silently pick one.
+      const dupLoyalty = await tx.loyaltyAccount.findFirst({ where: { contactId: duplicateId } });
+      if (dupLoyalty) {
+        const primaryLoyalty = await tx.loyaltyAccount.findFirst({
+          where: { contactId: primaryId },
+        });
+        if (primaryLoyalty)
+          throw new BadRequestException(
+            'Both contacts have a loyalty account. Combining point balances is a business decision — ' +
+              'transfer or zero one balance first, then merge.',
+          );
+        await tx.loyaltyAccount.updateMany({
+          where: { contactId: duplicateId },
+          data: { contactId: primaryId },
+        });
+      }
+      const loyaltyAccounts = { count: dupLoyalty ? 1 : 0 };
+
+      const primaryReferral = await tx.referralCode.findFirst({ where: { contactId: primaryId } });
+      if (primaryReferral) await tx.referralCode.deleteMany({ where: { contactId: duplicateId } });
+      const referralCodes = await tx.referralCode.updateMany({
+        where: { contactId: duplicateId },
+        data: { contactId: primaryId },
+      });
+
+      // 2b) Tags carry a unique (tenantId, tagId, contactId): drop the duplicate's tags the primary already
       //    has, then repoint the rest.
       const primaryTags = await tx.contactTag.findMany({
         where: { contactId: primaryId },
@@ -169,6 +237,14 @@ export class ContactMergeService {
           intakeSubmissions: intakeSubmissions.count,
           reviews: reviews.count,
           assistantMessages: assistantMessages.count,
+          fleetMovements: fleetMovements.count,
+          fleetReturns: fleetReturns.count,
+          fleetBookings: fleetBookings.count,
+          loyaltyAccounts: loyaltyAccounts.count,
+          loyaltyTxns: loyaltyTxns.count,
+          referralCodes: referralCodes.count,
+          sales: sales.count,
+          waitlistEntries: waitlistEntries.count,
         },
       };
     });

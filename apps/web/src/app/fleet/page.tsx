@@ -1,36 +1,24 @@
 'use client';
-import { useMemo, useState } from 'react';
+import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { api } from '@/lib/api';
-import { EmptyState, ErrorBanner, Loading, Modal, PageHead, useAsync } from '@/components/ui';
+import { EmptyState, ErrorBanner, Modal, PageHead, useAsync } from '@/components/ui';
+import { CarsBrowser } from '@/components/fleet/CarsBrowser';
 import {
   BOND_OPTIONS,
   FleetDashboardStats,
   FleetSearchResults,
   FleetVehicle,
-  FleetVehicleStatus,
   PURPOSE_OPTIONS,
   localInputToISO,
   nowLocalInputValue,
   purposeLabel,
-  vehicleStatusColor,
-  vehicleStatusLabel,
 } from '@/lib/fleet';
-
-const STATUS_FILTERS: (FleetVehicleStatus | 'all')[] = [
-  'all',
-  'available',
-  'out',
-  'booked',
-  'repair',
-];
 
 export default function FleetPage() {
   const router = useRouter();
   const stats = useAsync(() => api.get<FleetDashboardStats>('/fleet/dashboard'), []);
   const vehicles = useAsync(() => api.get<FleetVehicle[]>('/fleet/vehicles'), []);
-  const [filter, setFilter] = useState<FleetVehicleStatus | 'all'>('all');
-  const [q, setQ] = useState('');
   const [newMovement, setNewMovement] = useState(false);
   const [recordReturn, setRecordReturn] = useState(false);
 
@@ -38,19 +26,6 @@ export default function FleetPage() {
     stats.reload();
     vehicles.reload();
   };
-
-  const shown = useMemo(() => {
-    const term = q.trim().toUpperCase();
-    return (vehicles.data ?? [])
-      .filter((v) => (filter === 'all' ? true : v.status === filter))
-      .filter((v) =>
-        term
-          ? v.rego.includes(term) ||
-            v.make.toUpperCase().includes(term) ||
-            v.model.toUpperCase().includes(term)
-          : true,
-      );
-  }, [vehicles.data, filter, q]);
 
   const s = stats.data;
 
@@ -70,32 +45,19 @@ export default function FleetPage() {
 
       <ErrorBanner message={stats.error || vehicles.error} />
 
-      {/* Dashboard tiles */}
-      <div
-        className="grid cols-4"
-        style={{
-          display: 'grid',
-          gridTemplateColumns: 'repeat(auto-fit, minmax(150px, 1fr))',
-          gap: 12,
-          marginBottom: 16,
-        }}
-      >
-        <StatTile label="Cars out now" value={s?.carsOut} tone="red" />
-        <StatTile label="Available" value={s?.availableCars} tone="green" />
-        <StatTile label="Booked" value={s?.bookedCars} tone="amber" />
-        <StatTile label="Returned today" value={s?.returnedToday} />
-        <StatTile label="Going out today" value={s?.goingOutToday} />
-        <StatTile
-          label="Overdue"
-          value={s?.overdue}
-          tone={s && s.overdue > 0 ? 'red' : undefined}
-        />
-        <StatTile
-          label="Needs review"
-          value={s?.needsAttention}
-          tone={s && s.needsAttention > 0 ? 'amber' : undefined}
-        />
-      </div>
+      {/*
+        No tile grid. The In N Out cars screen carries its numbers in the filter chips (All /
+        Available / Out / Returned today / Booked), which is where they are actually useful — next to
+        the control that applies them. Only two figures have no chip to live in, so they get one
+        muted line instead of seven boxes.
+      */}
+      {s && (s.goingOutToday > 0 || s.overdue > 0) ? (
+        <div className="muted" style={{ fontSize: 13, margin: '0 0 12px' }}>
+          {s.goingOutToday > 0 ? `${s.goingOutToday} going out today` : null}
+          {s.goingOutToday > 0 && s.overdue > 0 ? ' \u00b7 ' : null}
+          {s.overdue > 0 ? `${s.overdue} overdue` : null}
+        </div>
+      ) : null}
 
       {s && s.overdue > 0 ? (
         <div className="notif" style={{ marginBottom: 12 }}>
@@ -131,75 +93,11 @@ export default function FleetPage() {
         </div>
       ) : null}
 
-      {/* Availability + search */}
-      <div className="card pad0">
-        <div className="row" style={{ padding: '12px 18px', gap: 12, flexWrap: 'wrap' }}>
-          <input
-            className="input"
-            placeholder="Search rego, make, model…"
-            value={q}
-            onChange={(e) => setQ(e.target.value)}
-            style={{ maxWidth: 260 }}
-          />
-          <div className="spacer" style={{ flex: 1 }} />
-          <div className="row" style={{ gap: 6 }}>
-            {STATUS_FILTERS.map((f) => (
-              <button
-                key={f}
-                className={`btn sm ${filter === f ? 'primary' : 'ghost'}`}
-                onClick={() => setFilter(f)}
-              >
-                {f === 'all' ? 'All' : vehicleStatusLabel[f]}
-              </button>
-            ))}
-          </div>
-        </div>
-        <div className="divider" />
-        {vehicles.loading ? (
-          <Loading />
-        ) : shown.length === 0 ? (
-          <EmptyState>No fleet cars match.</EmptyState>
-        ) : (
-          <table className="table">
-            <thead>
-              <tr>
-                <th>Rego</th>
-                <th>Make / model</th>
-                <th>Status</th>
-                <th />
-              </tr>
-            </thead>
-            <tbody>
-              {shown.map((v) => (
-                <tr key={v.id}>
-                  <td className="mono">{v.rego}</td>
-                  <td>
-                    {[v.make, v.model].filter(Boolean).join(' ') || (
-                      <span className="muted">—</span>
-                    )}
-                    {v.vehicleType ? <span className="muted"> · {v.vehicleType}</span> : null}
-                  </td>
-                  <td>
-                    <span className={`badge ${vehicleStatusColor[v.status]}`}>
-                      {vehicleStatusLabel[v.status]}
-                    </span>
-                  </td>
-                  <td style={{ textAlign: 'right' }}>
-                    <button
-                      className="btn sm"
-                      onClick={() =>
-                        router.push(`/fleet/history?rego=${encodeURIComponent(v.rego)}`)
-                      }
-                    >
-                      History
-                    </button>
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        )}
-      </div>
+      <CarsBrowser
+        vehicles={vehicles.data ?? []}
+        loading={vehicles.loading}
+        error={vehicles.error}
+      />
 
       <SearchPanel />
 
@@ -223,25 +121,6 @@ export default function FleetPage() {
         />
       ) : null}
     </>
-  );
-}
-
-function StatTile({ label, value, tone }: { label: string; value?: number; tone?: string }) {
-  const color =
-    tone === 'red'
-      ? 'var(--red, #be4152)'
-      : tone === 'green'
-        ? 'var(--green, #2f9e57)'
-        : tone === 'amber'
-          ? 'var(--amber, #b37d28)'
-          : undefined;
-  return (
-    <div className="card" style={{ padding: '14px 16px' }}>
-      <div style={{ fontSize: 26, fontWeight: 700, color }}>{value ?? '—'}</div>
-      <div className="muted" style={{ fontSize: 13 }}>
-        {label}
-      </div>
-    </div>
   );
 }
 
