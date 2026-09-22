@@ -26,9 +26,27 @@ export class OpenLoginDto {
 export class PinController {
   constructor(private readonly pinAuth: PinAuthService) {}
 
+  /**
+   * The name-picker's list: names, roles and site. No PINs, no hashes.
+   *
+   * It used to ride on DEV_LOGIN_ENABLED, from when PIN sign-in was a local convenience. It is now the
+   * ONLY way anyone signs in — there is no password form — so a deployment without it is a sign-in
+   * screen that cannot sign anyone in. Hence its own switch, deliberately separate: DEV_LOGIN_ENABLED
+   * also arms /auth/dev-login (which mints an OWNER token) and permissive CORS, and neither of those
+   * may ever be on in production.
+   *
+   * ⚠️ WHAT THIS EXPOSES, and it is more than names. Each entry carries the `userId` that
+   * `pin-login` takes, so publishing this hands an attacker the identifiers to aim at. Against a
+   * 4-digit PIN with 5 attempts per 15 minutes that is ~480 guesses per person per day into a
+   * 10,000-wide space — days, not years, for a determined attacker on one account. The lockout is the
+   * only thing standing in the way. Raised for review: the fix is longer PINs or a second factor for
+   * OWNER, not hiding the list.
+   */
   @Get('pin-directory')
   directory(): Promise<PinDirectoryEntry[]> {
-    if (process.env.DEV_LOGIN_ENABLED !== 'true') {
+    const open =
+      process.env.DEV_LOGIN_ENABLED === 'true' || process.env.PIN_DIRECTORY_PUBLIC === 'true';
+    if (!open) {
       throw new ForbiddenException('PIN directory is not available');
     }
     return this.pinAuth.directory();
