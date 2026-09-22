@@ -128,6 +128,9 @@ function splitBody(body) {
   cleaned.forEach((line, i) => {
     if (!line || usedAsName.has(i)) return;
     if (line.length > 80) return; // a paragraph is not a work item
+    // WhatsApp renders a document as "invoice.pdf • 1 page". That is the attachment describing
+    // itself, not a job — and it is the only thing keeping some PDF-only messages alive as "visits".
+    if (/\.(pdf|jpe?g|png|mp4|docx?|xlsx?)\b/i.test(line) || /•\s*\d+\s*pages?/i.test(line)) return;
     // A bare name with no number attached is still not a job. One word is enough — "James" is a
     // person, "Service" and "Hybrid" are jobs, and WORK_WORDS is what tells them apart.
     if (looksLikeName(line)) return;
@@ -237,6 +240,29 @@ const records = visits.map((v) => ({
 
 const jsonlPath = join(OUT, 'whatsapp.jsonl');
 writeFileSync(jsonlPath, records.map((r) => JSON.stringify(r)).join('\n') + '\n');
+
+/*
+ * Date maps for the backdating pass.
+ *
+ * The API stamps now() on everything it writes and offers no way to say otherwise — notes are
+ * deliberately append-only. So the real dates go on afterwards, in SQL, matched on the two keys that
+ * survive the import: the visit ref embedded in the note, and the WhatsApp filename on the photo.
+ *
+ * This matters for more than tidiness. Attachments produce no timeline events — only notes do — so the
+ * backdated note is the thing that puts "8 Jul 2026 · Service, Tyre rotation" in a car's history.
+ */
+writeFileSync(
+  join(OUT, 'whatsapp-note-dates.csv'),
+  'ref,at\n' + records.map((r) => `${r.noteKey},${r.at}`).join('\n') + '\n',
+);
+writeFileSync(
+  join(OUT, 'whatsapp-photo-dates.csv'),
+  'file_name,at\n' +
+    records
+      .flatMap((r) => r.photos.filter((p) => p.present).map((p) => `${p.file},${p.at}`))
+      .join('\n') +
+    '\n',
+);
 
 const attributed = records.reduce((n, c) => n + c.photos.length, 0);
 const importable = records.reduce((n, c) => n + c.photos.filter((p) => p.present).length, 0);

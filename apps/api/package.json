@@ -23,7 +23,9 @@
     "coverage:ratchet": "tsx scripts/coverage-ratchet.ts",
     "test:e2e": "playwright test",
     "eval:retrieval": "tsx scripts/eval-retrieval.ts",
-    "refresh:innout": "bash scripts/refresh-innout.sh"
+    "refresh:innout": "bash scripts/refresh-innout.sh",
+    "whatsapp:parse": "node scripts/parse-whatsapp-export.mjs",
+    "whatsapp:import": "node scripts/import-whatsapp-history.mjs"
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^0.71.2",
