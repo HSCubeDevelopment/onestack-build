@@ -117,9 +117,8 @@ export class VehicleProfileController {
     });
   }
 
-  /** Stream a car photo's bytes (verified to belong to one of the car's jobs). Rendered in an <img>. */
-  @AllowStaff()
   /** The car's servicing, newest first, each visit with its own photos. Staff-accessible. */
+  @AllowStaff()
   @Get(':id/service-history')
   serviceHistory(
     @CurrentUser() user: AuthContext,
@@ -128,6 +127,8 @@ export class VehicleProfileController {
     return this.profiles.serviceHistory(user.tenantId, id);
   }
 
+  /** Stream a car photo's bytes (verified to belong to one of the car's jobs). Rendered in an <img>. */
+  @AllowStaff()
   @Get(':id/photos/:attachmentId/content')
   async photoContent(
     @CurrentUser() user: AuthContext,
