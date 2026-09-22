@@ -16,6 +16,7 @@ import {
   VehicleProfile,
   VehicleProfileService,
 } from './vehicle-profile.service';
+import { ServiceRecord } from './service-history';
 
 /**
  * Card 11.1 — "pull up a car". Deliberately @AllowStaff: the card says this is operational and should
@@ -118,6 +119,15 @@ export class VehicleProfileController {
 
   /** Stream a car photo's bytes (verified to belong to one of the car's jobs). Rendered in an <img>. */
   @AllowStaff()
+  /** The car's servicing, newest first, each visit with its own photos. Staff-accessible. */
+  @Get(':id/service-history')
+  serviceHistory(
+    @CurrentUser() user: AuthContext,
+    @Param('id') id: string,
+  ): Promise<ServiceRecord[]> {
+    return this.profiles.serviceHistory(user.tenantId, id);
+  }
+
   @Get(':id/photos/:attachmentId/content')
   async photoContent(
     @CurrentUser() user: AuthContext,

@@ -1,5 +1,5 @@
 'use client';
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
 import { ChevronLeft, ChevronRight, Download, X, ZoomIn, ZoomOut } from 'lucide-react';
 
@@ -33,6 +33,8 @@ export function PhotoLightbox({
   onIndex: (i: number) => void;
 }) {
   const [zoom, setZoom] = useState(1);
+  /* Where a touch started, so a horizontal drag can page and a vertical one can be left alone. */
+  const touch = useRef<{ x: number; y: number } | null>(null);
   const photo = photos[index];
 
   const step = useCallback(
@@ -81,10 +83,31 @@ export function PhotoLightbox({
       aria-modal="true"
       aria-label="Photo viewer"
       onClick={onClose}
+      /*
+       * Swipe to page through the set. This is opened on a phone far more than on a desktop, and the
+       * arrows are small targets with oily hands. Only while un-zoomed — once someone has zoomed in, a
+       * drag means "look around this photo", not "next photo".
+       */
+      onTouchStart={(e) => {
+        const t = e.touches[0];
+        touch.current = t ? { x: t.clientX, y: t.clientY } : null;
+      }}
+      onTouchEnd={(e) => {
+        const start = touch.current;
+        touch.current = null;
+        const t = e.changedTouches[0];
+        if (!start || !t || zoom > 1) return;
+        const dx = t.clientX - start.x;
+        const dy = t.clientY - start.y;
+        // Horizontal, and clearly so — otherwise a scroll flicks the photo along.
+        if (Math.abs(dx) < 50 || Math.abs(dx) < Math.abs(dy) * 1.5) return;
+        step(dx < 0 ? 1 : -1);
+      }}
       style={{
         position: 'fixed',
         inset: 0,
         zIndex: 1000,
+        touchAction: 'pan-y',
         background: 'rgba(0,0,0,0.92)',
         display: 'flex',
         flexDirection: 'column',

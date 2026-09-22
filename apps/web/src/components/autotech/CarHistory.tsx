@@ -1,6 +1,7 @@
 'use client';
 import { useEffect, useState } from 'react';
 import Link from 'next/link';
+import { useRouter } from 'next/navigation';
 import {
   Search,
   Wrench,
@@ -10,6 +11,7 @@ import {
   ImageOff,
   Sparkles,
   ReceiptText,
+  ChevronRight,
 } from 'lucide-react';
 import { api, ApiError } from '@/lib/api';
 import { AtTopbar, SignOutButton } from '@/components/autotech/kit';
@@ -49,6 +51,8 @@ interface VehicleProfile {
   photos: Attachment[];
   timeline: TimelineEvent[];
   jobs: JobRow[];
+  /** How many times this car has been serviced. 0 means there is no service screen to offer. */
+  serviceCount?: number;
 }
 interface FleetVehicle {
   id: string;
@@ -110,12 +114,15 @@ export function CarHistory() {
   const [searching, setSearching] = useState(false);
   const [err, setErr] = useState<string | null>(null);
   const [feed, setFeed] = useState<ActivityEvent[] | null>(null);
+  const router = useRouter();
   const [loaded, setLoaded] = useState<{
     rego: string;
     line: string;
     photos: PhotoItem[];
     events: Event[];
     jobs: JobRow[];
+    /** Kept so the service-history button knows the vehicle id and whether to appear at all. */
+    profile: VehicleProfile | null;
   } | null>(null);
 
   useEffect(() => {
@@ -183,7 +190,7 @@ export function CarHistory() {
         : fleet
           ? [fleet.make, fleet.model].filter((x) => cleanUnknown(x)).join(' ')
           : '';
-      setLoaded({ rego: rego2, line, photos, events, jobs: profile?.jobs ?? [] });
+      setLoaded({ rego: rego2, line, photos, events, jobs: profile?.jobs ?? [], profile });
     } catch (e) {
       setErr(e instanceof ApiError ? e.message : 'Could not load history — try again.');
     } finally {
@@ -312,6 +319,37 @@ export function CarHistory() {
           {/* Where the car is now. This is the screen staff actually search a rego on, so the map
               belongs here as much as on the owner's car record. */}
           <LiveLocation rego={loaded.rego} />
+
+          {/* Servicing has its own screen — it is a different question from "what happened to this
+              car", and its records are far too many to sit in the activity feed. Offered only when
+              there is something behind it. */}
+          {(loaded.profile?.serviceCount ?? 0) > 0 && loaded.profile && (
+            <button
+              className="sv-enter"
+              onClick={() =>
+                router.push(
+                  `/inout/service-history?vehicleId=${encodeURIComponent(
+                    loaded.profile!.vehicle.id,
+                  )}&rego=${encodeURIComponent(loaded.rego)}`,
+                )
+              }
+            >
+              <span className="ic">
+                <Wrench size={20} strokeWidth={2} />
+              </span>
+              <span style={{ flex: 1, minWidth: 0 }}>
+                <span className="t" style={{ display: 'block' }}>
+                  Service history
+                </span>
+                <span className="s" style={{ display: 'block' }}>
+                  {loaded.profile.serviceCount} service
+                  {loaded.profile.serviceCount === 1 ? '' : 's'} recorded · what was done &amp;
+                  photos
+                </span>
+              </span>
+              <ChevronRight size={18} strokeWidth={2.5} style={{ opacity: 0.35, flex: 'none' }} />
+            </button>
+          )}
 
           {!HIDDEN_FROM_STAFF.instantEstimate && (
             <Link
