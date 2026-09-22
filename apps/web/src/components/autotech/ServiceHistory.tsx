@@ -87,7 +87,14 @@ export function ServiceHistory() {
 
   return (
     <>
-      <AtTopbar backHref="/inout/car-history" right={<SignOutButton />} />
+      {/* Back to the CAR, not to an empty search box. The rego is carried in the URL so the record
+          reloads with everything else on it — photos, live location, activity. */}
+      <AtTopbar
+        backHref={
+          rego ? `/inout/car-history?rego=${encodeURIComponent(rego)}` : '/inout/car-history'
+        }
+        right={<SignOutButton />}
+      />
 
       <div className="sv-head">
         <div className="sv-rego">{rego || vehicle?.label || 'Car'}</div>
@@ -182,8 +189,16 @@ export function ServiceHistory() {
       )}
 
       {records.length > 0 && (
-        <button className="at-btn ghost" style={{ marginTop: 18 }} onClick={() => router.back()}>
-          Back to the car
+        <button
+          className="at-btn ghost"
+          style={{ marginTop: 18 }}
+          onClick={() =>
+            router.push(
+              rego ? `/inout/car-history?rego=${encodeURIComponent(rego)}` : '/inout/car-history',
+            )
+          }
+        >
+          Back to {rego || 'the car'}
         </button>
       )}
 

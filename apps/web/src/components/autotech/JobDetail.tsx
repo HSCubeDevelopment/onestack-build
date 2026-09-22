@@ -24,6 +24,7 @@ import { api, ApiError, money } from '@/lib/api';
 import { parseEstimateNote, type ParsedEstimateNote } from '@/lib/estimate-note';
 import { AtTopbar, SignOutButton } from '@/components/autotech/kit';
 import { PhotoLightbox, useLightbox, type LightboxPhoto } from '@/components/PhotoLightbox';
+import { noteDisplay } from '@/lib/notes';
 import { HIDDEN_FROM_STAFF } from '@/lib/staff-features';
 
 /**
@@ -814,7 +815,7 @@ export function JobDetail({ jobId }: { jobId: string }) {
                     <EstimateNoteTables parsed={parsed} />
                   ) : (
                     <div className="ti" style={{ whiteSpace: 'pre-wrap' }}>
-                      {note.body}
+                      {noteDisplay(note.body).text}
                     </div>
                   )}
                   <div className="dt">{fmt(note.createdAt)}</div>

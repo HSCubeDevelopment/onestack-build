@@ -1,7 +1,7 @@
 'use client';
 import { useEffect, useState } from 'react';
 import Link from 'next/link';
-import { useRouter } from 'next/navigation';
+import { useRouter, useSearchParams } from 'next/navigation';
 import {
   Search,
   Wrench,
@@ -130,6 +130,23 @@ export function CarHistory() {
   useEffect(() => {
     void api.getOr<ActivityEvent[]>('/activity/feed?limit=40', []).then(setFeed);
   }, []);
+
+  /*
+   * Open a car straight from the URL.
+   *
+   * Without this the screen is only reachable by typing, so anything linking back to a car — the
+   * service-history screen's back button, a shared link, a browser Back — lands on an empty search box
+   * and the car has to be looked up again.
+   */
+  const searchParams = useSearchParams();
+  const regoParam = (searchParams.get('rego') ?? '').toUpperCase();
+  useEffect(() => {
+    if (!regoParam) return;
+    setRego(regoParam);
+    void view(regoParam);
+    // Only when the URL changes — re-running on every render would refetch in a loop.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [regoParam]);
 
   async function view(override?: string): Promise<void> {
     const q = (override ?? rego).trim();

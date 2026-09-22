@@ -25,6 +25,7 @@ import {
   useAsync,
 } from '@/components/ui';
 import { PhotoLightbox, useLightbox, type LightboxPhoto } from '@/components/PhotoLightbox';
+import { noteText } from '@/lib/notes';
 import { makeModelOf, regoOf, StatePill } from '@/lib/job-display';
 import {
   ClaimFileTab,
@@ -446,7 +447,7 @@ function OverviewTab({
             {recentNotes.map((n) => (
               <div key={n.id} className="tl-row">
                 <span className="tl-dot" aria-hidden />
-                <span className="tl-body">{n.body}</span>
+                <span className="tl-body">{noteText(n.body)}</span>
                 <span className="tl-when">
                   {new Date(n.createdAt).toLocaleDateString('en-AU', {
                     day: 'numeric',
@@ -1373,7 +1374,7 @@ function NotesTab({
               <div className="spacer" />
               <span className="faint">{new Date(n.createdAt).toLocaleString('en-AU')}</span>
             </div>
-            <p style={{ whiteSpace: 'pre-wrap' }}>{n.body}</p>
+            <p style={{ whiteSpace: 'pre-wrap' }}>{noteText(n.body)}</p>
           </div>
         ))
       )}
