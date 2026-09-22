@@ -32,6 +32,8 @@ import { StateIcon, stateColor } from '@/components/Icon';
 import { setActiveSite } from '@/lib/active-site';
 import { StaffHome } from '@/components/autotech/StaffHome';
 import { TowHome } from '@/components/autotech/TowHome';
+import { MechanicHome } from '@/components/autotech/MechanicHome';
+import { isMechanic } from '@/lib/mechanics';
 import { useRole } from '@/lib/use-role';
 
 /**
@@ -42,9 +44,28 @@ import { useRole } from '@/lib/use-role';
 export default function HomePage() {
   const { role } = useRole();
   if (role === undefined) return <Loading />;
-  if (role === 'STAFF') return <StaffHome />;
+  if (role === 'STAFF') return <StaffSurface />;
   if (role === 'TOW') return <TowHome />;
   return <OwnerDashboard />;
+}
+
+/**
+ * Which employee home to draw.
+ *
+ * Manga and Jot service cars; everyone else on the floor does panel, paint and In/Out. Their work has
+ * almost no overlap, so they get a different home — see lib/mechanics.ts. It is purely which buttons
+ * appear: both are STAFF, with identical API access, and every route stays reachable by URL.
+ *
+ * Waits for the profile rather than rendering the general home first, because a home screen that
+ * changes shape a beat after it appears is worse than one that takes a beat to appear.
+ */
+function StaffSurface() {
+  const { data, loading } = useAsync(
+    () => api.getOr<{ email: string | null }>('/auth/me', { email: null }),
+    [],
+  );
+  if (loading) return <Loading />;
+  return isMechanic(data?.email) ? <MechanicHome /> : <StaffHome />;
 }
 
 function OwnerDashboard() {

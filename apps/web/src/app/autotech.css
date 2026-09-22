@@ -1921,3 +1921,104 @@ textarea.at-input {
   margin-top: 2px;
   font-weight: 600;
 }
+
+/* ---- mechanic: log work (Manga, Jot) ----------------------------------
+ * Replaces a WhatsApp group: rego, photos of the car as it arrived, what was done, photos finished.
+ * Big targets throughout — this is filled in standing next to the car, with gloves on.
+ */
+.mw-car {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  background: var(--at-chip);
+  color: var(--at-chip-ink);
+  border-radius: 14px;
+  padding: 13px 15px;
+  margin: 14px 0 4px;
+  font-size: 16px;
+  font-weight: 800;
+}
+.mw-offer {
+  background: var(--at-card);
+  border: 1px solid var(--at-sep);
+  border-radius: 16px;
+  padding: 15px;
+  margin-top: 14px;
+}
+.mw-offer .t {
+  font-size: 18px;
+  font-weight: 800;
+  letter-spacing: 0.5px;
+  color: var(--at-label);
+}
+.mw-offer .s {
+  font-size: 13.5px;
+  color: var(--at-label2);
+  margin: 2px 0 12px;
+}
+.mw-sec {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  margin: 22px 0 10px;
+  font-size: 12px;
+  font-weight: 800;
+  text-transform: uppercase;
+  letter-spacing: 0.6px;
+  color: var(--at-label2);
+}
+.mw-sec .n {
+  margin-left: auto;
+  font-size: 13px;
+  font-weight: 800;
+  color: var(--at-blue);
+  text-transform: none;
+  letter-spacing: 0;
+}
+.mw-group {
+  margin-bottom: 4px;
+}
+.mw-grouptitle {
+  font-size: 12.5px;
+  font-weight: 700;
+  color: var(--at-label2);
+  margin: 6px 0 5px;
+}
+.mw-strip {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 9px;
+}
+/* Deliberately the same 88px tile as the tow photos, so a thumbnail means the same thing everywhere. */
+.mw-add {
+  width: 88px;
+  height: 88px;
+  flex: none;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 5px;
+  border: 1px dashed rgba(0, 122, 255, 0.45);
+  background: rgba(0, 122, 255, 0.07);
+  color: var(--at-blue);
+  border-radius: 12px;
+  font-family: inherit;
+  font-size: 12px;
+  font-weight: 800;
+  cursor: pointer;
+  transition: transform 0.12s ease;
+}
+.mw-add:active:not(:disabled) {
+  transform: scale(0.96);
+}
+.mw-add:disabled {
+  opacity: 0.55;
+}
+.mw-hint {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  font-size: 12.5px;
+  margin-top: 7px;
+}

@@ -23,6 +23,11 @@ export const PHOTO_CATEGORIES = [
   // silently split in two.
   'tow_pickup',
   'tow_dropoff',
+  // Servicing (Manga/Jot). Deliberately NOT the legacy 'before'/'after': those belong to the old
+  // panel-shop flow, and reusing them would mix a mechanic's service photos in with body-repair
+  // history that has nothing to do with them.
+  'service_before',
+  'service_after',
 ] as const;
 export type PhotoCategory = (typeof PHOTO_CATEGORIES)[number];
 
@@ -48,6 +53,10 @@ const CAPTION: Record<RepairPhase, string> = {
   handover: 'Handover',
   tow_pickup: 'Tow pickup',
   tow_dropoff: 'Tow drop-off',
+  // Distinct captions from the legacy 'Before repair'/'After repair' above, so a service photo is
+  // never confused with a body-repair one when read back.
+  service_before: 'Before service',
+  service_after: 'After service',
   before: 'Before repair',
   during: 'During repair',
   after: 'After repair',
