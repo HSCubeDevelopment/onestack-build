@@ -49,9 +49,34 @@ export class TenantService implements OnModuleInit, OnModuleDestroy {
     });
   }
 
+  /**
+   * On a long-running server, connect and prove the role at boot — fail fast, before any traffic.
+   *
+   * On serverless neither can happen at boot. A cold start that cannot reach the pooler takes the
+   * whole instance down, so every route on it answers 500 (twelve concurrent cold starts reproduced
+   * this: four served, eight failed). The privilege check is NOT skipped there — it moves to the
+   * first tenant query instead, which is the thing it actually has to gate. No tenant query can run
+   * without it having passed either way.
+   */
   async onModuleInit(): Promise<void> {
+    if (this.serverless) return;
     await this.app.$connect();
     await this.assertNotPrivileged();
+  }
+
+  private get serverless(): boolean {
+    return Boolean(process.env.VERCEL || process.env.AWS_LAMBDA_FUNCTION_NAME);
+  }
+
+  /** Memoised privilege check. A FAILED check is never cached as passed — it retries next call. */
+  private privilegeCheck: Promise<void> | null = null;
+
+  private ensureNotPrivileged(): Promise<void> {
+    this.privilegeCheck ??= this.assertNotPrivileged().catch((e: unknown) => {
+      this.privilegeCheck = null;
+      throw e;
+    });
+    return this.privilegeCheck;
   }
 
   /**
@@ -75,11 +100,18 @@ export class TenantService implements OnModuleInit, OnModuleDestroy {
   }
 
   async onModuleDestroy(): Promise<void> {
+    // A serverless instance is frozen, not shut down; disconnecting a client that may serve the next
+    // invocation just pays the handshake again.
+    if (this.serverless) return;
     await this.app.$disconnect();
   }
 
   /** Run `fn` with tenant RLS context set. All queries MUST use the passed `tx` client. */
   async runInTenant<T>(tenantId: string, fn: (tx: TenantClient) => Promise<T>): Promise<T> {
+    // The role must be proven non-privileged before ANY tenant query. On a server this already
+    // happened at boot and resolves instantly; on serverless this is where it happens. Either way no
+    // tenant data is read or written until it has passed.
+    await this.ensureNotPrivileged();
     return this.app.$transaction(
       async (tx) => {
         // Parameterised — set_config's value arg is text; tenantId is a uuid string.

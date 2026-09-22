@@ -21,3 +21,5 @@
 {"type":"edit","file":"/Users/jaidenchopra/code/onestack-build/apps/web/src/lib/maps.ts","timestamp":1789980779608,"sessionId":null}
 {"type":"edit","file":"/Users/jaidenchopra/code/onestack-build/apps/web/src/app/api/auth/mode/route.ts","timestamp":1789992508869,"sessionId":null}
 {"type":"edit","file":"/Users/jaidenchopra/code/onestack-build/apps/web/src/app/api/auth/open-login/route.ts","timestamp":1789992517938,"sessionId":null}
+{"type":"edit","file":"/Users/jaidenchopra/code/onestack-build/apps/api/src/prisma/prisma.service.ts","timestamp":1790050663950,"sessionId":null}
+{"type":"edit","file":"/Users/jaidenchopra/code/onestack-build/apps/api/src/tenancy/privilege-gate.test.ts","timestamp":1790050727426,"sessionId":null}
