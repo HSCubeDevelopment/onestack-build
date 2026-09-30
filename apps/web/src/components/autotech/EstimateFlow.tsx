@@ -12,6 +12,7 @@ import {
   Save,
   Car,
   Pencil,
+  Upload,
 } from 'lucide-react';
 import { api, ApiError } from '@/lib/api';
 import { compressToBase64 } from '@/lib/image';
@@ -96,7 +97,10 @@ export function EstimateFlow() {
   const [creating, setCreating] = useState(false);
 
   // Step 2: photos → estimate.
+  // Camera goes straight to the lens (one shot per tap on Android, which ignores `multiple` when
+  // `capture` is set); the library input has no `capture`, so several photos can be picked at once.
   const inputRef = useRef<HTMLInputElement>(null);
+  const libraryRef = useRef<HTMLInputElement>(null);
   const [photos, setPhotos] = useState<Photo[]>([]);
   const [notes, setNotes] = useState('');
   const [busy, setBusy] = useState(false);
@@ -205,6 +209,10 @@ export function EstimateFlow() {
     setErr(null);
     const room = MAX_PHOTOS - photos.length;
     const picked = Array.from(files).slice(0, Math.max(0, room));
+    // Multi-select makes over-picking easy (choose 10 against a cap of 6), so say what didn't make it
+    // rather than dropping the tail in silence.
+    const dropped = files.length - picked.length;
+    let unreadable = 0;
     for (const f of picked) {
       try {
         const { dataBase64, contentType } = await compressToBase64(f);
@@ -213,10 +221,18 @@ export function EstimateFlow() {
           { dataBase64, contentType, preview: `data:${contentType};base64,${dataBase64}` },
         ]);
       } catch {
-        setErr('Could not read one of the photos — try again.');
+        unreadable += 1;
       }
     }
+    if (unreadable > 0) setErr('Could not read one of the photos — try again.');
+    else if (dropped > 0)
+      setErr(
+        `Only ${MAX_PHOTOS} photos can go into an estimate — ${dropped} ${
+          dropped === 1 ? 'was' : 'were'
+        } left out.`,
+      );
     if (inputRef.current) inputRef.current.value = '';
+    if (libraryRef.current) libraryRef.current.value = '';
   }
 
   async function getEstimate(): Promise<void> {
@@ -416,14 +432,24 @@ export function EstimateFlow() {
               </div>
             ))}
             {photos.length < MAX_PHOTOS && (
-              <button
-                type="button"
-                className="at-photoadd"
-                onClick={() => inputRef.current?.click()}
-              >
-                <Camera size={26} strokeWidth={2} />
-                <span>Add photo</span>
-              </button>
+              <>
+                <button
+                  type="button"
+                  className="at-photoadd"
+                  onClick={() => inputRef.current?.click()}
+                >
+                  <Camera size={26} strokeWidth={2} />
+                  <span>{photos.length ? 'Take more' : 'Take photo'}</span>
+                </button>
+                <button
+                  type="button"
+                  className="at-photoadd"
+                  onClick={() => libraryRef.current?.click()}
+                >
+                  <Upload size={26} strokeWidth={2} />
+                  <span>Choose</span>
+                </button>
+              </>
             )}
           </div>
           <input
@@ -431,6 +457,16 @@ export function EstimateFlow() {
             type="file"
             accept="image/*"
             capture="environment"
+            multiple
+            style={{ display: 'none' }}
+            onChange={(e) => {
+              if (e.target.files?.length) void addFiles(e.target.files);
+            }}
+          />
+          <input
+            ref={libraryRef}
+            type="file"
+            accept="image/*"
             multiple
             style={{ display: 'none' }}
             onChange={(e) => {

@@ -1,7 +1,21 @@
 'use client';
-import { useState } from 'react';
+import { useRef, useState } from 'react';
 import { useParams } from 'next/navigation';
+import { X } from 'lucide-react';
 import { api } from '@/lib/api';
+import { compressToBase64 } from '@/lib/image';
+import {
+  addToTray,
+  emptyTray,
+  photosIn,
+  removeFromTray,
+  stagedPhoto,
+  trayCount,
+  trayUploads,
+  uploadLabel,
+  type PhotoTray,
+  type StagedPhoto,
+} from '@/lib/photo-tray';
 import { EmptyState, ErrorBanner, Loading, Modal, PageHead, useAsync } from '@/components/ui';
 import {
   FleetMovement,
@@ -142,30 +156,85 @@ function RentalHistory({ rego }: { rego: string }) {
   );
 }
 
+/** The two documentation points on a movement: the car as it went out, and as it came back. */
+const MOVEMENT_PHOTO_TYPES = [
+  { key: 'before_handover', label: 'Before' },
+  { key: 'after_return', label: 'After' },
+] as const;
+type MovementPhotoType = (typeof MOVEMENT_PHOTO_TYPES)[number]['key'];
+const MOVEMENT_PHOTO_ORDER: readonly MovementPhotoType[] = MOVEMENT_PHOTO_TYPES.map((t) => t.key);
+
+/**
+ * Movement photos. Pick as many as the handover needs — for either point — review them, then send the
+ * lot with one press. Photos stage on the device first, so a phone camera that only returns one shot
+ * per tap doesn't mean one upload per shot.
+ */
 function Photos({ movementId }: { movementId: string }) {
   const { data, loading, reload } = useAsync(
     () => api.get<FleetPhoto[]>(`/fleet/photos?movementId=${movementId}`),
     [movementId],
   );
-  const [busy, setBusy] = useState(false);
+  const [tray, setTray] = useState<PhotoTray<MovementPhotoType>>(() =>
+    emptyTray<MovementPhotoType>(),
+  );
+  const [uploading, setUploading] = useState(false);
+  const [staging, setStaging] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const seq = useRef(0);
+  const busy = uploading || staging;
+  const staged = trayCount(tray);
 
-  const onFile = async (file: File, photoType: string) => {
-    setBusy(true);
+  const stageFiles = async (list: FileList | null, photoType: MovementPhotoType) => {
+    if (!list || list.length === 0) return;
     setError(null);
+    setStaging(true);
     try {
-      const dataBase64 = await fileToBase64(file);
-      await api.post('/fleet/photos', {
-        movementId,
-        photoType,
-        contentType: file.type || 'image/jpeg',
-        dataBase64,
-      });
-      reload();
-    } catch (e) {
-      setError(e instanceof Error ? e.message : String(e));
+      const picked: StagedPhoto[] = [];
+      let unreadable = 0;
+      for (const f of Array.from(list)) {
+        try {
+          const { dataBase64, contentType } = await compressToBase64(f);
+          seq.current += 1;
+          picked.push(stagedPhoto(`s${seq.current}`, dataBase64, contentType, f.name));
+        } catch {
+          unreadable += 1;
+        }
+      }
+      if (picked.length > 0) setTray((t) => addToTray(t, photoType, picked).tray);
+      if (unreadable > 0) setError('Could not read one of the photos — it was skipped.');
     } finally {
-      setBusy(false);
+      setStaging(false);
+    }
+  };
+
+  const uploadAll = async () => {
+    if (staged === 0) return;
+    setUploading(true);
+    setError(null);
+    const queue = trayUploads(tray, MOVEMENT_PHOTO_ORDER);
+    let sent = 0;
+    try {
+      for (const { key, photo } of queue) {
+        await api.post('/fleet/photos', {
+          movementId,
+          photoType: key,
+          contentType: photo.contentType,
+          dataBase64: photo.dataBase64,
+        });
+        // Un-stage as each lands, so a mid-way failure leaves only what still needs sending.
+        setTray((t) => removeFromTray(t, key, photo.id));
+        sent += 1;
+      }
+    } catch (e) {
+      const detail = e instanceof Error ? e.message : String(e);
+      setError(
+        sent > 0
+          ? `${detail} (${sent} of ${queue.length} uploaded — the rest are still here.)`
+          : detail,
+      );
+    } finally {
+      setUploading(false);
+      if (sent > 0) reload();
     }
   };
 
@@ -174,30 +243,95 @@ function Photos({ movementId }: { movementId: string }) {
       <div className="row" style={{ marginBottom: 12 }}>
         <div style={{ fontWeight: 600 }}>Photos</div>
         <div className="spacer" style={{ flex: 1 }} />
-        <label className="btn sm" style={{ cursor: 'pointer' }}>
-          {busy ? 'Uploading…' : '+ Before'}
-          <input
-            type="file"
-            accept="image/*"
-            style={{ display: 'none' }}
-            onChange={(e) => e.target.files?.[0] && onFile(e.target.files[0], 'before_handover')}
-          />
-        </label>{' '}
-        <label className="btn sm" style={{ cursor: 'pointer' }}>
-          + After
-          <input
-            type="file"
-            accept="image/*"
-            style={{ display: 'none' }}
-            onChange={(e) => e.target.files?.[0] && onFile(e.target.files[0], 'after_return')}
-          />
-        </label>
+        {MOVEMENT_PHOTO_TYPES.map((t) => (
+          <label
+            key={t.key}
+            className="btn sm"
+            style={{ cursor: busy ? 'default' : 'pointer', marginLeft: 8 }}
+          >
+            {`+ ${t.label}`}
+            <input
+              type="file"
+              accept="image/*"
+              multiple
+              disabled={busy}
+              style={{ display: 'none' }}
+              onChange={(e) => void stageFiles(e.target.files, t.key)}
+            />
+          </label>
+        ))}
       </div>
       <ErrorBanner message={error} />
+
+      {/* Staged photos — on the device, not yet uploaded. */}
+      {staged > 0 && (
+        <div style={{ marginBottom: 14 }}>
+          {MOVEMENT_PHOTO_TYPES.map((t) => {
+            const waiting = photosIn(tray, t.key);
+            if (waiting.length === 0) return null;
+            return (
+              <div key={t.key} style={{ marginBottom: 8 }}>
+                <div className="muted" style={{ fontSize: 12, marginBottom: 4 }}>
+                  {t.label} · {waiting.length} waiting
+                </div>
+                <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap' }}>
+                  {waiting.map((sp) => (
+                    <span key={sp.id} style={{ position: 'relative', display: 'inline-block' }}>
+                      {/* eslint-disable-next-line @next/next/no-img-element */}
+                      <img
+                        src={sp.preview}
+                        alt={`${t.label} photo, waiting to upload`}
+                        title="Not uploaded yet"
+                        style={{
+                          width: 120,
+                          height: 120,
+                          objectFit: 'cover',
+                          borderRadius: 8,
+                          border: '2px solid var(--orange, #f59e0b)',
+                        }}
+                      />
+                      <button
+                        type="button"
+                        aria-label="Remove photo"
+                        disabled={busy}
+                        onClick={() => setTray((tr) => removeFromTray(tr, t.key, sp.id))}
+                        style={{
+                          position: 'absolute',
+                          top: 6,
+                          right: 6,
+                          width: 24,
+                          height: 24,
+                          border: 'none',
+                          borderRadius: 999,
+                          background: 'rgba(0,0,0,0.6)',
+                          color: '#fff',
+                          display: 'flex',
+                          alignItems: 'center',
+                          justifyContent: 'center',
+                          padding: 0,
+                          cursor: 'pointer',
+                        }}
+                      >
+                        <X size={14} strokeWidth={3} />
+                      </button>
+                    </span>
+                  ))}
+                </div>
+              </div>
+            );
+          })}
+          <button type="button" className="btn sm" disabled={busy} onClick={() => void uploadAll()}>
+            {uploading ? `Uploading ${staged}…` : uploadLabel(tray)}
+          </button>
+        </div>
+      )}
+
       {loading ? (
         <Loading />
       ) : (data ?? []).length === 0 ? (
-        <span className="muted">No photos yet.</span>
+        staged === 0 ? (
+          <span className="muted">No photos yet.</span>
+        ) : null
       ) : (
         <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap' }}>
           {(data ?? []).map((p) => (
@@ -220,15 +354,6 @@ function Photos({ movementId }: { movementId: string }) {
       )}
     </div>
   );
-}
-
-function fileToBase64(file: File): Promise<string> {
-  return new Promise((resolve, reject) => {
-    const r = new FileReader();
-    r.onload = () => resolve(String(r.result).split(',')[1] ?? '');
-    r.onerror = () => reject(new Error('Could not read the file'));
-    r.readAsDataURL(file);
-  });
 }
 
 function EditModal({

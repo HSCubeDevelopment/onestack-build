@@ -1,8 +1,19 @@
 'use client';
 import { Suspense, useRef, useState } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
-import { ChevronLeft } from 'lucide-react';
+import { ChevronLeft, Upload, X } from 'lucide-react';
 import { api, ApiError } from '@/lib/api';
+import {
+  addToTray,
+  emptyTray,
+  photosIn,
+  removeFromTray,
+  stagedPhoto,
+  trayCount,
+  uploadLabel,
+  type PhotoTray,
+  type StagedPhoto,
+} from '@/lib/photo-tray';
 import { ErrorBanner, Loading, useAsync } from '@/components/ui';
 import {
   FleetPhoto,
@@ -361,27 +372,72 @@ function PhotoSection({
     [vehicleId],
   );
   const photos = (data ?? []).filter((p) => (show ? show(p.photoType) : true));
-  const inputRef = useRef<HTMLInputElement>(null);
+  // Camera opens the lens directly (Android returns one shot per tap); the library input has no
+  // `capture`, so several photos can be picked at once. Both stage into the tray rather than uploading.
+  const cameraRef = useRef<HTMLInputElement>(null);
+  const libraryRef = useRef<HTMLInputElement>(null);
+  const seq = useRef(0);
+  const [tray, setTray] = useState<PhotoTray>(() => emptyTray());
   const [uploading, setUploading] = useState(false);
+  const [staging, setStaging] = useState(false);
   const [err, setErr] = useState<string | null>(null);
+  const staged = photosIn(tray, capturePhotoType);
+  const busy = uploading || staging;
 
-  async function onFile(file: File) {
+  /** Compress the picked files into the tray. Nothing is sent until "Upload" is pressed. */
+  async function stageFiles(list: FileList | null): Promise<void> {
+    if (!list || list.length === 0) return;
+    setErr(null);
+    setStaging(true);
+    try {
+      const picked: StagedPhoto[] = [];
+      let unreadable = 0;
+      for (const f of Array.from(list)) {
+        try {
+          const { dataBase64, contentType } = await compressToBase64(f);
+          seq.current += 1;
+          picked.push(stagedPhoto(`s${seq.current}`, dataBase64, contentType, f.name));
+        } catch {
+          unreadable += 1;
+        }
+      }
+      if (picked.length > 0) setTray((t) => addToTray(t, capturePhotoType, picked).tray);
+      if (unreadable > 0) setErr('Could not read one of the photos — it was skipped.');
+    } finally {
+      setStaging(false);
+      if (cameraRef.current) cameraRef.current.value = '';
+      if (libraryRef.current) libraryRef.current.value = '';
+    }
+  }
+
+  /** Send every staged photo, then reload once so the grid comes from the server. */
+  async function uploadAll(): Promise<void> {
+    if (staged.length === 0) return;
     setUploading(true);
     setErr(null);
+    let sent = 0;
     try {
-      const { dataBase64, contentType } = await compressToBase64(file);
-      await api.post('/fleet/photos', {
-        vehicleId,
-        photoType: capturePhotoType,
-        dataBase64,
-        contentType,
-      });
-      await reload();
+      for (const photo of staged) {
+        await api.post('/fleet/photos', {
+          vehicleId,
+          photoType: capturePhotoType,
+          dataBase64: photo.dataBase64,
+          contentType: photo.contentType,
+        });
+        // Un-stage as each one lands, so a mid-way failure leaves only the un-sent photos behind.
+        setTray((t) => removeFromTray(t, capturePhotoType, photo.id));
+        sent += 1;
+      }
     } catch (e) {
-      setErr(e instanceof ApiError ? e.message : 'Could not add photo');
+      const detail = e instanceof ApiError ? e.message : 'Could not add photo';
+      setErr(
+        sent > 0
+          ? `${detail} (${sent} of ${staged.length} uploaded — the rest are still here.)`
+          : detail,
+      );
     } finally {
       setUploading(false);
-      if (inputRef.current) inputRef.current.value = '';
+      if (sent > 0) await reload();
     }
   }
 
@@ -389,35 +445,103 @@ function PhotoSection({
     <>
       <div className="recdet-section" style={{ display: 'flex', justifyContent: 'space-between' }}>
         <span>{title}</span>
-        <button
-          type="button"
-          className="link-btn"
-          disabled={uploading}
-          onClick={() => inputRef.current?.click()}
-        >
-          {uploading ? 'Adding…' : addLabel}
-        </button>
+        <span style={{ display: 'inline-flex', gap: 12 }}>
+          <button
+            type="button"
+            className="link-btn"
+            disabled={busy}
+            onClick={() => cameraRef.current?.click()}
+          >
+            {staging ? 'Adding…' : addLabel}
+          </button>
+          <button
+            type="button"
+            className="link-btn"
+            disabled={busy}
+            onClick={() => libraryRef.current?.click()}
+          >
+            Choose
+          </button>
+        </span>
       </div>
       <input
-        ref={inputRef}
+        ref={cameraRef}
         type="file"
         accept="image/*"
         capture="environment"
+        multiple
         style={{ display: 'none' }}
-        onChange={(e) => {
-          const f = e.target.files?.[0];
-          if (f) void onFile(f);
-        }}
+        onChange={(e) => void stageFiles(e.target.files)}
+      />
+      <input
+        ref={libraryRef}
+        type="file"
+        accept="image/*"
+        multiple
+        style={{ display: 'none' }}
+        onChange={(e) => void stageFiles(e.target.files)}
       />
       <div className="card" style={{ marginBottom: 12 }}>
         <ErrorBanner message={err} />
+        {/* Staged photos — held on the device until the batch goes up. */}
+        {staged.length > 0 && (
+          <div style={{ marginBottom: 12 }}>
+            <div className="photo-grid">
+              {staged.map((sp) => (
+                <span key={sp.id} style={{ position: 'relative', display: 'inline-block' }}>
+                  {/* eslint-disable-next-line @next/next/no-img-element */}
+                  <img
+                    className="photo-thumb"
+                    src={sp.preview}
+                    alt="Waiting to upload"
+                    title="Not uploaded yet"
+                    style={{ outline: '2px solid var(--orange, #f59e0b)', outlineOffset: -2 }}
+                  />
+                  <button
+                    type="button"
+                    aria-label="Remove photo"
+                    disabled={busy}
+                    onClick={() => setTray((t) => removeFromTray(t, capturePhotoType, sp.id))}
+                    style={{
+                      position: 'absolute',
+                      top: 4,
+                      right: 4,
+                      width: 22,
+                      height: 22,
+                      border: 'none',
+                      borderRadius: 999,
+                      background: 'rgba(0,0,0,0.6)',
+                      color: '#fff',
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      padding: 0,
+                      cursor: 'pointer',
+                    }}
+                  >
+                    <X size={14} strokeWidth={3} />
+                  </button>
+                </span>
+              ))}
+            </div>
+            <button
+              type="button"
+              className="btn sm"
+              disabled={busy}
+              style={{ marginTop: 10 }}
+              onClick={() => void uploadAll()}
+            >
+              <Upload size={14} /> {uploading ? `Uploading ${trayCount(tray)}…` : uploadLabel(tray)}
+            </button>
+          </div>
+        )}
         {loading ? (
           <Loading />
-        ) : photos.length === 0 ? (
+        ) : photos.length === 0 && staged.length === 0 ? (
           <span className="muted" style={{ fontSize: 13 }}>
             {emptyText}
           </span>
-        ) : (
+        ) : photos.length === 0 ? null : (
           <div className="photo-grid">
             {photos.map((ph) => (
               // eslint-disable-next-line @next/next/no-img-element

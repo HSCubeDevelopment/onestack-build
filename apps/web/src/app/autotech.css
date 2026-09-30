@@ -657,6 +657,51 @@ textarea.at-input {
   font-family: inherit;
   flex: none;
 }
+.at-photoadd:disabled {
+  opacity: 0.5;
+  cursor: default;
+}
+/* A staged photo — captured, still on the phone. Outlined so a worker can tell at a glance which
+   thumbnails are already safe on the server and which would be lost if they walked away. */
+.at-photothumb.pending {
+  border: 2px solid var(--at-orange);
+}
+.at-photothumb.pending img {
+  opacity: 0.85;
+}
+/* The batch-upload bar. Sticks to the bottom of the photo screen: the category list is long, and
+   un-uploaded photos are the one thing on this screen that can still be lost. */
+.at-uploadbar {
+  position: sticky;
+  bottom: 0;
+  z-index: 5;
+  margin-top: 16px;
+  padding: 12px 14px calc(12px + env(safe-area-inset-bottom));
+  border-radius: 16px 16px 0 0;
+  background: var(--at-card);
+  border: 1px solid var(--at-sep);
+  border-bottom: none;
+  box-shadow: 0 -6px 20px rgba(0, 0, 0, 0.12);
+}
+.at-uploadbar .t {
+  color: var(--at-orange);
+  font-size: 13px;
+  font-weight: 800;
+}
+.at-uploadbar .a {
+  display: flex;
+  gap: 8px;
+  margin-top: 8px;
+}
+.at-uploadbar .a .at-btn {
+  margin-top: 0;
+}
+/* Held back while photos are staged — see the guard in RepairPhotos. */
+.at-back-link:disabled,
+.at-chip:disabled {
+  opacity: 0.45;
+  cursor: default;
+}
 .at-draftbanner {
   display: flex;
   gap: 9px;
