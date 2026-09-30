@@ -1,5 +1,5 @@
 'use client';
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import Link from 'next/link';
 import { useParams } from 'next/navigation';
 import {
@@ -14,7 +14,19 @@ import {
   Vehicle,
   WorkItem,
 } from '@/lib/api';
-import { Camera, MessageSquarePlus } from 'lucide-react';
+import { Camera, MessageSquarePlus, Upload, X } from 'lucide-react';
+import { fileToBase64 } from '@/lib/image';
+import {
+  addToTray,
+  emptyTray,
+  photosIn,
+  removeFromTray,
+  stagedPhoto,
+  trayCount,
+  uploadLabel,
+  type PhotoTray,
+  type StagedPhoto,
+} from '@/lib/photo-tray';
 import {
   EmptyState,
   ErrorBanner,
@@ -304,7 +316,13 @@ function JobDetail({
       )}
       {tab === 'notes' && <NotesTab notes={notes} jobId={jobId} act={act} />}
       {tab === 'photos' && (
-        <PhotosTab attachments={attachments} jobId={jobId} act={act} setActionErr={setActionErr} />
+        <PhotosTab
+          attachments={attachments}
+          jobId={jobId}
+          act={act}
+          reload={reload}
+          setActionErr={setActionErr}
+        />
       )}
     </>
   );
@@ -1383,51 +1401,98 @@ function NotesTab({
 /* ---------------- Photos ---------------- */
 
 const MAX_BYTES = 15 * 1024 * 1024;
+/** The single tray bucket this tab stages into — there are no photo categories on a job's attachments. */
+const PENDING = 'pending';
 
 function PhotosTab({
   attachments,
   jobId,
   act,
+  reload,
   setActionErr,
 }: {
   attachments: Attachment[];
   jobId: string;
   act: (fn: () => Promise<unknown>) => Promise<void>;
+  /**
+   * Refresh the job WITHOUT clearing the action error — `act` opens with `setActionErr(null)`, which
+   * would erase the "3 of 5 uploaded" message a partial batch has just set. Deletes still go through
+   * `act`; only the batch upload needs this.
+   */
+  reload: () => Promise<unknown>;
   setActionErr: (s: string | null) => void;
 }) {
   const [uploading, setUploading] = useState(false);
+  const [staging, setStaging] = useState(false);
+  // Photos picked but not yet sent. One bucket — this tab has no categories.
+  const [tray, setTray] = useState<PhotoTray>(() => emptyTray());
+  const seq = useRef(0);
+  const fileInput = useRef<HTMLInputElement>(null);
+  const staged = photosIn(tray, PENDING);
+  const busy = uploading || staging;
 
-  async function onFile(e: React.ChangeEvent<HTMLInputElement>) {
-    const file = e.target.files?.[0];
+  /** Read the picked files into the tray. Nothing is sent until "Upload" is pressed. */
+  async function stageFiles(e: React.ChangeEvent<HTMLInputElement>): Promise<void> {
+    const list = e.target.files;
     e.target.value = '';
-    if (!file) return;
-    if (file.size > MAX_BYTES) {
-      setActionErr('File is too large (max 15MB).');
-      return;
+    if (!list || list.length === 0) return;
+    setActionErr(null);
+    setStaging(true);
+    try {
+      const picked: StagedPhoto[] = [];
+      const tooBig: string[] = [];
+      let unreadable = 0;
+      for (const file of Array.from(list)) {
+        // The size cap is per file, so one oversized photo in a multi-select can't block the rest.
+        if (file.size > MAX_BYTES) {
+          tooBig.push(file.name);
+          continue;
+        }
+        try {
+          const { dataBase64, contentType } = await fileToBase64(file);
+          seq.current += 1;
+          picked.push(stagedPhoto(`s${seq.current}`, dataBase64, contentType, file.name));
+        } catch {
+          unreadable += 1;
+        }
+      }
+      if (picked.length > 0) setTray((t) => addToTray(t, PENDING, picked).tray);
+      if (tooBig.length > 0) setActionErr(`Too large (max 15MB), left out: ${tooBig.join(', ')}`);
+      else if (unreadable > 0) setActionErr('Could not read one of the files — it was skipped.');
+    } finally {
+      setStaging(false);
     }
+  }
+
+  /** Send every staged photo. `act` reloads the job, so it runs once the batch is through. */
+  async function uploadAll(): Promise<void> {
+    if (staged.length === 0) return;
     setUploading(true);
     setActionErr(null);
+    let sent = 0;
     try {
-      const dataBase64 = await new Promise<string>((resolve, reject) => {
-        const reader = new FileReader();
-        reader.onload = () => {
-          const result = String(reader.result);
-          resolve(result.slice(result.indexOf(',') + 1));
-        };
-        reader.onerror = () => reject(new Error('Could not read file.'));
-        reader.readAsDataURL(file);
-      });
-      await act(() =>
-        api.post(`/work-items/${jobId}/attachments`, {
-          fileName: file.name,
-          contentType: file.type,
-          dataBase64,
-        }),
-      );
+      for (const photo of staged) {
+        await api.post(`/work-items/${jobId}/attachments`, {
+          fileName: photo.fileName,
+          contentType: photo.contentType,
+          dataBase64: photo.dataBase64,
+        });
+        // Un-stage as each lands, so a retry after a mid-way failure can't duplicate an upload.
+        setTray((t) => removeFromTray(t, PENDING, photo.id));
+        sent += 1;
+      }
     } catch (err) {
-      setActionErr(err instanceof Error ? err.message : String(err));
+      const detail = err instanceof Error ? err.message : String(err);
+      setActionErr(
+        sent > 0
+          ? `${detail} (${sent} of ${staged.length} uploaded — the rest are still here.)`
+          : detail,
+      );
     } finally {
       setUploading(false);
+      // Refresh the job so the new attachments appear, even after a partial batch. Any error message
+      // set above survives, because `reload` doesn't clear it.
+      if (sent > 0) await reload();
     }
   }
 
@@ -1435,19 +1500,81 @@ function PhotosTab({
     <div className="stack">
       <div className="card">
         <label className="field">
-          Add photo
+          Add photos
           <input
+            ref={fileInput}
             className="input"
             type="file"
             accept="image/jpeg,image/png,image/webp,image/heic,image/*"
-            disabled={uploading}
-            onChange={(e) => void onFile(e)}
+            multiple
+            disabled={busy}
+            onChange={(e) => void stageFiles(e)}
           />
         </label>
-        {uploading && (
+        <span className="faint" style={{ marginTop: 6, display: 'block', fontSize: 12 }}>
+          Pick as many as you need — they upload together.
+        </span>
+        {staging && (
           <span className="faint" style={{ marginTop: 8, display: 'block' }}>
-            Uploading…
+            Reading…
           </span>
+        )}
+
+        {/* Staged photos — chosen, not yet uploaded. */}
+        {staged.length > 0 && (
+          <div style={{ marginTop: 12 }}>
+            <div className="grid cols-4">
+              {staged.map((sp) => (
+                <div key={sp.id} className="card" style={{ padding: 10, position: 'relative' }}>
+                  {/* eslint-disable-next-line @next/next/no-img-element */}
+                  <img
+                    className="thumb"
+                    src={sp.preview}
+                    alt={sp.fileName}
+                    title="Not uploaded yet"
+                  />
+                  <div className="row" style={{ marginTop: 8 }}>
+                    <span className="faint" style={{ fontSize: 12 }}>
+                      {sp.fileName}
+                    </span>
+                  </div>
+                  <button
+                    type="button"
+                    aria-label="Remove photo"
+                    disabled={busy}
+                    onClick={() => setTray((t) => removeFromTray(t, PENDING, sp.id))}
+                    style={{
+                      position: 'absolute',
+                      top: 6,
+                      right: 6,
+                      width: 24,
+                      height: 24,
+                      border: 'none',
+                      borderRadius: 999,
+                      background: 'rgba(0,0,0,0.6)',
+                      color: '#fff',
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      padding: 0,
+                      cursor: 'pointer',
+                    }}
+                  >
+                    <X size={14} strokeWidth={3} />
+                  </button>
+                </div>
+              ))}
+            </div>
+            <button
+              type="button"
+              className="btn"
+              disabled={busy}
+              style={{ marginTop: 10 }}
+              onClick={() => void uploadAll()}
+            >
+              <Upload size={14} /> {uploading ? `Uploading ${trayCount(tray)}…` : uploadLabel(tray)}
+            </button>
+          </div>
         )}
       </div>
 

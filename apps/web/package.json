@@ -8,7 +8,8 @@
     "build": "next build",
     "start": "next start -p 3000",
     "seed": "tsx scripts/seed-demo.ts",
-    "typecheck": "tsc -p tsconfig.json --noEmit"
+    "typecheck": "tsc -p tsconfig.json --noEmit",
+    "test": "vitest run src/"
   },
   "dependencies": {
     "jsonwebtoken": "^9.0.2",
@@ -23,6 +24,7 @@
     "@types/react": "18.3.3",
     "@types/react-dom": "18.3.0",
     "tsx": "^4.16.2",
-    "typescript": "^5.5.4"
+    "typescript": "^5.5.4",
+    "vitest": "^2.0.5"
   }
 }

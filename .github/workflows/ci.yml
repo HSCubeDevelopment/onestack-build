@@ -31,6 +31,8 @@ jobs:
         run: npm run test:cov --workspace @onestack/api
       - name: Coverage ratchet (coverage may only go up)
         run: npm run coverage:ratchet --workspace @onestack/api
+      - name: Web unit tests
+        run: npm run test --workspace @onestack/web
 
   # Card #5.2 — destructive-migration guard. Blocks DROP/RENAME/TRUNCATE in forward migrations unless
   # the PR carries the `approved-destructive-migration` label.
